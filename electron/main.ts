@@ -5,6 +5,10 @@ import { seedDatabase } from './db/seed.ts';
 import { registerAuthIpc } from './ipc/authIpc.ts';
 import { registerSystemIpc } from './ipc/systemIpc.ts';
 import { registerVaultIpc } from './ipc/vaultIpc.ts';
+import { registerCustomerIpc } from './ipc/customerIpc.ts';
+import { registerDeviceIpc } from './ipc/deviceIpc.ts';
+import { registerJobIpc } from './ipc/jobIpc.ts';
+import { registerSearchIpc } from './ipc/searchIpc.ts';
 
 process.env.DIST = path.join(__dirname, '../dist');
 process.env.VITE_PUBLIC = app.isPackaged
@@ -34,6 +38,10 @@ async function bootstrap(): Promise<void> {
   registerAuthIpc();
   registerSystemIpc();
   registerVaultIpc();
+  registerCustomerIpc();
+  registerDeviceIpc();
+  registerJobIpc();
+  registerSearchIpc();
 }
 
 function createWindow(): void {

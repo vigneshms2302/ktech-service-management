@@ -16,12 +16,14 @@ interface HeaderProps {
   onOpenPinModal: () => void;
   onOpenLoginModal: () => void;
   onRefreshHealth: () => void;
+  onOpenSearch: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenPinModal,
   onOpenLoginModal,
   onRefreshHealth,
+  onOpenSearch,
 }) => {
   const { currentUser, logout, userList, pinLogin } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -63,6 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Global Search Bar (Ctrl+K) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, maxWidth: '420px' }}>
         <div
+          onClick={onOpenSearch}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -72,12 +75,15 @@ export const Header: React.FC<HeaderProps> = ({
             borderRadius: '6px',
             padding: '5px 10px',
             width: '100%',
+            cursor: 'pointer',
           }}
         >
           <Search size={14} color="var(--text-dim)" />
           <input
             type="text"
-            placeholder="Search Phone, Job #, Serial, Customer, SKU... (Ctrl+K)"
+            placeholder="Search Phone, Job #, Serial, Customer... (Ctrl+K)"
+            readOnly
+            onClick={onOpenSearch}
             style={{
               background: 'transparent',
               border: 'none',
@@ -85,6 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
               color: 'var(--text-main)',
               fontSize: '12px',
               width: '100%',
+              cursor: 'pointer',
             }}
           />
           <kbd

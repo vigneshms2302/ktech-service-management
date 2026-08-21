@@ -1,0 +1,1046 @@
+import React, { useState, useEffect } from 'react';
+import {
+  User,
+  Laptop,
+  Wrench,
+  Search,
+  Plus,
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
+  Camera,
+} from 'lucide-react';
+import type { EquipmentType } from '../../types/index.ts';
+import { CustomerModal } from '../customers/CustomerModal.tsx';
+import { EquipmentModal } from '../equipment/EquipmentModal.tsx';
+import { formatPhoneDisplay } from '../../utils/phone.ts';
+
+const SERVICE_CATEGORIES = [
+  { value: 'CHIP_LEVEL', label: 'Chip-Level / Motherboard Repair' },
+  { value: 'HARDWARE_REPLACEMENT', label: 'Hardware Replacement (Screen/Keyboard/SSD)' },
+  { value: 'OS_SOFTWARE', label: 'OS Installation & Software Tuning' },
+  { value: 'GENERAL_SERVICE', label: 'General Service / Thermal Cleaning' },
+  { value: 'DATA_RECOVERY', label: 'Data Recovery Service' },
+  { value: 'POWER_ELECTRONICS', label: 'Power Supply / SMPS / EV Charger Repair' },
+  { value: 'CONSOLE_REPAIR', label: 'Gaming Console Repair (PS4/PS5/Xbox)' },
+  { value: 'PRINTER_SERVICE', label: 'Printer Service & Cartridge' },
+  { value: 'CUSTOM_BUILD', label: 'Custom PC Assembly / Upgrade' },
+];
+
+const COMMON_ACCESSORIES = [
+  'Charger / Power Adapter',
+  'Power Cable',
+  'Laptop Bag / Sleeve',
+  'Mouse',
+  'Keyboard',
+  'Remote Control',
+  'DualSense / Xbox Controller',
+  'Pen Drive / USB Drive',
+  'Original Box',
+  'RAM / SSD removed',
+];
+
+interface NewJobWizardProps {
+  initialCustomerId?: string;
+  initialDeviceId?: string;
+  onCancel?: () => void;
+  onJobCreated: (jobId: string) => void;
+}
+
+export const NewJobWizard: React.FC<NewJobWizardProps> = ({
+  initialCustomerId,
+  initialDeviceId,
+  onJobCreated,
+}) => {
+  // Wizard Step: 1 = Customer, 2 = Equipment, 3 = Admission & Issue, 4 = Review & Create, 5 = Success
+  const [step, setStep] = useState<number>(initialCustomerId && initialDeviceId ? 3 : initialCustomerId ? 2 : 1);
+
+  // Customer State
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerResults, setCustomerResults] = useState<Array<{ id: string; customerCode: string; fullName: string; primaryPhone: string; email: string | null; deviceCount: number }>>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<{ id: string; customerCode: string; fullName: string; primaryPhone: string } | null>(null);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+
+  // Equipment State
+  const [customerDevices, setCustomerDevices] = useState<Array<{
+    id: string;
+    equipmentType: EquipmentType;
+    brand: string;
+    modelName: string;
+    serialNumber?: string | null;
+    specsSummary?: string | null;
+    hasPasscode: boolean;
+  }>>([]);
+  const [selectedDevice, setSelectedDevice] = useState<{
+    id: string;
+    equipmentType: EquipmentType;
+    brand: string;
+    modelName: string;
+    serialNumber?: string | null;
+  } | null>(null);
+  const [isDeviceModalOpen, setIsDeviceModalOpen] = useState(false);
+
+  // Intake Form State
+  const [serviceCategory, setServiceCategory] = useState('CHIP_LEVEL');
+  const [priority, setPriority] = useState<'LOW' | 'NORMAL' | 'URGENT' | 'CRITICAL'>('NORMAL');
+  const [reportedIssue, setReportedIssue] = useState('');
+  const [powerStatus, setPowerStatus] = useState('NO_POWER');
+  const [displayStatus, setDisplayStatus] = useState('NO_DISPLAY');
+  const [bodyCondition, setBodyCondition] = useState('NORMAL_WEAR');
+  const [waterDamageDetected, setWaterDamageDetected] = useState(false);
+  const [shortCircuitDetected, setShortCircuitDetected] = useState(false);
+  const [physicalConditionNotes, setPhysicalConditionNotes] = useState('');
+  const [selectedAccessories, setSelectedAccessories] = useState<string[]>(['Charger / Power Adapter']);
+  const [customAccessory, setCustomAccessory] = useState('');
+  const [estimatedCost, setEstimatedCost] = useState<number>(0);
+  const [advanceDeposit, setAdvanceDeposit] = useState<number>(0);
+  const [promisedDeliveryDate, setPromisedDeliveryDate] = useState<string>('');
+  const [initialNote, setInitialNote] = useState('');
+
+  // Photos
+  const [photos, setPhotos] = useState<Array<{ base64Data: string; caption: string }>>([]);
+
+  // Submitting / Result
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdJob, setCreatedJob] = useState<{ id: string; jobNumber: string; warning?: string } | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Auto load initial customer if provided
+  useEffect(() => {
+    if (initialCustomerId) {
+      loadCustomerDetails(initialCustomerId);
+    }
+  }, [initialCustomerId]);
+
+  const loadCustomerDetails = async (custId: string) => {
+    if (window.electronAPI?.customers?.getById) {
+      const res = await window.electronAPI.customers.getById({ customerId: custId });
+      if (res.success && res.data) {
+        setSelectedCustomer({
+          id: res.data.customer.id,
+          customerCode: res.data.customer.customerCode,
+          fullName: res.data.customer.fullName,
+          primaryPhone: res.data.customer.primaryPhone,
+        });
+        setCustomerDevices(res.data.devices);
+
+        if (initialDeviceId) {
+          const dev = res.data.devices.find((d) => d.id === initialDeviceId);
+          if (dev) {
+            setSelectedDevice(dev);
+            setStep(3);
+          }
+        } else if (res.data.devices.length === 1) {
+          setSelectedDevice(res.data.devices[0]);
+        }
+      }
+    }
+  };
+
+  // Search Customers
+  const handleCustomerSearch = async (val: string) => {
+    setCustomerSearch(val);
+    if (!val.trim()) {
+      setCustomerResults([]);
+      return;
+    }
+    if (window.electronAPI?.customers?.search) {
+      const res = await window.electronAPI.customers.search({ query: val });
+      if (res.success && res.data) {
+        setCustomerResults(res.data);
+      }
+    }
+  };
+
+  const handleSelectCustomer = async (cust: { id: string; customerCode: string; fullName: string; primaryPhone: string }) => {
+    setSelectedCustomer(cust);
+    if (window.electronAPI?.devices?.list) {
+      const res = await window.electronAPI.devices.list({ customerId: cust.id });
+      if (res.success && res.data) {
+        setCustomerDevices(res.data);
+      }
+    }
+    setStep(2);
+  };
+
+  const handleSelectDevice = (dev: { id: string; equipmentType: EquipmentType; brand: string; modelName: string; serialNumber?: string | null }) => {
+    setSelectedDevice(dev);
+    setStep(3);
+  };
+
+  const toggleAccessory = (acc: string) => {
+    if (selectedAccessories.includes(acc)) {
+      setSelectedAccessories(selectedAccessories.filter((a) => a !== acc));
+    } else {
+      setSelectedAccessories([...selectedAccessories, acc]);
+    }
+  };
+
+  const handleAddCustomAccessory = () => {
+    if (customAccessory.trim() && !selectedAccessories.includes(customAccessory.trim())) {
+      setSelectedAccessories([...selectedAccessories, customAccessory.trim()]);
+      setCustomAccessory('');
+    }
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        if (evt.target?.result) {
+          setPhotos((prev) => [
+            ...prev,
+            { base64Data: evt.target!.result as string, caption: file.name },
+          ]);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removePhoto = (idx: number) => {
+    setPhotos(photos.filter((_, i) => i !== idx));
+  };
+
+  // Submit & Create Service Job
+  const handleFinalSubmit = async () => {
+    if (!selectedCustomer || !selectedDevice) return;
+    if (!reportedIssue.trim()) {
+      setErrorMessage('Customer reported issue is required');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      if (!window.electronAPI?.jobs?.create) {
+        setErrorMessage('Electron jobs API unavailable');
+        return;
+      }
+
+      const res = await window.electronAPI.jobs.create({
+        customerId: selectedCustomer.id,
+        deviceId: selectedDevice.id,
+        serviceCategory,
+        priority,
+        reportedIssue: reportedIssue.trim(),
+        accessoriesReceived: selectedAccessories,
+        physicalConditionNotes: physicalConditionNotes.trim() || undefined,
+        powerStatus,
+        displayStatus,
+        bodyCondition,
+        waterDamageDetected,
+        shortCircuitDetected,
+        estimatedCost: Number(estimatedCost) || 0,
+        advanceDeposit: Number(advanceDeposit) || 0,
+        promisedDeliveryDate: promisedDeliveryDate || undefined,
+        initialNote: initialNote.trim() || undefined,
+        photosBase64: photos.map((p) => ({ base64Data: p.base64Data, caption: p.caption })),
+      });
+
+      if (res.success && res.data) {
+        setCreatedJob({
+          id: res.data.id,
+          jobNumber: res.data.jobNumber,
+          warning: res.data.warning,
+        });
+        setStep(5); // Success step
+      } else {
+        setErrorMessage(res.error || 'Failed to create service job');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', padding: '20px' }}>
+      {/* Wizard Header & Stepper */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '20px',
+          paddingBottom: '16px',
+          borderBottom: '1px solid var(--border-color)',
+        }}
+      >
+        <div>
+          <h1 style={{ fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Wrench size={20} color="var(--brand-primary)" />
+            <span>New Service Job Admission (Reception Intake)</span>
+          </h1>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+            Customer → Equipment → Admission Checklist → Review & Job ID
+          </p>
+        </div>
+
+        {/* Step Indicators */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {[
+            { num: 1, label: 'Customer' },
+            { num: 2, label: 'Equipment' },
+            { num: 3, label: 'Intake & Issue' },
+            { num: 4, label: 'Review' },
+          ].map((s) => (
+            <div
+              key={s.num}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                backgroundColor: step === s.num ? 'var(--brand-primary)' : step > s.num ? 'var(--bg-surface-active)' : 'transparent',
+                color: step === s.num ? '#ffffff' : step > s.num ? 'var(--color-success)' : 'var(--text-dim)',
+                fontSize: '11px',
+                fontWeight: 600,
+              }}
+            >
+              <span>{s.num}. {s.label}</span>
+              {step > s.num && <CheckCircle2 size={12} />}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {errorMessage && (
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: '6px',
+            backgroundColor: 'var(--color-danger-bg)',
+            color: 'var(--color-danger)',
+            fontSize: '12px',
+            marginBottom: '16px',
+          }}
+        >
+          {errorMessage}
+        </div>
+      )}
+
+      {/* STEP 1: Select or Create Customer */}
+      {step === 1 && (
+        <div style={{ maxWidth: '680px', margin: '0 auto', width: '100%' }}>
+          <div className="card" style={{ padding: '24px' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <User size={18} color="var(--brand-primary)" />
+              <span>Step 1: Find or Register Customer</span>
+            </h2>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              Always search by phone number first to prevent creating duplicate customer profiles.
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  backgroundColor: 'var(--bg-app)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  flex: 1,
+                }}
+              >
+                <Search size={16} color="var(--text-dim)" />
+                <input
+                  type="text"
+                  className="input-field"
+                  value={customerSearch}
+                  onChange={(e) => handleCustomerSearch(e.target.value)}
+                  placeholder="Type 10-digit mobile number or customer name..."
+                  autoFocus
+                  style={{ border: 'none', background: 'transparent', padding: 0 }}
+                />
+              </div>
+
+              <button
+                className="btn btn-primary"
+                onClick={() => setIsCustomerModalOpen(true)}
+              >
+                <Plus size={14} />
+                <span>New Customer</span>
+              </button>
+            </div>
+
+            {/* Results dropdown */}
+            {customerResults.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>
+                  MATCHING CUSTOMERS FOUND ({customerResults.length}):
+                </div>
+                {customerResults.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => handleSelectCustomer(c)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      backgroundColor: 'var(--bg-app)',
+                      border: '1px solid var(--border-color)',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.12s ease',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-app)'; }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '13px' }}>{c.fullName}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        Phone: {formatPhoneDisplay(c.primaryPhone)} • Code: {c.customerCode} • Devices: {c.deviceCount}
+                      </div>
+                    </div>
+                    <button className="btn btn-primary" style={{ padding: '4px 10px', fontSize: '11px' }}>
+                      Select
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {customerSearch && customerResults.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '20px', backgroundColor: 'var(--bg-app)', borderRadius: '6px' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                  No customer found matching "{customerSearch}".
+                </p>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => setIsCustomerModalOpen(true)}
+                >
+                  <Plus size={14} />
+                  <span>Register "{customerSearch}" as New Customer</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* STEP 2: Select or Register Equipment */}
+      {step === 2 && selectedCustomer && (
+        <div style={{ maxWidth: '680px', margin: '0 auto', width: '100%' }}>
+          <div className="card" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Laptop size={18} color="var(--brand-primary)" />
+                  <span>Step 2: Select Equipment for Service</span>
+                </h2>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Customer: <strong>{selectedCustomer.fullName}</strong> ({formatPhoneDisplay(selectedCustomer.primaryPhone)})
+                </p>
+              </div>
+              <button
+                className="btn btn-primary"
+                onClick={() => setIsDeviceModalOpen(true)}
+              >
+                <Plus size={14} />
+                <span>Add Equipment</span>
+              </button>
+            </div>
+
+            {/* List of customer equipment */}
+            {customerDevices.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '30px', backgroundColor: 'var(--bg-app)', borderRadius: '6px' }}>
+                <Laptop size={32} color="var(--text-dim)" style={{ margin: '0 auto 10px' }} />
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                  No equipment currently registered for {selectedCustomer.fullName}.
+                </p>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => setIsDeviceModalOpen(true)}
+                >
+                  <Plus size={14} />
+                  <span>Register Customer's Equipment</span>
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {customerDevices.map((dev) => (
+                  <div
+                    key={dev.id}
+                    onClick={() => handleSelectDevice(dev)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 14px',
+                      borderRadius: '6px',
+                      backgroundColor: 'var(--bg-app)',
+                      border: '1px solid var(--border-color)',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-app)'; }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="badge badge-info" style={{ fontSize: '10px' }}>{dev.equipmentType}</span>
+                        <strong style={{ fontSize: '13px' }}>{dev.brand} {dev.modelName}</strong>
+                      </div>
+                      {dev.serialNumber && (
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px', fontFamily: 'var(--font-mono)' }}>
+                          SN: {dev.serialNumber}
+                        </div>
+                      )}
+                    </div>
+                    <button className="btn btn-primary" style={{ padding: '4px 10px', fontSize: '11px' }}>
+                      Select for Intake
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
+              <button className="btn btn-secondary" onClick={() => setStep(1)}>
+                <ArrowLeft size={14} />
+                <span>Change Customer</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 3: Admission, Reported Issue, Condition & Accessories Checklist */}
+      {step === 3 && selectedCustomer && selectedDevice && (
+        <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Summary Banner */}
+          <div className="card" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>CUSTOMER: </span>
+              <strong>{selectedCustomer.fullName}</strong> ({formatPhoneDisplay(selectedCustomer.primaryPhone)})
+            </div>
+            <div>
+              <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>EQUIPMENT: </span>
+              <strong>{selectedDevice.brand} {selectedDevice.modelName}</strong> ({selectedDevice.equipmentType})
+            </div>
+            <button className="btn btn-secondary" onClick={() => setStep(2)} style={{ fontSize: '11px', padding: '3px 8px' }}>
+              Change
+            </button>
+          </div>
+
+          {/* Admission Form */}
+          <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700 }}>Step 3: Initial Admission & Problem Intake</h2>
+
+            {/* Category & Priority */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  SERVICE CATEGORY *
+                </label>
+                <select
+                  className="input-field"
+                  value={serviceCategory}
+                  onChange={(e) => setServiceCategory(e.target.value)}
+                >
+                  {SERVICE_CATEGORIES.map((c) => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  PRIORITY
+                </label>
+                <select
+                  className="input-field"
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value as 'LOW' | 'NORMAL' | 'URGENT' | 'CRITICAL')}
+                >
+                  <option value="NORMAL">Normal</option>
+                  <option value="URGENT">Urgent (Express)</option>
+                  <option value="CRITICAL">Critical (Immediate)</option>
+                  <option value="LOW">Low</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Customer Complaint / Reported Issue */}
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                CUSTOMER REPORTED ISSUE & SYMPTOMS *
+              </label>
+              <textarea
+                className="input-field"
+                rows={3}
+                value={reportedIssue}
+                onChange={(e) => setReportedIssue(e.target.value)}
+                placeholder="e.g. Device does not turn on. Power light blinks orange. Customer states it happened after a lightning surge."
+                required
+              />
+            </div>
+
+            {/* Initial Condition Checks */}
+            <div style={{ padding: '12px', backgroundColor: 'var(--bg-app)', borderRadius: '6px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)', marginBottom: '8px' }}>
+                INITIAL HARDWARE ADMISSION CONDITION:
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>Power Status</label>
+                  <select
+                    className="input-field"
+                    value={powerStatus}
+                    onChange={(e) => setPowerStatus(e.target.value)}
+                  >
+                    <option value="NO_POWER">No Power / Dead</option>
+                    <option value="NORMAL_POWER">Turns On Normally</option>
+                    <option value="INTERMITTENT_POWER">Turns on and off / Restarts</option>
+                    <option value="CHARGER_ONLY">Works on Charger Only</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>Display Status</label>
+                  <select
+                    className="input-field"
+                    value={displayStatus}
+                    onChange={(e) => setDisplayStatus(e.target.value)}
+                  >
+                    <option value="NO_DISPLAY">No Display / Black Screen</option>
+                    <option value="WORKING_DISPLAY">Display Working</option>
+                    <option value="LINES_ON_SCREEN">Lines on Screen</option>
+                    <option value="CRACKED_PANEL">Cracked Screen</option>
+                    <option value="NOT_APPLICABLE">N/A (Non-display gear)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' }}>Casing Condition</label>
+                  <select
+                    className="input-field"
+                    value={bodyCondition}
+                    onChange={(e) => setBodyCondition(e.target.value)}
+                  >
+                    <option value="NORMAL_WEAR">Normal Minor Wear</option>
+                    <option value="HEAVY_SCRATCHES">Heavy Scratches / Dents</option>
+                    <option value="BROKEN_HINGE">Broken Hinge / Casing</option>
+                    <option value="PRISTINE">Like New / Pristine</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Checkbox flags */}
+              <div style={{ display: 'flex', gap: '16px', marginTop: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={waterDamageDetected}
+                    onChange={(e) => setWaterDamageDetected(e.target.checked)}
+                  />
+                  <span>Liquid / Water Spillage Observed</span>
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={shortCircuitDetected}
+                    onChange={(e) => setShortCircuitDetected(e.target.checked)}
+                  />
+                  <span>Burnt Smell / Short Circuit Suspected</span>
+                </label>
+              </div>
+
+              <div style={{ marginTop: '8px' }}>
+                <input
+                  type="text"
+                  className="input-field"
+                  value={physicalConditionNotes}
+                  onChange={(e) => setPhysicalConditionNotes(e.target.value)}
+                  placeholder="Physical observations (e.g. 2 bottom screws missing, crack near left hinge)"
+                />
+              </div>
+            </div>
+
+            {/* Accessory Checklist */}
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                ACCESSORIES RECEIVED WITH EQUIPMENT
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                {COMMON_ACCESSORIES.map((acc) => {
+                  const isChecked = selectedAccessories.includes(acc);
+                  return (
+                    <button
+                      key={acc}
+                      type="button"
+                      onClick={() => toggleAccessory(acc)}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        border: isChecked ? '1px solid var(--brand-primary)' : '1px solid var(--border-color)',
+                        backgroundColor: isChecked ? 'rgba(14, 165, 233, 0.15)' : 'var(--bg-app)',
+                        color: isChecked ? 'var(--brand-primary)' : 'var(--text-muted)',
+                        fontSize: '11px',
+                        fontWeight: isChecked ? 600 : 400,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {isChecked ? '✓ ' : '+ '} {acc}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Custom Accessory Input */}
+              <div style={{ display: 'flex', gap: '8px', maxWidth: '360px' }}>
+                <input
+                  type="text"
+                  className="input-field"
+                  value={customAccessory}
+                  onChange={(e) => setCustomAccessory(e.target.value)}
+                  placeholder="Custom accessory (e.g. HDMI Cable)"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddCustomAccessory();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleAddCustomAccessory}
+                  style={{ fontSize: '11px' }}
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Photos Upload */}
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                INTAKE & DAMAGE PHOTOS
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '11px' }}>
+                  <Camera size={14} />
+                  <span>Attach Photos</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={handlePhotoUpload}
+                  />
+                </label>
+                <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                  {photos.length} photo(s) selected (Stored in local app storage)
+                </span>
+              </div>
+
+              {photos.length > 0 && (
+                <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', padding: '4px 0' }}>
+                  {photos.map((p, idx) => (
+                    <div key={idx} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                      <img src={p.base64Data} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(idx)}
+                        style={{
+                          position: 'absolute',
+                          top: '2px',
+                          right: '2px',
+                          background: 'rgba(0,0,0,0.7)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '18px',
+                          height: '18px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          fontSize: '10px',
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Advance Deposit & Delivery Estimate */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  ESTIMATED CHARGE (₹)
+                </label>
+                <input
+                  type="number"
+                  className="input-field"
+                  value={estimatedCost}
+                  onChange={(e) => setEstimatedCost(Number(e.target.value))}
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  ADVANCE DEPOSIT (₹)
+                </label>
+                <input
+                  type="number"
+                  className="input-field"
+                  value={advanceDeposit}
+                  onChange={(e) => setAdvanceDeposit(Number(e.target.value))}
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  PROMISED DELIVERY DATE
+                </label>
+                <input
+                  type="date"
+                  className="input-field"
+                  value={promisedDeliveryDate}
+                  onChange={(e) => setPromisedDeliveryDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Internal Intake Note */}
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                INITIAL INTERNAL INTAKE NOTE (OPTIONAL)
+              </label>
+              <input
+                type="text"
+                className="input-field"
+                value={initialNote}
+                onChange={(e) => setInitialNote(e.target.value)}
+                placeholder="Staff remarks, customer urgency reason, or special instructions..."
+              />
+            </div>
+
+            {/* Stepper Navigation */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}>
+              <button className="btn btn-secondary" onClick={() => setStep(2)}>
+                <ArrowLeft size={14} />
+                <span>Back</span>
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  if (!reportedIssue.trim()) {
+                    setErrorMessage('Please describe the customer reported issue');
+                    return;
+                  }
+                  setErrorMessage(null);
+                  setStep(4);
+                }}
+              >
+                <span>Review Admission Slip</span>
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 4: Review & Finalize Admission */}
+      {step === 4 && selectedCustomer && selectedDevice && (
+        <div style={{ maxWidth: '680px', margin: '0 auto', width: '100%' }}>
+          <div className="card" style={{ padding: '24px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckCircle2 size={18} color="var(--brand-primary)" />
+              <span>Step 4: Review Service Job Admission Slip</span>
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '12px' }}>
+              <div style={{ padding: '10px 14px', backgroundColor: 'var(--bg-app)', borderRadius: '6px' }}>
+                <div style={{ fontWeight: 600, color: 'var(--brand-primary)', marginBottom: '4px' }}>CUSTOMER DETAILS</div>
+                <div><strong>{selectedCustomer.fullName}</strong></div>
+                <div style={{ color: 'var(--text-muted)' }}>Phone: {formatPhoneDisplay(selectedCustomer.primaryPhone)} • Code: {selectedCustomer.customerCode}</div>
+              </div>
+
+              <div style={{ padding: '10px 14px', backgroundColor: 'var(--bg-app)', borderRadius: '6px' }}>
+                <div style={{ fontWeight: 600, color: 'var(--brand-primary)', marginBottom: '4px' }}>EQUIPMENT DETAILS</div>
+                <div><strong>{selectedDevice.brand} {selectedDevice.modelName}</strong> ({selectedDevice.equipmentType})</div>
+                {selectedDevice.serialNumber && <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Serial Number: {selectedDevice.serialNumber}</div>}
+              </div>
+
+              <div style={{ padding: '10px 14px', backgroundColor: 'var(--bg-app)', borderRadius: '6px' }}>
+                <div style={{ fontWeight: 600, color: 'var(--brand-primary)', marginBottom: '4px' }}>REPORTED COMPLAINT & INITIAL CONDITION</div>
+                <div style={{ fontWeight: 500, marginBottom: '6px' }}>{reportedIssue}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '11px' }}>
+                  <span className="badge badge-info">Power: {powerStatus}</span>
+                  <span className="badge badge-info">Display: {displayStatus}</span>
+                  <span className="badge badge-info">Condition: {bodyCondition}</span>
+                  {waterDamageDetected && <span className="badge badge-danger">Liquid Spillage</span>}
+                  {shortCircuitDetected && <span className="badge badge-danger">Short Circuit</span>}
+                </div>
+              </div>
+
+              <div style={{ padding: '10px 14px', backgroundColor: 'var(--bg-app)', borderRadius: '6px' }}>
+                <div style={{ fontWeight: 600, color: 'var(--brand-primary)', marginBottom: '4px' }}>ACCESSORIES RECEIVED ({selectedAccessories.length})</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {selectedAccessories.length === 0 ? (
+                    <span style={{ color: 'var(--text-dim)' }}>No accessories received (Device Only)</span>
+                  ) : (
+                    selectedAccessories.map((a) => (
+                      <span key={a} className="badge badge-info">{a}</span>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div style={{ padding: '8px 12px', backgroundColor: 'var(--bg-app)', borderRadius: '6px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Estimated Cost: </span>
+                  <strong>₹{estimatedCost.toFixed(2)}</strong>
+                </div>
+                <div style={{ padding: '8px 12px', backgroundColor: 'var(--bg-app)', borderRadius: '6px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Advance Deposit: </span>
+                  <strong>₹{advanceDeposit.toFixed(2)}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px', paddingTop: '14px', borderTop: '1px solid var(--border-color)' }}>
+              <button className="btn btn-secondary" onClick={() => setStep(3)} disabled={isSubmitting}>
+                <ArrowLeft size={14} />
+                <span>Back</span>
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleFinalSubmit}
+                disabled={isSubmitting}
+                style={{ padding: '8px 20px', fontSize: '13px' }}
+              >
+                {isSubmitting ? 'Generating Job Ticket...' : 'Confirm Admission & Create Job'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 5: Success Ticket Screen */}
+      {step === 5 && createdJob && (
+        <div style={{ maxWidth: '580px', margin: '40px auto', width: '100%', textAlign: 'center' }}>
+          <div className="card" style={{ padding: '40px 24px' }}>
+            <div
+              style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--color-success-bg)',
+                color: 'var(--color-success)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+              }}
+            >
+              <CheckCircle2 size={32} />
+            </div>
+
+            <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '6px' }}>
+              Service Job Created Successfully!
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Intake admission completed and status initialized to <strong>RECEIVED</strong>.
+            </p>
+
+            {/* Big Human Readable Job ID Badge */}
+            <div
+              style={{
+                padding: '16px',
+                backgroundColor: 'var(--bg-app)',
+                borderRadius: '8px',
+                border: '2px solid var(--brand-primary)',
+                marginBottom: '20px',
+                display: 'inline-block',
+              }}
+            >
+              <div style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600 }}>OFFICIAL JOB IDENTIFIER</div>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)', marginTop: '4px' }}>
+                {createdJob.jobNumber}
+              </div>
+            </div>
+
+            {createdJob.warning && (
+              <div style={{ padding: '8px 12px', backgroundColor: 'var(--color-warning-bg)', color: 'var(--color-warning)', borderRadius: '6px', fontSize: '11px', marginBottom: '16px' }}>
+                {createdJob.warning}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setStep(1);
+                  setSelectedCustomer(null);
+                  setSelectedDevice(null);
+                  setReportedIssue('');
+                  setPhotos([]);
+                  setCreatedJob(null);
+                }}
+              >
+                Intake Another Device
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => onJobCreated(createdJob.id)}
+                style={{ padding: '8px 20px' }}
+              >
+                Open Job Detail Screen →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Embedded Customer & Equipment Modals */}
+      <CustomerModal
+        isOpen={isCustomerModalOpen}
+        onClose={() => setIsCustomerModalOpen(false)}
+        onCustomerCreated={(newCust) => handleSelectCustomer(newCust)}
+        onSelectExisting={(existingId) => {
+          setIsCustomerModalOpen(false);
+          loadCustomerDetails(existingId);
+          setStep(2);
+        }}
+        initialPhone={customerSearch}
+      />
+
+      {selectedCustomer && (
+        <EquipmentModal
+          isOpen={isDeviceModalOpen}
+          onClose={() => setIsDeviceModalOpen(false)}
+          customerId={selectedCustomer.id}
+          customerName={selectedCustomer.fullName}
+          onEquipmentCreated={(newDev) => {
+            setCustomerDevices((prev) => [...prev, newDev as any]);
+            handleSelectDevice(newDev as any);
+          }}
+          onSelectExisting={(existingDevId) => {
+            setIsDeviceModalOpen(false);
+            const dev = customerDevices.find((d) => d.id === existingDevId);
+            if (dev) handleSelectDevice(dev);
+          }}
+        />
+      )}
+    </div>
+  );
+};
