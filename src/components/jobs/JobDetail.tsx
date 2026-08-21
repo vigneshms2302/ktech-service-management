@@ -1,14 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ArrowLeft,
   User,
-  Laptop,
   Phone,
   Clock,
   Lock,
   Unlock,
-  Image,
-  Send,
+  Wrench,
+  Cpu,
+  CheckCircle2,
+  FileText,
+  Plus,
+  Trash2,
+  Activity,
+  Layers,
+  Search,
+  Eye,
+  Camera,
 } from 'lucide-react';
 import type { JobDetailData } from '../../types/index.ts';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
@@ -27,45 +35,113 @@ export const JobDetail: React.FC<JobDetailProps> = ({
   onSelectCustomer,
   onSelectDevice,
 }) => {
-  const { userList } = useAuth();
+  const { userList, currentUser, hasPermission } = useAuth();
   const [data, setData] = useState<JobDetailData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'inspection' | 'diagnosis' | 'repair' | 'activities' | 'attachments' | 'timeline' | 'notes'
+  >('overview');
+
+  // Vault passcode unlock
+  const [unlockedPasscode, setUnlockedPasscode] = useState<string | null>(null);
+
+  // Status transitions
+  const [transitionNotes, setTransitionNotes] = useState('');
+  const [statusError, setStatusError] = useState<string | null>(null);
+
+  // Inspection form states
+  const [inspPowerStatus, setInspPowerStatus] = useState('NORMAL_POWER');
+  const [inspDisplayStatus, setInspDisplayStatus] = useState('NORMAL');
+  const [inspMotherboardStatus, setInspMotherboardStatus] = useState('NORMAL');
+  const [inspBodyCondition, setInspBodyCondition] = useState('GOOD');
+  const [inspWaterDamage, setInspWaterDamage] = useState(false);
+  const [inspShortCircuit, setInspShortCircuit] = useState(false);
+  const [inspNotes, setInspNotes] = useState('');
+  const [inspVoltageRails, setInspVoltageRails] = useState<{ rail: string; expected: string; measured: string; status: string }[]>([
+    { rail: '19V / DC-IN', expected: '19.5V', measured: '', status: 'NORMAL' },
+    { rail: '3.3V Always-On', expected: '3.3V', measured: '', status: 'NORMAL' },
+    { rail: '5.0V Always-On', expected: '5.0V', measured: '', status: 'NORMAL' },
+    { rail: '1.05V PCH / SoC', expected: '1.05V', measured: '', status: 'NORMAL' },
+    { rail: 'VCore / CPU', expected: '0.9V - 1.2V', measured: '', status: 'NORMAL' },
+  ]);
+
+  // Diagnosis form states
+  const [diagRootCause, setDiagRootCause] = useState('');
+  const [diagFaultCategory, setDiagFaultCategory] = useState('CHIP_LEVEL');
+  const [diagFaultyComponents, setDiagFaultyComponents] = useState('');
+  const [diagVoltageRailsChecked, setDiagVoltageRailsChecked] = useState('');
+  const [diagRecommendedAction, setDiagRecommendedAction] = useState('');
+  const [diagOutcome, setDiagOutcome] = useState('FAULT_IDENTIFIED');
+  const [isSavingDiag, setIsSavingDiag] = useState(false);
+
+  // Repair Plan form states
+  const [planServiceName, setPlanServiceName] = useState('');
+  const [planLaborCharge, setPlanLaborCharge] = useState<number>(0);
+
+  // Required Part form states
+  const [partName, setPartName] = useState('');
+  const [partSerialNumber, setPartSerialNumber] = useState('');
+  const [partQuantity, setPartQuantity] = useState(1);
+  const [partCost, setPartCost] = useState<number>(0);
+  const [partPrice, setPartPrice] = useState<number>(0);
+  const [partWarrantyMonths] = useState(3);
+
+  // Repair Activity form states
+  const [actTitle, setActTitle] = useState('');
+  const [actDescription, setActDescription] = useState('');
+  const [actMinutes, setActMinutes] = useState(30);
+
+  // Attachment upload states
+  const [attachCaption, setAttachCaption] = useState('');
+
+  // Notes form
   const [newNote, setNewNote] = useState('');
   const [noteType, setNoteType] = useState<'INTERNAL' | 'CUSTOMER_FACING'>('INTERNAL');
-  const [unlockedPasscode, setUnlockedPasscode] = useState<string | null>(null);
-  const [passcodeError, setPasscodeError] = useState<string | null>(null);
-  const [transitionNotes, setTransitionNotes] = useState('');
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [statusError, setStatusError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'intake' | 'timeline' | 'notes' | 'quotation' | 'repair' | 'billing'>('intake');
 
-  const fetchJob = async () => {
+  const fetchJob = useCallback(async () => {
     setIsLoading(true);
     try {
       if (window.electronAPI?.jobs?.getById) {
         const res = await window.electronAPI.jobs.getById({ jobId });
         if (res.success && res.data) {
           setData(res.data);
+          // Pre-populate inspection if existing
+          if (res.data.inspection) {
+            setInspPowerStatus(res.data.inspection.powerStatus || 'NORMAL_POWER');
+            setInspDisplayStatus(res.data.inspection.displayStatus || 'NORMAL');
+            setInspMotherboardStatus(res.data.inspection.motherboardStatus || 'NORMAL');
+            setInspBodyCondition(res.data.inspection.bodyCondition || 'GOOD');
+            setInspWaterDamage(Boolean(res.data.inspection.waterDamageDetected));
+            setInspShortCircuit(Boolean(res.data.inspection.shortCircuitDetected));
+            setInspNotes(res.data.inspection.inspectionNotes || '');
+          }
+          // Pre-populate diagnosis if existing
+          if (res.data.diagnoses && res.data.diagnoses.length > 0) {
+            const latestDiag = res.data.diagnoses[0];
+            setDiagRootCause(latestDiag.rootCauseAnalysis || '');
+            setDiagFaultyComponents(latestDiag.faultyComponentsIdentified || '');
+            setDiagVoltageRailsChecked(latestDiag.voltageRailsChecked || '');
+            setDiagRecommendedAction(latestDiag.recommendedAction || '');
+          }
         }
       }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [jobId]);
 
   useEffect(() => {
     fetchJob();
-  }, [jobId]);
+  }, [fetchJob]);
 
-  const handleStatusTransition = async (newStatus: string) => {
-    setIsUpdatingStatus(true);
+  const handleStatusTransition = async (newStatus: string, reason?: string) => {
     setStatusError(null);
     try {
       if (window.electronAPI?.jobs?.updateStatus) {
         const res = await window.electronAPI.jobs.updateStatus({
           jobId,
           newStatus,
-          reasonOrNotes: transitionNotes.trim() || undefined,
+          reasonOrNotes: reason || transitionNotes.trim() || undefined,
         });
 
         if (res.success) {
@@ -75,8 +151,8 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           setStatusError(res.error || 'Failed to update status');
         }
       }
-    } finally {
-      setIsUpdatingStatus(false);
+    } catch (err: unknown) {
+      setStatusError((err as Error).message);
     }
   };
 
@@ -85,7 +161,243 @@ export const JobDetail: React.FC<JobDetailProps> = ({
       const res = await window.electronAPI.jobs.assignTechnician({ jobId, technicianId: techId });
       if (res.success) {
         fetchJob();
+      } else {
+        alert(res.error || 'Failed to assign technician');
       }
+    }
+  };
+
+  const handleSaveInspection = async () => {
+    try {
+      if (!window.electronAPI?.jobs?.saveTechnicalInspection) return;
+      const formattedMeasurements = inspVoltageRails
+        .filter((r) => r.measured.trim())
+        .map((r) => `${r.rail}: ${r.measured} (${r.status})`)
+        .join('; ');
+
+      const res = await window.electronAPI.jobs.saveTechnicalInspection({
+        jobId,
+        powerStatus: inspPowerStatus,
+        displayStatus: inspDisplayStatus,
+        motherboardStatus: inspMotherboardStatus,
+        bodyCondition: inspBodyCondition,
+        waterDamageDetected: inspWaterDamage,
+        shortCircuitDetected: inspShortCircuit,
+        inspectionNotes: `${inspNotes.trim()}${formattedMeasurements ? `\n[Voltages Logged]: ${formattedMeasurements}` : ''}`,
+        transitionToUnderInspection: data?.job.currentStatus === 'WAITING_FOR_INSPECTION' || data?.job.currentStatus === 'RECEIVED',
+      });
+
+      if (res.success) {
+        alert('Technical Inspection findings recorded successfully!');
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to save inspection');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    }
+  };
+
+  const handleSaveDiagnosis = async () => {
+    if (!diagRootCause.trim()) {
+      alert('Root Cause Analysis is required.');
+      return;
+    }
+
+    try {
+      setIsSavingDiag(true);
+      if (!window.electronAPI?.jobs?.saveDiagnosis) return;
+
+      const res = await window.electronAPI.jobs.saveDiagnosis({
+        jobId,
+        rootCauseAnalysis: diagRootCause.trim(),
+        faultCategory: diagFaultCategory,
+        faultyComponentsIdentified: diagFaultyComponents.trim() || undefined,
+        voltageRailsChecked: diagVoltageRailsChecked.trim() || undefined,
+        recommendedAction: diagRecommendedAction.trim() || undefined,
+        diagnosticOutcome: diagOutcome,
+        transitionStatus: true,
+      });
+
+      if (res.success) {
+        alert('Diagnosis successfully logged and ticket status updated!');
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to save diagnosis');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    } finally {
+      setIsSavingDiag(false);
+    }
+  };
+
+  const handleAddRepairPlanAction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!planServiceName.trim()) return;
+
+    try {
+      if (!window.electronAPI?.jobs?.addRepairPlanAction) return;
+      const res = await window.electronAPI.jobs.addRepairPlanAction({
+        jobId,
+        serviceName: planServiceName.trim(),
+        laborCharge: planLaborCharge,
+      });
+
+      if (res.success) {
+        setPlanServiceName('');
+        setPlanLaborCharge(0);
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to add repair plan action');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    }
+  };
+
+  const handleDeleteRepairPlanAction = async (serviceId: string) => {
+    if (!window.electronAPI?.jobs?.deleteRepairPlanAction) return;
+    const res = await window.electronAPI.jobs.deleteRepairPlanAction({ serviceId });
+    if (res.success) {
+      fetchJob();
+    }
+  };
+
+  const handleAddRequiredPart = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!partName.trim()) return;
+
+    try {
+      if (!window.electronAPI?.jobs?.addRequiredPart) return;
+      const res = await window.electronAPI.jobs.addRequiredPart({
+        jobId,
+        partName: partName.trim(),
+        serialNumber: partSerialNumber.trim() || undefined,
+        quantity: partQuantity,
+        unitCostPrice: partCost,
+        unitSellingPrice: partPrice,
+        warrantyMonths: partWarrantyMonths,
+      });
+
+      if (res.success) {
+        setPartName('');
+        setPartSerialNumber('');
+        setPartQuantity(1);
+        setPartCost(0);
+        setPartPrice(0);
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to add required part');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    }
+  };
+
+  const handleDeleteRequiredPart = async (partId: string) => {
+    if (!window.electronAPI?.jobs?.deleteRequiredPart) return;
+    const res = await window.electronAPI.jobs.deleteRequiredPart({ partId });
+    if (res.success) {
+      fetchJob();
+    }
+  };
+
+  const handleAddRepairActivity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!actTitle.trim()) return;
+
+    try {
+      if (!window.electronAPI?.jobs?.addRepairActivity) return;
+      const res = await window.electronAPI.jobs.addRepairActivity({
+        jobId,
+        activityTitle: actTitle.trim(),
+        description: actDescription.trim() || undefined,
+        timeSpentMinutes: actMinutes,
+        transitionToUnderRepair: true,
+      });
+
+      if (res.success) {
+        setActTitle('');
+        setActDescription('');
+        setActMinutes(30);
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to add repair activity');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Data = reader.result as string;
+      if (window.electronAPI?.jobs?.addTechnicalAttachment) {
+        const res = await window.electronAPI.jobs.addTechnicalAttachment({
+          jobId,
+          fileName: file.name,
+          fileType: file.type,
+          base64Data,
+          caption: attachCaption.trim() || file.name,
+          isPhoto: file.type.startsWith('image/'),
+        });
+
+        if (res.success) {
+          setAttachCaption('');
+          fetchJob();
+        } else {
+          alert(res.error || 'Failed to save attachment');
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCompleteRepair = async () => {
+    const summary = prompt('Enter repair completion summary & bench test notes:', 'All component rework completed and stress-tested.');
+    if (!summary) return;
+
+    try {
+      if (!window.electronAPI?.jobs?.completeRepair) return;
+      const res = await window.electronAPI.jobs.completeRepair({
+        jobId,
+        summaryNotes: summary,
+      });
+      if (res.success) {
+        alert('Repair marked as COMPLETED!');
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to complete repair');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    }
+  };
+
+  const handleMarkUnrepairable = async () => {
+    const reason = prompt('Enter technical justification for UNREPAIRABLE status (e.g. SoC cracked, layered PCB trace corrosion):');
+    if (!reason || !reason.trim()) return;
+
+    try {
+      if (!window.electronAPI?.jobs?.markUnrepairable) return;
+      const res = await window.electronAPI.jobs.markUnrepairable({
+        jobId,
+        rootCause: 'Fatal Hardware Damage',
+        technicalJustification: reason.trim(),
+      });
+      if (res.success) {
+        alert('Job status updated to UNREPAIRABLE.');
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to mark unrepairable');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
     }
   };
 
@@ -108,326 +420,118 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
   const handleUnlockPasscode = async () => {
     if (!data?.job.deviceId) return;
-    setPasscodeError(null);
 
     if (window.electronAPI?.vault?.unlockPasscode) {
       const res = await window.electronAPI.vault.unlockPasscode({ deviceId: data.job.deviceId });
       if (res.success && res.data) {
         setUnlockedPasscode(res.data.passcode);
       } else {
-        setPasscodeError(res.error || 'Access Denied');
+        alert(res.error || 'Access Denied');
       }
     }
   };
 
   if (isLoading) {
-    return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading service ticket...</div>;
+    return (
+      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+        Loading service job workstation...
+      </div>
+    );
   }
 
   if (!data) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center' }}>
-        <p>Service job not found.</p>
-        <button className="btn btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>
+      <div style={{ padding: '30px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--color-danger)' }}>Service Job record could not be found.</p>
+        <button onClick={onBack} className="btn-secondary" style={{ marginTop: '10px' }}>
           Back to List
         </button>
       </div>
     );
   }
 
-  const { job, inspection, timeline, notes, photos } = data;
+  const { job, inspection, diagnoses, repairPlans, requiredParts, repairActivities, attachments, timeline, notes, photos } = data;
 
-  const getStatusBadge = (st: string) => {
-    switch (st) {
-      case 'RECEIVED': return 'badge-info';
-      case 'WAITING_FOR_INSPECTION': return 'badge-warning';
-      case 'UNDER_INSPECTION': return 'badge-warning';
-      case 'DIAGNOSIS_COMPLETED': return 'badge-info';
-      case 'REPAIR_COMPLETED':
-      case 'DELIVERED': return 'badge-success';
-      case 'UNREPAIRABLE':
-      case 'CANCELLED': return 'badge-danger';
-      default: return 'badge-info';
-    }
-  };
+  const isTechnicianRole = currentUser?.roleId === 'ROLE_TECHNICIAN' || currentUser?.roleId === 'ROLE_OWNER' || hasPermission('jobs.diagnose');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', padding: '20px' }}>
-      {/* Top Breadcrumb & Status Action Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button className="btn btn-secondary" onClick={onBack} style={{ padding: '5px 10px' }}>
-            <ArrowLeft size={14} />
-            <span>Jobs</span>
+    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', height: '100%', overflowY: 'auto' }}>
+      {/* Top Breadcrumb & Status Bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            onClick={onBack}
+            style={{
+              padding: '6px 10px',
+              backgroundColor: 'var(--bg-surface)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '6px',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '12px',
+            }}
+          >
+            <ArrowLeft size={14} /> Back
           </button>
-          <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>/</div>
-          <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
-            {job.jobNumber}
-          </span>
-          <span className={`badge ${getStatusBadge(job.currentStatus)}`}>
-            {job.currentStatus}
-          </span>
-          <span className={`badge ${job.priority === 'URGENT' || job.priority === 'CRITICAL' ? 'badge-danger' : 'badge-info'}`}>
-            {job.priority}
-          </span>
-        </div>
-
-        <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-          Admitted by <strong>{job.creatorName}</strong> on {new Date(job.createdAt).toLocaleString()}
-        </div>
-      </div>
-
-      {/* Status Transition Action Bar (Phase 2 State Machine) */}
-      <div
-        className="card"
-        style={{
-          padding: '12px 16px',
-          marginBottom: '16px',
-          backgroundColor: 'var(--bg-surface)',
-          borderLeft: '4px solid var(--brand-primary)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '12px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Clock size={16} color="var(--brand-primary)" />
-          <span style={{ fontSize: '12px', fontWeight: 600 }}>Workflow Action:</span>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Current State: <strong>{job.currentStatus}</strong>
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {job.currentStatus === 'RECEIVED' && (
-            <button
-              className="btn btn-primary"
-              disabled={isUpdatingStatus}
-              onClick={() => handleStatusTransition('WAITING_FOR_INSPECTION')}
-            >
-              <span>Queue for Inspection →</span>
-            </button>
-          )}
-
-          {job.currentStatus === 'WAITING_FOR_INSPECTION' && (
-            <button
-              className="btn btn-primary"
-              disabled={isUpdatingStatus}
-              onClick={() => handleStatusTransition('UNDER_INSPECTION')}
-            >
-              <span>Start Diagnostic Inspection →</span>
-            </button>
-          )}
-
-          {job.currentStatus === 'UNDER_INSPECTION' && (
-            <>
-              <button
-                className="btn btn-primary"
-                disabled={isUpdatingStatus}
-                onClick={() => handleStatusTransition('DIAGNOSIS_COMPLETED')}
-              >
-                <span>Diagnosis Completed →</span>
-              </button>
-              <button
-                className="btn btn-danger"
-                disabled={isUpdatingStatus}
-                onClick={() => handleStatusTransition('UNREPAIRABLE')}
-                style={{ fontSize: '11px' }}
-              >
-                Mark Unrepairable
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {statusError && (
-        <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)', fontSize: '12px', marginBottom: '14px' }}>
-          {statusError}
-        </div>
-      )}
-
-      {/* Main 2-Column Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px', marginBottom: '20px' }}>
-        {/* Left Column: Intake, Condition, Accessories, Photos */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Customer Reported Complaint */}
-          <div className="card">
-            <h2 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '8px' }}>
-              CUSTOMER REPORTED COMPLAINT & SYMPTOMS
-            </h2>
-            <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-main)', lineHeight: 1.5, backgroundColor: 'var(--bg-app)', padding: '12px', borderRadius: '6px' }}>
-              {job.reportedIssue}
-            </div>
-
-            {job.physicalConditionNotes && (
-              <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                <strong>Physical Observations:</strong> {job.physicalConditionNotes}
-              </div>
-            )}
-          </div>
-
-          {/* Initial Admission Inspection Checks */}
-          {inspection && (
-            <div className="card">
-              <h2 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '10px' }}>
-                INITIAL HARDWARE ADMISSION STATUS
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, fontFamily: 'var(--font-mono)', color: '#f8fafc' }}>
+                {job.jobNumber}
               </h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
-                <div style={{ padding: '8px 10px', backgroundColor: 'var(--bg-app)', borderRadius: '6px', fontSize: '11px' }}>
-                  <div style={{ color: 'var(--text-dim)' }}>Power Condition</div>
-                  <strong style={{ color: 'var(--text-main)' }}>{inspection.powerStatus}</strong>
-                </div>
-
-                <div style={{ padding: '8px 10px', backgroundColor: 'var(--bg-app)', borderRadius: '6px', fontSize: '11px' }}>
-                  <div style={{ color: 'var(--text-dim)' }}>Display Condition</div>
-                  <strong style={{ color: 'var(--text-main)' }}>{inspection.displayStatus || 'N/A'}</strong>
-                </div>
-
-                <div style={{ padding: '8px 10px', backgroundColor: 'var(--bg-app)', borderRadius: '6px', fontSize: '11px' }}>
-                  <div style={{ color: 'var(--text-dim)' }}>Body / Hinge</div>
-                  <strong style={{ color: 'var(--text-main)' }}>{inspection.bodyCondition || 'NORMAL'}</strong>
-                </div>
-
-                {inspection.waterDamageDetected && (
-                  <div style={{ padding: '8px 10px', backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)', borderRadius: '6px', fontSize: '11px', fontWeight: 600 }}>
-                    ⚠️ Liquid Damage Observed
-                  </div>
-                )}
-
-                {inspection.shortCircuitDetected && (
-                  <div style={{ padding: '8px 10px', backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)', borderRadius: '6px', fontSize: '11px', fontWeight: 600 }}>
-                    ⚡ Short Circuit Suspected
-                  </div>
-                )}
-              </div>
+              <span
+                style={{
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  backgroundColor: job.priority === 'CRITICAL' || job.priority === 'URGENT' ? '#ef4444' : 'var(--brand-primary)',
+                  color: '#ffffff',
+                }}
+              >
+                {job.priority}
+              </span>
+              <span
+                style={{
+                  padding: '2px 10px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                  color: 'var(--brand-primary)',
+                  border: '1px solid rgba(59, 130, 246, 0.4)',
+                }}
+              >
+                {job.currentStatus.replace(/_/g, ' ')}
+              </span>
             </div>
-          )}
-
-          {/* Accessories Checklist */}
-          <div className="card">
-            <h2 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '8px' }}>
-              ACCESSORIES RECEIVED ({job.accessoriesReceived.length})
-            </h2>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {job.accessoriesReceived.length === 0 ? (
-                <span style={{ color: 'var(--text-dim)', fontSize: '12px' }}>Device Only (No accessories received)</span>
-              ) : (
-                job.accessoriesReceived.map((acc) => (
-                  <span key={acc} className="badge badge-info" style={{ fontSize: '11px', padding: '4px 8px' }}>
-                    ✓ {acc}
-                  </span>
-                ))
-              )}
+            <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>
+              Admitted: {new Date(job.createdAt).toLocaleString('en-IN')} by {job.creatorName}
             </div>
           </div>
-
-          {/* Intake Photos */}
-          {photos.length > 0 && (
-            <div className="card">
-              <h2 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '10px' }}>
-                INTAKE & DAMAGE PHOTOS ({photos.length})
-              </h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
-                {photos.map((p) => (
-                  <div key={p.id} style={{ border: '1px solid var(--border-color)', borderRadius: '6px', overflow: 'hidden', backgroundColor: 'var(--bg-app)' }}>
-                    <div style={{ height: '90px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-surface-active)' }}>
-                      <Image size={24} color="var(--text-dim)" />
-                    </div>
-                    <div style={{ padding: '4px 6px', fontSize: '10px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {p.caption || 'Photo'}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Right Column: Customer Card, Equipment Card, Technician, Notes */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Customer Card */}
-          <div className="card">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>
-                <User size={14} color="var(--brand-primary)" />
-                <span>CUSTOMER</span>
-              </div>
-              <button
-                className="btn btn-secondary"
-                onClick={() => onSelectCustomer(job.customerId)}
-                style={{ padding: '2px 6px', fontSize: '10px' }}
-              >
-                Profile
-              </button>
-            </div>
-
-            <div style={{ fontSize: '14px', fontWeight: 700 }}>{job.customerName}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-              <Phone size={12} style={{ display: 'inline', marginRight: '4px' }} />
-              {formatPhoneDisplay(job.customerPhone)}
-            </div>
-            {job.customerEmail && <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>{job.customerEmail}</div>}
-          </div>
-
-          {/* Equipment Card */}
-          <div className="card">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>
-                <Laptop size={14} color="var(--brand-primary)" />
-                <span>EQUIPMENT</span>
-              </div>
-              <button
-                className="btn btn-secondary"
-                onClick={() => onSelectDevice(job.deviceId)}
-                style={{ padding: '2px 6px', fontSize: '10px' }}
-              >
-                Details
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span className="badge badge-info" style={{ fontSize: '9px' }}>{job.equipmentType}</span>
-              <strong style={{ fontSize: '13px' }}>{job.deviceBrand} {job.deviceModel}</strong>
-            </div>
-
-            {job.deviceSerial && (
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
-                SN: {job.deviceSerial}
-              </div>
-            )}
-
-            {job.hasPasscode && (
-              <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-color)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Device Passcode:</span>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={handleUnlockPasscode}
-                    style={{ padding: '2px 6px', fontSize: '10px' }}
-                  >
-                    {unlockedPasscode ? <Unlock size={10} /> : <Lock size={10} />}
-                    <span>{unlockedPasscode ? unlockedPasscode : 'Decrypt'}</span>
-                  </button>
-                </div>
-                {passcodeError && <div style={{ fontSize: '10px', color: 'var(--color-danger)', marginTop: '2px' }}>{passcodeError}</div>}
-              </div>
-            )}
-          </div>
-
-          {/* Technician Assignment */}
-          <div className="card">
-            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
-              ASSIGNED TECHNICIAN
-            </div>
+        {/* Quick Technician Assignment & Action Transition Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {/* Tech Assignment Dropdown */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'var(--bg-card)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+            <User size={13} color="var(--brand-primary)" />
+            <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Tech:</span>
             <select
-              className="input-field"
               value={job.assignedTechnicianId || ''}
               onChange={(e) => handleAssignTechnician(e.target.value)}
+              style={{
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: job.assignedTechnicianId ? 'var(--text-main)' : '#facc15',
+                fontWeight: 600,
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
             >
-              <option value="">Unassigned Pool</option>
+              <option value="">-- Unassigned --</option>
               {userList.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.fullName} ({u.roleName})
@@ -436,202 +540,1057 @@ export const JobDetail: React.FC<JobDetailProps> = ({
             </select>
           </div>
 
-          {/* Financial Overview (Intake Only) */}
-          <div className="card">
-            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
-              INTAKE ESTIMATE & DEPOSIT
+          {/* Contextual Workflow Action Buttons */}
+          {isTechnicianRole && (
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {job.currentStatus === 'WAITING_FOR_INSPECTION' && (
+                <button
+                  onClick={() => handleStatusTransition('UNDER_INSPECTION', 'Technician claimed and started inspection')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    backgroundColor: 'var(--brand-primary)',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <Search size={13} /> Start Inspection
+                </button>
+              )}
+
+              {job.currentStatus === 'UNDER_INSPECTION' && (
+                <button
+                  onClick={() => setActiveTab('diagnosis')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    backgroundColor: '#8b5cf6',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <Cpu size={13} /> Record Diagnosis
+                </button>
+              )}
+
+              {(job.currentStatus === 'DIAGNOSIS_COMPLETED' || job.currentStatus === 'APPROVED' || job.currentStatus === 'WAITING_FOR_PARTS') && (
+                <button
+                  onClick={() => handleStatusTransition('UNDER_REPAIR', 'Technician commenced repair bench work')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    backgroundColor: 'var(--color-success)',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <Wrench size={13} /> Start Repair
+                </button>
+              )}
+
+              {job.currentStatus === 'UNDER_REPAIR' && (
+                <>
+                  <button
+                    onClick={() => handleStatusTransition('WAITING_FOR_PARTS', 'Waiting for required parts/components')}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '6px',
+                      backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                      border: '1px solid rgba(249, 115, 22, 0.5)',
+                      color: '#fb923c',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Need Parts
+                  </button>
+                  <button
+                    onClick={handleCompleteRepair}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      backgroundColor: 'var(--color-success)',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <CheckCircle2 size={13} /> Complete Repair
+                  </button>
+                </>
+              )}
+
+              {job.currentStatus !== 'UNREPAIRABLE' && job.currentStatus !== 'DELIVERED' && (
+                <button
+                  onClick={handleMarkUnrepairable}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#f87171',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Unrepairable
+                </button>
+              )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Estimate:</span>
-              <strong>₹{job.estimatedCost.toFixed(2)}</strong>
+          )}
+        </div>
+      </div>
+
+      {statusError && (
+        <div
+          style={{
+            padding: '8px 12px',
+            borderRadius: '6px',
+            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: '#f87171',
+            fontSize: '12px',
+          }}
+        >
+          {statusError}
+        </div>
+      )}
+
+      {/* Snapshot Banner: Customer, Equipment, and IMMUTABLE Customer Complaint */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '12px',
+        }}
+      >
+        {/* Customer & Equipment Card */}
+        <div
+          style={{
+            padding: '14px',
+            borderRadius: '8px',
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span
+              onClick={() => onSelectCustomer(job.customerId)}
+              style={{ fontWeight: 700, fontSize: '14px', color: 'var(--brand-primary)', cursor: 'pointer' }}
+            >
+              {job.customerName}
+            </span>
+            <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
+              {job.customerCode}
+            </span>
+          </div>
+
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Phone size={12} />
+            {formatPhoneDisplay(job.customerPhone)}
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span
+                onClick={() => onSelectDevice(job.deviceId)}
+                style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-main)', cursor: 'pointer' }}
+              >
+                <span style={{ color: 'var(--brand-primary)' }}>[{job.equipmentType}]</span> {job.deviceBrand} {job.deviceModel}
+              </span>
+              {job.hasPasscode && (
+                <button
+                  onClick={handleUnlockPasscode}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-surface)',
+                    color: 'var(--text-main)',
+                    fontSize: '11px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {unlockedPasscode ? <Unlock size={11} color="var(--color-success)" /> : <Lock size={11} />}
+                  {unlockedPasscode ? `PIN: ${unlockedPasscode}` : 'Unlock PIN'}
+                </button>
+              )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Advance Deposit:</span>
-              <strong style={{ color: 'var(--color-success)' }}>₹{job.advanceDeposit.toFixed(2)}</strong>
+            {job.deviceSerial && (
+              <div style={{ fontSize: '11px', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                S/N: {job.deviceSerial}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* PROMINENT CUSTOMER COMPLAINT CARD (IMMUTABLE) */}
+        <div
+          style={{
+            padding: '14px',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(234, 179, 8, 0.05)',
+            border: '1.5px solid rgba(234, 179, 8, 0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: '8px',
+          }}
+        >
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#facc15', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Customer Reported Complaint (Admission)
+              </span>
+              <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                [Immutable Customer Record]
+              </span>
             </div>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: '#f8fafc', marginTop: '6px', lineHeight: 1.4 }}>
+              "{job.reportedIssue}"
+            </div>
+          </div>
+
+          {/* Admission accessories and condition tags */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+            {job.accessoriesReceived.map((acc) => (
+              <span
+                key={acc}
+                style={{
+                  fontSize: '10px',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                + {acc}
+              </span>
+            ))}
+            {job.physicalConditionNotes && (
+              <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                Cond: {job.physicalConditionNotes}
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Tabs: Timeline & Status History / Internal Notes / Future Extension Tabs */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface-active)' }}>
-          <button
-            onClick={() => setActiveTab('timeline')}
-            style={{
-              padding: '10px 18px',
-              border: 'none',
-              borderBottom: activeTab === 'timeline' ? '2px solid var(--brand-primary)' : '2px solid transparent',
-              background: 'transparent',
-              color: activeTab === 'timeline' ? 'var(--brand-primary)' : 'var(--text-muted)',
-              fontWeight: 600,
-              fontSize: '12px',
-              cursor: 'pointer',
-            }}
-          >
-            Status History Timeline ({timeline.length})
-          </button>
+      {/* Technician Tabs Navigation */}
+      <div
+        style={{
+          display: 'flex',
+          borderBottom: '1px solid var(--border-color)',
+          gap: '4px',
+          overflowX: 'auto',
+        }}
+      >
+        {[
+          { id: 'overview', label: 'Workstation Overview', icon: Eye },
+          { id: 'inspection', label: 'Adaptive Inspection & Voltages', icon: Search, badge: inspection ? 'Checked' : 'Pending' },
+          { id: 'diagnosis', label: 'Diagnosis & Root Cause', icon: Cpu, badge: diagnoses.length > 0 ? `${diagnoses.length}` : undefined },
+          { id: 'repair', label: 'Repair Plan & Parts', icon: Layers, badge: `${repairPlans.length + requiredParts.length}` },
+          { id: 'activities', label: 'Repair Activities Log', icon: Activity, badge: `${repairActivities.length}` },
+          { id: 'attachments', label: 'Photos & Microscope', icon: Camera, badge: `${photos.length + attachments.length}` },
+          { id: 'timeline', label: 'Chronological Timeline', icon: Clock },
+          { id: 'notes', label: 'Staff Notes', icon: FileText, badge: `${notes.length}` },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              style={{
+                padding: '8px 14px',
+                border: 'none',
+                borderBottom: isActive ? '2px solid var(--brand-primary)' : '2px solid transparent',
+                backgroundColor: 'transparent',
+                color: isActive ? '#ffffff' : 'var(--text-muted)',
+                fontWeight: isActive ? 700 : 500,
+                fontSize: '12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <Icon size={14} color={isActive ? 'var(--brand-primary)' : 'var(--text-dim)'} />
+              {tab.label}
+              {tab.badge && (
+                <span
+                  style={{
+                    fontSize: '10px',
+                    padding: '1px 5px',
+                    borderRadius: '10px',
+                    backgroundColor: isActive ? 'var(--brand-primary)' : 'var(--bg-surface)',
+                    color: isActive ? '#ffffff' : 'var(--text-dim)',
+                  }}
+                >
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
 
-          <button
-            onClick={() => setActiveTab('notes')}
-            style={{
-              padding: '10px 18px',
-              border: 'none',
-              borderBottom: activeTab === 'notes' ? '2px solid var(--brand-primary)' : '2px solid transparent',
-              background: 'transparent',
-              color: activeTab === 'notes' ? 'var(--brand-primary)' : 'var(--text-muted)',
-              fontWeight: 600,
-              fontSize: '12px',
-              cursor: 'pointer',
-            }}
-          >
-            Staff Notes ({notes.length})
-          </button>
+      {/* TAB 1: WORKSTATION OVERVIEW */}
+      {activeTab === 'overview' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
+          {/* Diagnostic Findings Card */}
+          <div style={{ padding: '16px', borderRadius: '8px', backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h3 style={{ fontSize: '13px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-main)' }}>
+                <Cpu size={15} color="var(--brand-primary)" /> Latest Technical Diagnosis
+              </h3>
+              {diagnoses.length > 0 && (
+                <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                  By {diagnoses[0].technicianName}
+                </span>
+              )}
+            </div>
 
-          <button
-            onClick={() => setActiveTab('quotation')}
-            style={{
-              padding: '10px 18px',
-              border: 'none',
-              background: 'transparent',
-              color: 'var(--text-dim)',
-              fontSize: '12px',
-              cursor: 'pointer',
-            }}
-          >
-            Quotation & Approvals (Phase 3)
-          </button>
+            {diagnoses.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '12px' }}>
+                No technical diagnosis recorded yet.{' '}
+                <button
+                  onClick={() => setActiveTab('diagnosis')}
+                  style={{ color: 'var(--brand-primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Record Diagnosis now
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
+                <div style={{ padding: '10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', borderLeft: '3px solid var(--color-success)' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main)', marginBottom: '2px' }}>Root Cause:</div>
+                  <div style={{ color: 'var(--text-muted)' }}>{diagnoses[0].rootCauseAnalysis}</div>
+                </div>
 
-          <button
-            onClick={() => setActiveTab('billing')}
-            style={{
-              padding: '10px 18px',
-              border: 'none',
-              background: 'transparent',
-              color: 'var(--text-dim)',
-              fontSize: '12px',
-              cursor: 'pointer',
-            }}
-          >
-            Billing & Invoices (Phase 4)
-          </button>
-        </div>
-
-        {/* Tab 1: Timeline Stream */}
-        {activeTab === 'timeline' && (
-          <div style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {timeline.map((entry, idx) => (
-                <div key={entry.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                  <div
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--brand-primary)',
-                      color: '#ffffff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {idx + 1}
+                {diagnoses[0].faultyComponentsIdentified && (
+                  <div>
+                    <span style={{ fontWeight: 600, color: 'var(--text-dim)' }}>Faulty Components: </span>
+                    <span style={{ color: '#f87171', fontWeight: 600 }}>{diagnoses[0].faultyComponentsIdentified}</span>
                   </div>
-                  <div style={{ flex: 1, backgroundColor: 'var(--bg-app)', padding: '10px 14px', borderRadius: '6px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className={`badge ${getStatusBadge(entry.newStatus)}`}>{entry.newStatus}</span>
-                        {entry.previousStatus && (
-                          <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-                            (from {entry.previousStatus})
-                          </span>
-                        )}
+                )}
+
+                {diagnoses[0].voltageRailsChecked && (
+                  <div>
+                    <span style={{ fontWeight: 600, color: 'var(--text-dim)' }}>Voltage Observations: </span>
+                    <span style={{ color: 'var(--text-main)' }}>{diagnoses[0].voltageRailsChecked}</span>
+                  </div>
+                )}
+
+                {diagnoses[0].recommendedAction && (
+                  <div>
+                    <span style={{ fontWeight: 600, color: 'var(--text-dim)' }}>Recommended Action: </span>
+                    <span style={{ color: 'var(--color-info)' }}>{diagnoses[0].recommendedAction}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Planned Rework & Parts Card */}
+          <div style={{ padding: '16px', borderRadius: '8px', backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+            <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-main)' }}>
+              <Layers size={15} color="#fb923c" /> Parts Required & Planned Rework
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '4px', textTransform: 'uppercase' }}>
+                  Required Components ({requiredParts.length})
+                </div>
+                {requiredParts.length === 0 ? (
+                  <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>No replacement parts logged.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {requiredParts.map((p) => (
+                      <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', borderRadius: '4px', backgroundColor: 'var(--bg-surface)' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{p.partName} (Qty: {p.quantity})</span>
+                        <span style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>₹{p.unitSellingPrice.toFixed(2)}</span>
                       </div>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                        {new Date(entry.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div style={{ fontSize: '12px', color: 'var(--text-main)', marginTop: '4px' }}>
-                      {entry.reasonOrNotes || 'Status updated'}
-                    </div>
-
-                    <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '4px' }}>
-                      Logged by <strong>{entry.changedByName}</strong> ({entry.changedByUsername})
-                    </div>
+                    ))}
                   </div>
+                )}
+              </div>
+
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '4px', textTransform: 'uppercase' }}>
+                  Planned Repair Services ({repairPlans.length})
+                </div>
+                {repairPlans.length === 0 ? (
+                  <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>No service actions listed.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {repairPlans.map((r) => (
+                      <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', borderRadius: '4px', backgroundColor: 'var(--bg-surface)' }}>
+                        <span style={{ color: 'var(--text-main)' }}>{r.serviceName}</span>
+                        <span style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>Labor: ₹{r.laborCharge.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: ADAPTIVE TECHNICAL INSPECTION */}
+      {activeTab === 'inspection' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
+                Technical Hardware Inspection — [{job.equipmentType}]
+              </h3>
+              <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                Record power rail behavior, physical board condition, and electronic measurements
+              </div>
+            </div>
+            <button
+              onClick={handleSaveInspection}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                backgroundColor: 'var(--brand-primary)',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Save Inspection Findings
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Power Supply Status</label>
+              <select
+                value={inspPowerStatus}
+                onChange={(e) => setInspPowerStatus(e.target.value)}
+                style={{ width: '100%', marginTop: '4px', padding: '7px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
+              >
+                <option value="NORMAL_POWER">Normal Power ON</option>
+                <option value="NO_POWER_DEAD">Dead / No Power / 0A</option>
+                <option value="AUTO_SHUTDOWN">Powers on then auto shutdowns</option>
+                <option value="INTERMITTENT_POWER">Intermittent Power</option>
+                <option value="CHARGING_ONLY">Charges battery but won't boot</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Display / Video Output</label>
+              <select
+                value={inspDisplayStatus}
+                onChange={(e) => setInspDisplayStatus(e.target.value)}
+                style={{ width: '100%', marginTop: '4px', padding: '7px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
+              >
+                <option value="NORMAL">Normal Internal & External Display</option>
+                <option value="NO_DISPLAY">No Display / Caps Lock Glows</option>
+                <option value="EXTERNAL_ONLY">External Display OK, Internal Panel Dead</option>
+                <option value="LINES_FLICKER">Lines / Artifacts / Flickering</option>
+                <option value="DIM_NO_BACKLIGHT">Dim Display / No Backlight</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Motherboard / Circuitry Condition</label>
+              <select
+                value={inspMotherboardStatus}
+                onChange={(e) => setInspMotherboardStatus(e.target.value)}
+                style={{ width: '100%', marginTop: '4px', padding: '7px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
+              >
+                <option value="NORMAL">Clean / Untouched Board</option>
+                <option value="CORRODED">Corrosion / Rust Detected</option>
+                <option value="BURNT_COMPONENT">Burnt IC / Exploded Component</option>
+                <option value="PREVIOUSLY_WORKED">Previous Repair Attempt / Tampered</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '20px', padding: '10px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-main)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={inspWaterDamage}
+                onChange={(e) => setInspWaterDamage(e.target.checked)}
+              />
+              <span style={{ color: inspWaterDamage ? '#f87171' : 'var(--text-main)', fontWeight: inspWaterDamage ? 700 : 400 }}>
+                Liquid / Moisture Ingress Detected
+              </span>
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-main)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={inspShortCircuit}
+                onChange={(e) => setInspShortCircuit(e.target.checked)}
+              />
+              <span style={{ color: inspShortCircuit ? '#f87171' : 'var(--text-main)', fontWeight: inspShortCircuit ? 700 : 400 }}>
+                Main Power Rail Short to Ground (GND)
+              </span>
+            </label>
+          </div>
+
+          {/* Voltage Rail Measurements Table */}
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
+              Multimeter / Bench Voltage Rail Measurements
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-dim)', textAlign: 'left' }}>
+                  <th style={{ padding: '6px 8px' }}>Power Rail</th>
+                  <th style={{ padding: '6px 8px' }}>Expected</th>
+                  <th style={{ padding: '6px 8px' }}>Measured Voltage</th>
+                  <th style={{ padding: '6px 8px' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inspVoltageRails.map((rail, idx) => (
+                  <tr key={rail.rail} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <td style={{ padding: '6px 8px', fontWeight: 600, color: 'var(--text-main)' }}>{rail.rail}</td>
+                    <td style={{ padding: '6px 8px', color: 'var(--text-dim)' }}>{rail.expected}</td>
+                    <td style={{ padding: '6px 8px' }}>
+                      <input
+                        type="text"
+                        placeholder="e.g. 0.2V or Short"
+                        value={rail.measured}
+                        onChange={(e) => {
+                          const copy = [...inspVoltageRails];
+                          copy[idx].measured = e.target.value;
+                          setInspVoltageRails(copy);
+                        }}
+                        style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '12px', width: '130px' }}
+                      />
+                    </td>
+                    <td style={{ padding: '6px 8px' }}>
+                      <select
+                        value={rail.status}
+                        onChange={(e) => {
+                          const copy = [...inspVoltageRails];
+                          copy[idx].status = e.target.value;
+                          setInspVoltageRails(copy);
+                        }}
+                        style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '11px' }}
+                      >
+                        <option value="NORMAL">Normal / OK</option>
+                        <option value="SHORT_TO_GND">Short to GND</option>
+                        <option value="MISSING_0V">Missing (0V)</option>
+                        <option value="FLUCTUATING">Fluctuating</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Technician Bench Notes & Observations</label>
+            <textarea
+              rows={3}
+              value={inspNotes}
+              onChange={(e) => setInspNotes(e.target.value)}
+              placeholder="e.g. Injected 1V on 5V rail, thermal cam detected heating at charging controller PU401..."
+              style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px', outline: 'none' }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: DIAGNOSIS & ROOT CAUSE */}
+      {activeTab === 'diagnosis' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
+                Technical Diagnosis & Root Cause Analysis
+              </h3>
+              <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                Conclude diagnostic investigation, identify faulty components, and determine repair feasibility
+              </div>
+            </div>
+
+            <button
+              onClick={handleSaveDiagnosis}
+              disabled={isSavingDiag}
+              style={{
+                padding: '7px 16px',
+                borderRadius: '6px',
+                backgroundColor: 'var(--brand-primary)',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {isSavingDiag ? 'Saving...' : 'Save Diagnosis & Update Status'}
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Fault Category</label>
+              <select
+                value={diagFaultCategory}
+                onChange={(e) => setDiagFaultCategory(e.target.value)}
+                style={{ width: '100%', marginTop: '4px', padding: '7px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
+              >
+                <option value="CHIP_LEVEL">Motherboard / Chip-Level Rework</option>
+                <option value="HARDWARE_REPLACEMENT">Hardware Component Swap</option>
+                <option value="OS_SOFTWARE">OS / Software / Firmware</option>
+                <option value="POWER_ELECTRONICS">SMPS / EV Charger / Power Circuit</option>
+                <option value="CONSOLE_REPAIR">Console HDMI / Power Rework</option>
+                <option value="PRINTER_SERVICE">Printer Mechanism / Head</option>
+                <option value="DATA_RECOVERY">Data Recovery / Storage Media</option>
+                <option value="GENERAL_SERVICE">Cleaning & Thermal Service</option>
+                <option value="OTHER">Other Electronic Equipment</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Diagnostic Outcome</label>
+              <select
+                value={diagOutcome}
+                onChange={(e) => setDiagOutcome(e.target.value)}
+                style={{ width: '100%', marginTop: '4px', padding: '7px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: diagOutcome === 'UNREPAIRABLE' ? '#f87171' : 'var(--text-main)', fontWeight: 600, fontSize: '12px' }}
+              >
+                <option value="FAULT_IDENTIFIED">Fault Identified & Repair Feasible</option>
+                <option value="NEEDS_FURTHER_INSPECTION">Needs Further In-Depth Inspection</option>
+                <option value="INTERMITTENT_FAULT">Intermittent / Hard-to-Reproduce Fault</option>
+                <option value="NO_FAULT_FOUND">No Fault Found (Testing Passed)</option>
+                <option value="UNREPAIRABLE">UNREPAIRABLE (Fatal Damage / Board Cracking)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-main)' }}>
+              Root Cause Analysis * (Technical explanation of defect)
+            </label>
+            <textarea
+              rows={3}
+              value={diagRootCause}
+              onChange={(e) => setDiagRootCause(e.target.value)}
+              placeholder="e.g. Shorted High-Side MOSFET PQ302 on 19V rail caused charging controller PU401 to overheat and lock power delivery."
+              style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Faulty Components Identified</label>
+              <input
+                type="text"
+                value={diagFaultyComponents}
+                onChange={(e) => setDiagFaultyComponents(e.target.value)}
+                placeholder="e.g. PU401 (BQ24780S), PQ302 (AON7408 MOSFET), PC201"
+                style={{ width: '100%', marginTop: '4px', padding: '7px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Recommended Technical Action</label>
+              <input
+                type="text"
+                value={diagRecommendedAction}
+                onChange={(e) => setDiagRecommendedAction(e.target.value)}
+                placeholder="e.g. Replace MOSFET & PWM chip; verify 19V rail before boot"
+                style={{ width: '100%', marginTop: '4px', padding: '7px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: REPAIR PLAN & REQUIRED PARTS */}
+      {activeTab === 'repair' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
+          {/* Planned Services / Actions */}
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+            <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 10px 0', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Wrench size={15} color="var(--brand-primary)" /> Planned Repair Actions
+            </h3>
+
+            <form onSubmit={handleAddRepairPlanAction} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              <input
+                type="text"
+                placeholder="e.g. Board rework / Replace IC"
+                value={planServiceName}
+                onChange={(e) => setPlanServiceName(e.target.value)}
+                style={{ flex: 1, padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
+              />
+              <input
+                type="number"
+                placeholder="Labor ₹"
+                value={planLaborCharge || ''}
+                onChange={(e) => setPlanLaborCharge(Number(e.target.value))}
+                style={{ width: '80px', padding: '7px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
+              />
+              <button
+                type="submit"
+                style={{ padding: '7px 12px', borderRadius: '6px', backgroundColor: 'var(--brand-primary)', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                <Plus size={14} />
+              </button>
+            </form>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {repairPlans.map((plan) => (
+                <div key={plan.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-main)' }}>{plan.serviceName}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Labor: ₹{plan.laborCharge.toFixed(2)}</div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteRepairPlanAction(plan.id)}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </div>
               ))}
             </div>
           </div>
-        )}
 
-        {/* Tab 2: Staff Notes Thread */}
-        {activeTab === 'notes' && (
-          <div style={{ padding: '20px' }}>
-            <form onSubmit={handleAddNote} style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <textarea
-                className="input-field"
-                rows={2}
-                value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
-                placeholder="Write internal staff note or technical observation..."
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <select
-                  className="input-field"
-                  value={noteType}
-                  onChange={(e) => setNoteType(e.target.value as 'INTERNAL' | 'CUSTOMER_FACING')}
-                  style={{ maxWidth: '180px', fontSize: '11px' }}
+          {/* Required Parts */}
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+            <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 10px 0', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Layers size={15} color="#fb923c" /> Required Components & Parts
+            </h3>
+
+            <form onSubmit={handleAddRequiredPart} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="Part description (e.g. 15.6 FHD Screen / BQ24780S IC)"
+                  value={partName}
+                  onChange={(e) => setPartName(e.target.value)}
+                  style={{ flex: 1, padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
+                />
+                <input
+                  type="number"
+                  placeholder="Qty"
+                  value={partQuantity}
+                  onChange={(e) => setPartQuantity(Number(e.target.value))}
+                  style={{ width: '60px', padding: '7px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="number"
+                  placeholder="Est. Cost Price ₹"
+                  value={partCost || ''}
+                  onChange={(e) => setPartCost(Number(e.target.value))}
+                  style={{ flex: 1, padding: '7px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
+                />
+                <input
+                  type="number"
+                  placeholder="Est. Sell Price ₹"
+                  value={partPrice || ''}
+                  onChange={(e) => setPartPrice(Number(e.target.value))}
+                  style={{ flex: 1, padding: '7px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
+                />
+                <button
+                  type="submit"
+                  style={{ padding: '7px 14px', borderRadius: '6px', backgroundColor: '#fb923c', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  <option value="INTERNAL">Internal Note</option>
-                  <option value="CUSTOMER_FACING">Customer Facing Note</option>
-                </select>
-                <button type="submit" className="btn btn-primary" style={{ padding: '5px 14px' }}>
-                  <Send size={12} />
-                  <span>Post Note</span>
+                  Add Part
                 </button>
               </div>
             </form>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {notes.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-dim)', fontSize: '12px' }}>
-                  No notes recorded on this ticket yet.
-                </div>
-              ) : (
-                notes.map((n) => (
-                  <div key={n.id} style={{ padding: '10px 14px', backgroundColor: 'var(--bg-app)', borderRadius: '6px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
-                      <strong>{n.authorName}</strong>
-                      <span style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
-                        {new Date(n.createdAt).toLocaleString()}
-                      </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {requiredParts.map((part) => (
+                <div key={part.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-main)' }}>
+                      {part.partName} <span style={{ color: 'var(--brand-primary)' }}>(Qty: {part.quantity})</span>
                     </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-main)', lineHeight: 1.4 }}>{n.content}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                      Cost: ₹{part.unitCostPrice.toFixed(2)} | Price: ₹{part.unitSellingPrice.toFixed(2)}
+                    </div>
                   </div>
-                ))
-              )}
+                  <button
+                    onClick={() => handleDeleteRequiredPart(part.id)}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Tab 3 & 4: Extension Placeholders */}
-        {(activeTab === 'quotation' || activeTab === 'billing') && (
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            <Clock size={32} color="var(--brand-primary)" style={{ margin: '0 auto 10px' }} />
-            <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>
-              {activeTab === 'quotation' ? 'Quotation & Parts Estimation Subsystem' : 'GST Invoice & Payment Processing Subsystem'}
-            </h3>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', maxWidth: '480px', margin: '0 auto' }}>
-              This service job workspace tab is architected. Its complete estimation, parts inventory deduction, and billing pipelines will activate in dedicated subsequent phases.
-            </p>
+      {/* TAB 5: REPAIR ACTIVITIES LOG */}
+      {activeTab === 'activities' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Activity size={16} color="var(--color-success)" /> Live Repair Activities Log
+          </h3>
+
+          <form onSubmit={handleAddRepairActivity} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="text"
+                placeholder="Activity title (e.g. Desoldered damaged MOSFET & replaced with AON7408)"
+                value={actTitle}
+                onChange={(e) => setActTitle(e.target.value)}
+                style={{ flex: 1, padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '12px' }}
+              />
+              <input
+                type="number"
+                placeholder="Minutes"
+                value={actMinutes}
+                onChange={(e) => setActMinutes(Number(e.target.value))}
+                style={{ width: '80px', padding: '7px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '12px' }}
+              />
+            </div>
+
+            <textarea
+              rows={2}
+              placeholder="Detailed technical observation or test results during this step..."
+              value={actDescription}
+              onChange={(e) => setActDescription(e.target.value)}
+              style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '12px' }}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="submit"
+                style={{ padding: '6px 14px', borderRadius: '6px', backgroundColor: 'var(--color-success)', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Log Repair Activity
+              </button>
+            </div>
+          </form>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {repairActivities.map((act) => (
+              <div key={act.id} style={{ padding: '12px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', borderLeft: '3px solid var(--color-success)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)' }}>{act.activityTitle}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                    {act.timeSpentMinutes} mins • {new Date(act.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} by {act.technicianName}
+                  </span>
+                </div>
+                {act.description && (
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    {act.description}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* TAB 6: PHOTOS & ATTACHMENTS */}
+      {activeTab === 'attachments' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Camera size={16} color="var(--brand-primary)" /> Technical Photos & Microscope Captures
+            </h3>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="text"
+                placeholder="Photo caption (e.g. PU401 pin 16 burn mark)"
+                value={attachCaption}
+                onChange={(e) => setAttachCaption(e.target.value)}
+                style={{ padding: '5px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '11px', width: '220px' }}
+              />
+              <label
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  backgroundColor: 'var(--brand-primary)',
+                  color: '#ffffff',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <Plus size={14} /> Upload Capture
+                <input type="file" accept="image/*,.pdf,.bin" onChange={handleFileUpload} style={{ display: 'none' }} />
+              </label>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+            {photos.map((photo) => (
+              <div key={photo.id} style={{ padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
+                <div style={{ width: '100%', height: '140px', backgroundColor: '#000', borderRadius: '4px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img
+                    src={`file://${photo.filePath}`}
+                    alt={photo.caption || 'Damage capture'}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)', marginTop: '6px' }}>
+                  {photo.caption || photo.photoType}
+                </div>
+                <div style={{ fontSize: '10px', color: 'var(--text-dim)' }}>
+                  {new Date(photo.createdAt).toLocaleString('en-IN')}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 7: CHRONOLOGICAL UNIFIED TIMELINE */}
+      {activeTab === 'timeline' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Clock size={16} color="var(--brand-primary)" /> Unified Chronological Ticket Stream
+          </h3>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative', paddingLeft: '16px', borderLeft: '2px solid var(--border-color)' }}>
+            {timeline.map((evt) => (
+              <div key={evt.id} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: '-23px',
+                    top: '2px',
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    backgroundColor: evt.badgeColor || 'var(--brand-primary)',
+                    border: '2px solid var(--bg-card)',
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-main)' }}>{evt.title}</span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>
+                    {new Date(evt.createdAt).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                {evt.description && (
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{evt.description}</div>
+                )}
+                <div style={{ fontSize: '10px', color: 'var(--text-dim)' }}>By: {evt.authorName}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 8: STAFF NOTES */}
+      {activeTab === 'notes' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
+            Staff Notes & Remarks
+          </h3>
+
+          <form onSubmit={handleAddNote} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <textarea
+              rows={2}
+              placeholder="Add internal technician note or customer communication remark..."
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '12px', fontSize: '11px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="noteType"
+                    checked={noteType === 'INTERNAL'}
+                    onChange={() => setNoteType('INTERNAL')}
+                  />
+                  Internal Note Only
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="noteType"
+                    checked={noteType === 'CUSTOMER_FACING'}
+                    onChange={() => setNoteType('CUSTOMER_FACING')}
+                  />
+                  Customer-Facing Remark
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                style={{ padding: '6px 14px', borderRadius: '6px', backgroundColor: 'var(--brand-primary)', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Post Note
+              </button>
+            </div>
+          </form>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {notes.map((note) => (
+              <div key={note.id} style={{ padding: '10px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', borderLeft: note.noteType === 'CUSTOMER_FACING' ? '3px solid var(--color-info)' : '3px solid var(--text-dim)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: note.noteType === 'CUSTOMER_FACING' ? 'var(--color-info)' : 'var(--text-dim)' }}>
+                    [{note.noteType}]
+                  </span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>
+                    {new Date(note.createdAt).toLocaleString('en-IN')} by {note.authorName}
+                  </span>
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-main)', marginTop: '4px' }}>
+                  {note.content}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

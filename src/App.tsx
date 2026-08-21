@@ -8,6 +8,7 @@ import { EquipmentProfile } from './components/equipment/EquipmentProfile.tsx';
 import { JobList } from './components/jobs/JobList.tsx';
 import { JobDetail } from './components/jobs/JobDetail.tsx';
 import { NewJobWizard } from './components/jobs/NewJobWizard.tsx';
+import { TechnicianWorkspace } from './components/technician/TechnicianWorkspace.tsx';
 import { GlobalSearchModal } from './components/search/GlobalSearchModal.tsx';
 import { LoginModal } from './components/auth/LoginModal.tsx';
 import { PinModal } from './components/auth/PinModal.tsx';
@@ -192,7 +193,19 @@ export const App: React.FC = () => {
       );
     }
 
-    // 4. Phase 1 System Dashboard
+    // 4. Technician Workstation
+    if (activeTab === 'technician') {
+      return (
+        <TechnicianWorkspace
+          onOpenJob={(jobId) => {
+            setSelectedJobId(jobId);
+            setActiveTab('jobs');
+          }}
+        />
+      );
+    }
+
+    // 5. Phase 1 System Dashboard
     if (activeTab === 'dashboard') {
       return <Phase1Dashboard />;
     }

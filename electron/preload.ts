@@ -161,6 +161,89 @@ const electronAPI = {
       ipcRenderer.invoke('job:updateStatus', payload),
     assignTechnician: (payload: { jobId: string; technicianId: string }): Promise<IPCResponse> =>
       ipcRenderer.invoke('job:assignTechnician', payload),
+    getTechnicianMetrics: (): Promise<IPCResponse> =>
+      ipcRenderer.invoke('job:getTechnicianMetrics'),
+    saveTechnicalInspection: (payload: {
+      jobId: string;
+      powerStatus: string;
+      displayStatus?: string;
+      motherboardStatus?: string;
+      bodyCondition?: string;
+      waterDamageDetected?: boolean;
+      shortCircuitDetected?: boolean;
+      inspectionNotes?: string;
+      checklistItems?: Array<{ name: string; isChecked: boolean }>;
+      transitionToUnderInspection?: boolean;
+    }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('job:saveTechnicalInspection', payload),
+    saveDiagnosis: (payload: {
+      jobId: string;
+      rootCauseAnalysis: string;
+      faultCategory?: string;
+      faultyComponentsIdentified?: string;
+      voltageRailsChecked?: string;
+      recommendedAction?: string;
+      diagnosticOutcome?: string;
+      transitionStatus?: boolean;
+    }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('job:saveDiagnosis', payload),
+    addRepairPlanAction: (payload: {
+      jobId: string;
+      serviceName: string;
+      sacCode?: string;
+      laborCharge?: number;
+      discount?: number;
+      taxRate?: number;
+    }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('job:addRepairPlanAction', payload),
+    deleteRepairPlanAction: (payload: { serviceId: string }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('job:deleteRepairPlanAction', payload),
+    addRequiredPart: (payload: {
+      jobId: string;
+      partName: string;
+      serialNumber?: string;
+      quantity?: number;
+      unitCostPrice?: number;
+      unitSellingPrice?: number;
+      hsnCode?: string;
+      taxRate?: number;
+      warrantyMonths?: number;
+      reasonOrNotes?: string;
+    }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('job:addRequiredPart', payload),
+    deleteRequiredPart: (payload: { partId: string }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('job:deleteRequiredPart', payload),
+    addRepairActivity: (payload: {
+      jobId: string;
+      activityTitle: string;
+      description?: string;
+      timeSpentMinutes?: number;
+      transitionToUnderRepair?: boolean;
+    }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('job:addRepairActivity', payload),
+    addTechnicalAttachment: (payload: {
+      jobId: string;
+      fileName: string;
+      fileType?: string;
+      base64Data: string;
+      caption?: string;
+      isPhoto?: boolean;
+    }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('job:addTechnicalAttachment', payload),
+    completeRepair: (payload: {
+      jobId: string;
+      summaryNotes: string;
+      testingNotes?: string;
+      recommendations?: string;
+    }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('job:completeRepair', payload),
+    markUnrepairable: (payload: {
+      jobId: string;
+      rootCause: string;
+      technicalJustification: string;
+      note?: string;
+    }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('job:markUnrepairable', payload),
     addNote: (payload: { jobId: string; content: string; noteType?: 'INTERNAL' | 'CUSTOMER_FACING' }): Promise<IPCResponse> =>
       ipcRenderer.invoke('job:addNote', payload),
   },

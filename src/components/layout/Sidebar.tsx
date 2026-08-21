@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext.tsx';
 
 export type NavTabId =
   | 'dashboard'
+  | 'technician'
   | 'jobs'
   | 'data-recovery'
   | 'inventory'
@@ -46,9 +47,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
       allowed: true, // Everyone can see dashboard
     },
     {
-      id: 'jobs' as NavTabId,
-      label: 'Service Jobs',
+      id: 'technician' as NavTabId,
+      label: 'Technician Workstation',
       icon: Wrench,
+      allowed: hasPermission('jobs.diagnose') || hasPermission('jobs.repair') || hasPermission('jobs.read'),
+      badge: 'Phase 3',
+    },
+    {
+      id: 'jobs' as NavTabId,
+      label: 'Service Jobs Intake',
+      icon: Receipt,
       allowed: hasPermission('jobs.read'),
       badge: '13 Stages',
     },

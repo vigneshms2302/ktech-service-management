@@ -278,4 +278,11 @@ export async function seedDatabase(): Promise<void> {
     INSERT INTO job_status_history (id, job_id, previous_status, new_status, changed_by, reason_or_notes)
     VALUES ('JSH-002', 'JOB-001', 'RECEIVED', 'UNDER_INSPECTION', 'USR_TECH1', 'Technician started mother board diagnostic check')
   `);
+
+  // Initialize sequence counter so generateJobNumber starts at 00002
+  const currentYear = new Date().getFullYear();
+  await client.execute({
+    sql: `INSERT INTO settings (key, value, category) VALUES (?, '1', 'SEQUENCE') ON CONFLICT(key) DO UPDATE SET value = '1'`,
+    args: [`sequence.job_counter_${currentYear}`],
+  });
 }

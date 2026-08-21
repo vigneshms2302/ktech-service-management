@@ -132,12 +132,9 @@ export interface CustomerProfileData {
     currentStatus: string;
     priority: string;
     reportedIssue: string;
-    estimatedCost: number;
-    advanceDeposit: number;
-    promisedDeliveryDate?: string | null;
-    deviceBrand?: string;
-    deviceModel?: string;
-    deviceSerial?: string;
+    deviceBrand: string;
+    deviceModel: string;
+    equipmentType: EquipmentType;
     technicianName?: string | null;
     createdAt: string;
   }>;
@@ -149,15 +146,20 @@ export interface CustomerDuplicateCandidate {
   fullName: string;
   primaryPhone: string;
   email: string | null;
+  matchType: 'EXACT_PHONE' | 'NORMALIZED_PHONE' | 'EMAIL' | 'NAME';
   matchReason: string;
 }
 
 export interface DeviceDuplicateCandidate {
   id: string;
-  equipmentType: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  equipmentType: EquipmentType;
   brand: string;
   modelName: string;
   serialNumber: string | null;
+  matchType: 'SERIAL_NUMBER' | 'MODEL_NAME';
   matchReason: string;
 }
 
@@ -167,7 +169,7 @@ export interface ServiceJobSummary {
   customerId: string;
   customerName: string;
   customerPhone: string;
-  customerCode: string;
+  customerCode?: string;
   deviceId: string;
   equipmentType: EquipmentType;
   deviceBrand: string;
@@ -178,12 +180,119 @@ export interface ServiceJobSummary {
   priority: 'LOW' | 'NORMAL' | 'URGENT' | 'CRITICAL';
   assignedTechnicianId?: string | null;
   technicianName?: string | null;
+  creatorName: string;
   reportedIssue: string;
-  accessoriesReceived?: string | null;
+  accessoriesReceived: string[];
   estimatedCost: number;
   advanceDeposit: number;
   promisedDeliveryDate?: string | null;
   createdAt: string;
+}
+
+// Phase 3 Technician Domain Interfaces
+export interface JobDiagnosisData {
+  id: string;
+  jobId: string;
+  technicianId: string;
+  technicianName: string;
+  rootCauseAnalysis: string;
+  voltageRailsChecked?: string | null;
+  faultyComponentsIdentified?: string | null;
+  recommendedAction?: string | null;
+  createdAt: string;
+}
+
+export interface JobRepairPlanItem {
+  id: string;
+  jobId: string;
+  serviceName: string;
+  sacCode?: string | null;
+  laborCharge: number;
+  discount: number;
+  taxRate: number;
+  createdAt: string;
+}
+
+export interface JobRequiredPart {
+  id: string;
+  jobId: string;
+  inventoryItemId?: string | null;
+  partName: string;
+  serialNumber?: string | null;
+  quantity: number;
+  unitCostPrice: number;
+  unitSellingPrice: number;
+  hsnCode?: string | null;
+  taxRate: number;
+  warrantyMonths: number;
+  createdAt: string;
+}
+
+export interface JobRepairActivity {
+  id: string;
+  jobId: string;
+  technicianId: string;
+  technicianName: string;
+  activityTitle: string;
+  description?: string | null;
+  timeSpentMinutes: number;
+  createdAt: string;
+}
+
+export interface JobAttachmentData {
+  id: string;
+  jobId: string;
+  fileName: string;
+  filePath: string;
+  fileType?: string | null;
+  fileSizeBytes: number;
+  createdAt: string;
+}
+
+export interface JobChecklistItem {
+  id: string;
+  jobId: string;
+  checklistItemName: string;
+  isChecked: boolean;
+  checkedBy?: string | null;
+  checkedByName?: string | null;
+  checkedAt?: string | null;
+}
+
+export interface JobTestData {
+  id: string;
+  jobId: string;
+  testedBy: string;
+  testerName: string;
+  testType: string;
+  result: 'PASSED' | 'FAILED' | 'NOT_APPLICABLE';
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface UnifiedTimelineEvent {
+  id: string;
+  eventType: 'STATUS_CHANGE' | 'INSPECTION' | 'DIAGNOSIS' | 'REPAIR_PLAN' | 'PART_REQUIRED' | 'REPAIR_ACTIVITY' | 'NOTE' | 'ATTACHMENT' | 'TEST';
+  title: string;
+  description?: string | null;
+  authorName: string;
+  badgeText?: string | null;
+  badgeColor?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface TechnicianDashboardMetrics {
+  assignedToMe: number;
+  waitingInspection: number;
+  underInspection: number;
+  diagnosisCompleted: number;
+  underRepair: number;
+  waitingParts: number;
+  repairCompleted: number;
+  unrepairable: number;
+  totalActive: number;
+  urgentJobs: number;
 }
 
 export interface JobDetailData {
@@ -230,7 +339,15 @@ export interface JobDetailData {
     inspectorName?: string | null;
     createdAt: string;
   } | null;
-  timeline: Array<{
+  diagnoses: JobDiagnosisData[];
+  repairPlans: JobRepairPlanItem[];
+  requiredParts: JobRequiredPart[];
+  repairActivities: JobRepairActivity[];
+  attachments: JobAttachmentData[];
+  checklists: JobChecklistItem[];
+  tests: JobTestData[];
+  timeline: UnifiedTimelineEvent[];
+  statusHistory: Array<{
     id: string;
     previousStatus: string | null;
     newStatus: string;
@@ -421,11 +538,14 @@ export interface ElectronAPI {
       priority?: string;
       technicianId?: string;
       customerId?: string;
+      equipmentType?: string;
+      serviceCategory?: string;
       search?: string;
       page?: number;
       limit?: number;
     }) => Promise<IPCResponse<{ jobs: ServiceJobSummary[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>>;
     getById: (params: { jobId: string }) => Promise<IPCResponse<JobDetailData>>;
+    getTechnicianMetrics: () => Promise<IPCResponse<TechnicianDashboardMetrics>>;
     create: (payload: {
       customerId: string;
       deviceId: string;
@@ -455,6 +575,77 @@ export interface ElectronAPI {
       assignedTechnicianId?: string;
     }) => Promise<IPCResponse<{ jobId: string; previousStatus: string; newStatus: string }>>;
     assignTechnician: (payload: { jobId: string; technicianId: string }) => Promise<IPCResponse<void>>;
+    saveTechnicalInspection: (payload: {
+      jobId: string;
+      powerStatus: string;
+      displayStatus?: string;
+      motherboardStatus?: string;
+      bodyCondition?: string;
+      waterDamageDetected?: boolean;
+      shortCircuitDetected?: boolean;
+      inspectionNotes?: string;
+      checklistItems?: Array<{ name: string; isChecked: boolean }>;
+      transitionToUnderInspection?: boolean;
+    }) => Promise<IPCResponse<{ inspectionId: string }>>;
+    saveDiagnosis: (payload: {
+      jobId: string;
+      rootCauseAnalysis: string;
+      faultCategory?: string;
+      faultyComponentsIdentified?: string;
+      voltageRailsChecked?: string;
+      recommendedAction?: string;
+      diagnosticOutcome?: string;
+      transitionStatus?: boolean;
+    }) => Promise<IPCResponse<{ diagnosisId: string; newStatus?: string }>>;
+    addRepairPlanAction: (payload: {
+      jobId: string;
+      serviceName: string;
+      sacCode?: string;
+      laborCharge?: number;
+      discount?: number;
+      taxRate?: number;
+    }) => Promise<IPCResponse<{ serviceId: string }>>;
+    deleteRepairPlanAction: (payload: { serviceId: string }) => Promise<IPCResponse<void>>;
+    addRequiredPart: (payload: {
+      jobId: string;
+      partName: string;
+      serialNumber?: string;
+      quantity?: number;
+      unitCostPrice?: number;
+      unitSellingPrice?: number;
+      hsnCode?: string;
+      taxRate?: number;
+      warrantyMonths?: number;
+      reasonOrNotes?: string;
+    }) => Promise<IPCResponse<{ partId: string }>>;
+    deleteRequiredPart: (payload: { partId: string }) => Promise<IPCResponse<void>>;
+    addRepairActivity: (payload: {
+      jobId: string;
+      activityTitle: string;
+      description?: string;
+      timeSpentMinutes?: number;
+      transitionToUnderRepair?: boolean;
+    }) => Promise<IPCResponse<{ activityId: string }>>;
+    addTechnicalAttachment: (payload: {
+      jobId: string;
+      fileName: string;
+      fileType?: string;
+      base64Data: string;
+      caption?: string;
+      isPhoto?: boolean;
+    }) => Promise<IPCResponse<{ attachmentId: string; filePath: string }>>;
+    completeRepair: (payload: {
+      jobId: string;
+      summaryNotes: string;
+      testingNotes?: string;
+      recommendations?: string;
+    }) => Promise<IPCResponse<{ jobId: string }>>;
+    markUnrepairable: (payload: {
+      jobId: string;
+      rootCause: string;
+      technicalJustification: string;
+      note?: string;
+    }) => Promise<IPCResponse<{ jobId: string }>>;
     addNote: (payload: { jobId: string; content: string; noteType?: 'INTERNAL' | 'CUSTOMER_FACING' }) => Promise<IPCResponse<{ noteId: string }>>;
   };
   search: {
