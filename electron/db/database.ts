@@ -348,7 +348,7 @@ export async function initializeSchema(): Promise<void> {
       user_id TEXT NOT NULL REFERENCES users(id),
       note_type TEXT NOT NULL DEFAULT 'INTERNAL',
       content TEXT NOT NULL,
-      createdAt TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+      created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
     );`,
 
     // 20. job_attachments
@@ -728,6 +728,19 @@ export async function initializeSchema(): Promise<void> {
 
   for (const statement of ddlStatements) {
     await client.execute(statement);
+  }
+
+  // Schema Migrations & Normalizations
+  try {
+    const tableInfo = await client.execute(`PRAGMA table_info(job_notes);`);
+    const cols = tableInfo.rows.map((r) => (r as Record<string, unknown>).name as string);
+    if (cols.includes('createdAt') && !cols.includes('created_at')) {
+      await client.execute(`ALTER TABLE job_notes RENAME COLUMN createdAt TO created_at;`);
+    } else if (!cols.includes('created_at')) {
+      await client.execute(`ALTER TABLE job_notes ADD COLUMN created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP);`);
+    }
+  } catch (migErr) {
+    console.warn('[DB Migration] job_notes migration note:', migErr);
   }
 }
 

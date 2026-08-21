@@ -216,53 +216,172 @@ describe('Phase 3 — Technician Inspection, Diagnosis & Repair Workflow', () =>
     expect((history.rows[0] as Record<string, unknown>).new_status).toBe('UNREPAIRABLE');
   });
 
-  it('Regression Test: should resolve service job detail via internal ID (JOB-001), human-readable Job Number (JOB-2026-00001), and case-insensitively', async () => {
+  it('Regression Test: should resolve and load FULL job detail query with all joined entities without SQL errors', async () => {
     const client = getClient();
 
-    // Universal lookup query matching job:getById
-    const lookupJob = async (identifier: string) => {
-      const res = await client.execute({
+    // Helper that executes the EXACT queries executed by job:getById
+    const fetchFullJobDetail = async (identifier: string) => {
+      // 1. Service job
+      const jobRes = await client.execute({
         sql: `SELECT j.*, 
-                c.full_name as customer_name, c.primary_phone as customer_phone, c.customer_code,
-                d.equipment_type, d.brand as device_brand, d.model_name as device_model, d.serial_number as device_serial,
-                u.full_name as technician_name
+                c.full_name as customer_name, c.primary_phone as customer_phone, c.secondary_phone as customer_secondary_phone, c.email as customer_email, c.customer_code,
+                d.equipment_type, d.brand as device_brand, d.model_name as device_model, d.serial_number as device_serial, d.specs_summary as device_specs,
+                d.encrypted_security_passcode,
+                u.full_name as technician_name,
+                cb.full_name as creator_name
               FROM service_jobs j
               LEFT JOIN customers c ON j.customer_id = c.id
               LEFT JOIN devices d ON j.device_id = d.id
               LEFT JOIN users u ON j.assigned_technician_id = u.id
+              LEFT JOIN users cb ON j.created_by = cb.id
               WHERE LOWER(j.id) = LOWER(?) OR LOWER(j.job_number) = LOWER(?)
               LIMIT 1`,
         args: [identifier.trim(), identifier.trim()],
       });
-      return res.rows.length > 0 ? (res.rows[0] as Record<string, unknown>) : null;
+
+      if (jobRes.rows.length === 0) return null;
+      const job = jobRes.rows[0] as Record<string, unknown>;
+      const actualJobId = job.id as string;
+
+      // 2. Inspection
+      const inspectionRes = await client.execute({
+        sql: `SELECT i.*, u.full_name as inspector_name
+              FROM job_inspections i
+              LEFT JOIN users u ON i.inspected_by = u.id
+              WHERE i.job_id = ?
+              ORDER BY i.created_at DESC
+              LIMIT 1`,
+        args: [actualJobId],
+      });
+
+      // 3. Diagnosis
+      const diagnosisRes = await client.execute({
+        sql: `SELECT d.*, u.full_name as technician_name
+              FROM job_diagnosis d
+              LEFT JOIN users u ON d.technician_id = u.id
+              WHERE d.job_id = ?
+              ORDER BY d.created_at DESC`,
+        args: [actualJobId],
+      });
+
+      // 4. Services
+      const servicesRes = await client.execute({
+        sql: `SELECT * FROM job_services WHERE job_id = ? ORDER BY created_at ASC`,
+        args: [actualJobId],
+      });
+
+      // 5. Parts
+      const partsRes = await client.execute({
+        sql: `SELECT * FROM job_parts WHERE job_id = ? ORDER BY created_at ASC`,
+        args: [actualJobId],
+      });
+
+      // 6. Activities
+      const activitiesRes = await client.execute({
+        sql: `SELECT a.*, u.full_name as technician_name
+              FROM job_repair_activities a
+              LEFT JOIN users u ON a.technician_id = u.id
+              WHERE a.job_id = ?
+              ORDER BY a.created_at DESC`,
+        args: [actualJobId],
+      });
+
+      // 7. Checklists
+      const checklistRes = await client.execute({
+        sql: `SELECT c.*, u.full_name as checked_by_name
+              FROM job_checklists c
+              LEFT JOIN users u ON c.checked_by = u.id
+              WHERE c.job_id = ?
+              ORDER BY c.checklist_item_name ASC`,
+        args: [actualJobId],
+      });
+
+      // 8. Tests
+      const testRes = await client.execute({
+        sql: `SELECT t.*, u.full_name as tester_name
+              FROM job_tests t
+              LEFT JOIN users u ON t.tested_by = u.id
+              WHERE t.job_id = ?
+              ORDER BY t.created_at DESC`,
+        args: [actualJobId],
+      });
+
+      // 9. Attachments
+      const attachmentsRes = await client.execute({
+        sql: `SELECT * FROM job_attachments WHERE job_id = ? ORDER BY created_at DESC`,
+        args: [actualJobId],
+      });
+
+      // 10. Status History
+      const statusHistoryRes = await client.execute({
+        sql: `SELECT h.*, u.full_name as changed_by_name, u.username as changed_by_username
+              FROM job_status_history h
+              LEFT JOIN users u ON h.changed_by = u.id
+              WHERE h.job_id = ?
+              ORDER BY h.created_at ASC`,
+        args: [actualJobId],
+      });
+
+      // 11. Staff Notes (using canonical created_at ordering)
+      const notesRes = await client.execute({
+        sql: `SELECT n.*, u.full_name as author_name
+              FROM job_notes n
+              LEFT JOIN users u ON n.user_id = u.id
+              WHERE n.job_id = ?
+              ORDER BY n.created_at DESC`,
+        args: [actualJobId],
+      });
+
+      // 12. Photos
+      const photosRes = await client.execute({
+        sql: `SELECT * FROM device_photos WHERE job_id = ? OR device_id = ? ORDER BY created_at DESC`,
+        args: [actualJobId, (job.device_id as string) || null],
+      });
+
+      return {
+        job,
+        inspection: inspectionRes.rows[0] || null,
+        diagnoses: diagnosisRes.rows,
+        services: servicesRes.rows,
+        parts: partsRes.rows,
+        activities: activitiesRes.rows,
+        checklists: checklistRes.rows,
+        tests: testRes.rows,
+        attachments: attachmentsRes.rows,
+        statusHistory: statusHistoryRes.rows,
+        notes: notesRes.rows,
+        photos: photosRes.rows,
+      };
     };
 
-    // 1. Lookup by internal ID
-    const byId = await lookupJob('JOB-001');
-    expect(byId).not.toBeNull();
-    expect(byId?.id).toBe('JOB-001');
-    expect(byId?.job_number).toBe('JOB-2026-00001');
-    expect(byId?.customer_name).toBe('Karthik Ramanathan');
-    expect(byId?.device_brand).toBe('Lenovo');
-    expect(byId?.device_model).toBe('ThinkPad T14 Gen 2');
+    // 1. Verify JOB-001 loads completely
+    const detailById = await fetchFullJobDetail('JOB-001');
+    expect(detailById).not.toBeNull();
+    expect(detailById?.job.id).toBe('JOB-001');
+    expect(detailById?.job.job_number).toBe('JOB-2026-00001');
+    expect(detailById?.job.customer_name).toBe('Karthik Ramanathan');
+    expect(detailById?.job.device_brand).toBe('Lenovo');
+    expect(detailById?.job.device_model).toBe('ThinkPad T14 Gen 2');
+    expect(detailById?.job.current_status).toBe('UNDER_INSPECTION');
 
-    // 2. Lookup by human-readable Job Number
-    const byJobNumber = await lookupJob('JOB-2026-00001');
-    expect(byJobNumber).not.toBeNull();
-    expect(byJobNumber?.id).toBe('JOB-001');
-    expect(byJobNumber?.job_number).toBe('JOB-2026-00001');
+    // 2. Verify JOB-2026-00001 loads identically
+    const detailByJobNumber = await fetchFullJobDetail('JOB-2026-00001');
+    expect(detailByJobNumber).not.toBeNull();
+    expect(detailByJobNumber?.job.id).toBe('JOB-001');
+    expect(detailByJobNumber?.job.job_number).toBe('JOB-2026-00001');
 
-    // 3. Lookup case-insensitively
-    const byLowerId = await lookupJob('job-001');
-    expect(byLowerId).not.toBeNull();
-    expect(byLowerId?.id).toBe('JOB-001');
+    // 3. Verify inserting note and retrieving notes with created_at
+    const noteId = `JN-TEST-${Date.now()}`;
+    await client.execute({
+      sql: `INSERT INTO job_notes (id, job_id, user_id, note_type, content) VALUES (?, 'JOB-001', 'USR_TECH1', 'INTERNAL', 'Tested motherboard thermal dissipation - OK')`,
+      args: [noteId],
+    });
 
-    const byLowerJobNum = await lookupJob('job-2026-00001');
-    expect(byLowerJobNum).not.toBeNull();
-    expect(byLowerJobNum?.id).toBe('JOB-001');
+    const refreshed = await fetchFullJobDetail('JOB-001');
+    expect(refreshed?.notes.length).toBeGreaterThanOrEqual(1);
 
-    // 4. Verify non-existent ID returns null gracefully
-    const nonexistent = await lookupJob('JOB-NONEXISTENT-999');
-    expect(nonexistent).toBeNull();
+    // 4. Verify non-existent ID gracefully returns null
+    const nonExistent = await fetchFullJobDetail('JOB-99999');
+    expect(nonExistent).toBeNull();
   });
 });

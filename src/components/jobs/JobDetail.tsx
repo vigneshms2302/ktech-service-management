@@ -449,6 +449,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
   }
 
   if (!data) {
+    const isNotFound = fetchError?.toLowerCase().includes('not found') || !fetchError;
     return (
       <div
         style={{
@@ -467,16 +468,18 @@ export const JobDetail: React.FC<JobDetailProps> = ({
       >
         <AlertTriangle size={36} color="var(--color-danger)" />
         <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
-          Service Job Record Not Found
+          {isNotFound ? 'Service Job Record Not Found' : 'Unable to Load Job Details'}
         </div>
         <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          Could not locate a service job matching the identifier:
+          {isNotFound
+            ? 'Could not locate a service job matching the identifier:'
+            : 'A database or system error occurred while loading this service job record:'}
           <div style={{ marginTop: '6px', fontFamily: 'var(--font-mono)', color: 'var(--brand-primary)', fontWeight: 600, fontSize: '13px' }}>
             {jobId}
           </div>
-          {fetchError && (
-            <div style={{ marginTop: '8px', fontSize: '11px', color: '#f87171' }}>
-              Detail: {fetchError}
+          {fetchError && !isNotFound && (
+            <div style={{ marginTop: '8px', fontSize: '11px', color: '#f87171', fontFamily: 'var(--font-mono)' }}>
+              Diagnostic: {fetchError}
             </div>
           )}
         </div>

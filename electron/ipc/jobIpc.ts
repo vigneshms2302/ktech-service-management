@@ -591,7 +591,7 @@ export function registerJobIpc(): void {
           authorName: (row.author_name as string) || 'Staff',
           badgeText: (row.note_type as string),
           badgeColor: row.note_type === 'CUSTOMER_FACING' ? 'var(--color-info)' : 'var(--text-dim)',
-          createdAt: (row.created_at as string) || new Date().toISOString(),
+          createdAt: ((row.created_at || row.createdAt) as string) || new Date().toISOString(),
         });
       }
 
@@ -734,7 +734,7 @@ export function registerJobIpc(): void {
             noteType: (row as Record<string, unknown>).note_type,
             content: (row as Record<string, unknown>).content,
             authorName: (row as Record<string, unknown>).author_name,
-            createdAt: (row as Record<string, unknown>).created_at,
+            createdAt: ((row as Record<string, unknown>).created_at || (row as Record<string, unknown>).createdAt || new Date().toISOString()) as string,
           })),
           photos: photosRes.rows.map((row) => ({
             id: (row as Record<string, unknown>).id,
