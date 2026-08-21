@@ -134,3 +134,23 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# SQLite & Local Application Data
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+app_data/
+backups/
+storage/
+uploads/
+generated_pdfs/
+dist/
+dist-electron/
+release/
+.env*
+!.env.example
+
