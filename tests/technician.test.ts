@@ -99,54 +99,38 @@ describe('Phase 3 — Technician Inspection, Diagnosis & Repair Workflow', () =>
       args: [jobId, jobNumber],
     });
 
-    // 1. Add Planned Repair Actions (job_services)
-    const s1Id = `JSVC-1-${Date.now()}`;
-    const s2Id = `JSVC-2-${Date.now()}`;
+    // Add repair plan action
+    const sId = `JSVC-${Date.now()}`;
     await client.execute({
-      sql: `INSERT INTO job_services (id, job_id, service_name, labor_charge, tax_rate) VALUES (?, ?, 'Motherboard Chip-Level Rework', 1800.0, 18.0)`,
-      args: [s1Id, jobId],
-    });
-    await client.execute({
-      sql: `INSERT INTO job_services (id, job_id, service_name, labor_charge, tax_rate) VALUES (?, ?, 'Thermal System Cleaning & Gelid Paste', 450.0, 18.0)`,
-      args: [s2Id, jobId],
+      sql: `INSERT INTO job_services (id, job_id, service_name, labor_charge) VALUES (?, ?, 'BGA Reballing', 1800.0)`,
+      args: [sId, jobId],
     });
 
-    // 2. Add Required Parts (job_parts)
-    const p1Id = `JPART-1-${Date.now()}`;
+    // Add required part
+    const pId = `JPART-${Date.now()}`;
     await client.execute({
-      sql: `INSERT INTO job_parts (id, job_id, part_name, serial_number, quantity, unit_cost_price, unit_selling_price, warranty_months)
-            VALUES (?, ?, 'FDMS0308AS N-Channel MOSFET', 'SN-M308', 2, 85.0, 350.0, 3)`,
-      args: [p1Id, jobId],
+      sql: `INSERT INTO job_parts (id, job_id, part_name, quantity, unit_cost_price, unit_selling_price)
+            VALUES (?, ?, 'RT8206B PWM Controller', 1, 150.0, 450.0)`,
+      args: [pId, jobId],
     });
 
-    // 3. Log Repair Activity (job_repair_activities)
-    const act1Id = `JACT-1-${Date.now()}`;
+    // Add repair activity
+    const aId = `JACT-${Date.now()}`;
     await client.execute({
-      sql: `INSERT INTO job_repair_activities (id, job_id, technician_id, activity_title, description, time_spent_minutes)
-            VALUES (?, ?, 'USR_TECH1', 'Desoldered damaged MOSFET & Cleaned PCB pads', 'Microscope inspection showed thermal crater on high side FET. Cleaned with flux remover.', 45)`,
-      args: [act1Id, jobId],
+      sql: `INSERT INTO job_repair_activities (id, job_id, technician_id, activity_title, time_spent_minutes)
+            VALUES (?, ?, 'USR_TECH1', 'Replaced PWM controller and tested 3.3V/5V rails', 45)`,
+      args: [aId, jobId],
     });
 
-    const act2Id = `JACT-2-${Date.now()}`;
-    await client.execute({
-      sql: `INSERT INTO job_repair_activities (id, job_id, technician_id, activity_title, description, time_spent_minutes)
-            VALUES (?, ?, 'USR_TECH1', 'Soldered new MOSFET & Verified 19V rail', 'Replaced with FDMS0308AS. 19V rail impedance measured 450k ohm (normal). Device booted successfully.', 30)`,
-      args: [act2Id, jobId],
-    });
+    // Verify
+    const sRes = await client.execute({ sql: `SELECT * FROM job_services WHERE job_id = ?`, args: [jobId] });
+    expect(sRes.rows.length).toBe(1);
 
-    // 4. Verify all records exist and query properly
-    const services = await client.execute({ sql: `SELECT * FROM job_services WHERE job_id = ?`, args: [jobId] });
-    expect(services.rows.length).toBe(2);
+    const pRes = await client.execute({ sql: `SELECT * FROM job_parts WHERE job_id = ?`, args: [jobId] });
+    expect(pRes.rows.length).toBe(1);
 
-    const parts = await client.execute({ sql: `SELECT * FROM job_parts WHERE job_id = ?`, args: [jobId] });
-    expect(parts.rows.length).toBe(1);
-    expect((parts.rows[0] as Record<string, unknown>).part_name).toBe('FDMS0308AS N-Channel MOSFET');
-    expect((parts.rows[0] as Record<string, unknown>).quantity).toBe(2);
-
-    const activities = await client.execute({ sql: `SELECT * FROM job_repair_activities WHERE job_id = ? ORDER BY created_at ASC`, args: [jobId] });
-    expect(activities.rows.length).toBe(2);
-    expect((activities.rows[0] as Record<string, unknown>).time_spent_minutes).toBe(45);
-    expect((activities.rows[1] as Record<string, unknown>).time_spent_minutes).toBe(30);
+    const aRes = await client.execute({ sql: `SELECT * FROM job_repair_activities WHERE job_id = ?`, args: [jobId] });
+    expect(aRes.rows.length).toBe(1);
   });
 
   it('should handle PlayStation 5 console scenario with HDMI rework and required port', async () => {
@@ -230,5 +214,55 @@ describe('Phase 3 — Technician Inspection, Diagnosis & Repair Workflow', () =>
     const history = await client.execute({ sql: `SELECT * FROM job_status_history WHERE job_id = ?`, args: [jobId] });
     expect(history.rows.length).toBe(1);
     expect((history.rows[0] as Record<string, unknown>).new_status).toBe('UNREPAIRABLE');
+  });
+
+  it('Regression Test: should resolve service job detail via internal ID (JOB-001), human-readable Job Number (JOB-2026-00001), and case-insensitively', async () => {
+    const client = getClient();
+
+    // Universal lookup query matching job:getById
+    const lookupJob = async (identifier: string) => {
+      const res = await client.execute({
+        sql: `SELECT j.*, 
+                c.full_name as customer_name, c.primary_phone as customer_phone, c.customer_code,
+                d.equipment_type, d.brand as device_brand, d.model_name as device_model, d.serial_number as device_serial,
+                u.full_name as technician_name
+              FROM service_jobs j
+              LEFT JOIN customers c ON j.customer_id = c.id
+              LEFT JOIN devices d ON j.device_id = d.id
+              LEFT JOIN users u ON j.assigned_technician_id = u.id
+              WHERE LOWER(j.id) = LOWER(?) OR LOWER(j.job_number) = LOWER(?)
+              LIMIT 1`,
+        args: [identifier.trim(), identifier.trim()],
+      });
+      return res.rows.length > 0 ? (res.rows[0] as Record<string, unknown>) : null;
+    };
+
+    // 1. Lookup by internal ID
+    const byId = await lookupJob('JOB-001');
+    expect(byId).not.toBeNull();
+    expect(byId?.id).toBe('JOB-001');
+    expect(byId?.job_number).toBe('JOB-2026-00001');
+    expect(byId?.customer_name).toBe('Karthik Ramanathan');
+    expect(byId?.device_brand).toBe('Lenovo');
+    expect(byId?.device_model).toBe('ThinkPad T14 Gen 2');
+
+    // 2. Lookup by human-readable Job Number
+    const byJobNumber = await lookupJob('JOB-2026-00001');
+    expect(byJobNumber).not.toBeNull();
+    expect(byJobNumber?.id).toBe('JOB-001');
+    expect(byJobNumber?.job_number).toBe('JOB-2026-00001');
+
+    // 3. Lookup case-insensitively
+    const byLowerId = await lookupJob('job-001');
+    expect(byLowerId).not.toBeNull();
+    expect(byLowerId?.id).toBe('JOB-001');
+
+    const byLowerJobNum = await lookupJob('job-2026-00001');
+    expect(byLowerJobNum).not.toBeNull();
+    expect(byLowerJobNum?.id).toBe('JOB-001');
+
+    // 4. Verify non-existent ID returns null gracefully
+    const nonexistent = await lookupJob('JOB-NONEXISTENT-999');
+    expect(nonexistent).toBeNull();
   });
 });

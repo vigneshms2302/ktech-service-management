@@ -17,6 +17,7 @@ import {
   Search,
   Eye,
   Camera,
+  AlertTriangle,
 } from 'lucide-react';
 import type { JobDetailData } from '../../types/index.ts';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
@@ -38,6 +39,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
   const { userList, currentUser, hasPermission } = useAuth();
   const [data, setData] = useState<JobDetailData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
     'overview' | 'inspection' | 'diagnosis' | 'repair' | 'activities' | 'attachments' | 'timeline' | 'notes'
   >('overview');
@@ -100,6 +102,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
   const fetchJob = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
       if (window.electronAPI?.jobs?.getById) {
         const res = await window.electronAPI.jobs.getById({ jobId });
@@ -123,8 +126,14 @@ export const JobDetail: React.FC<JobDetailProps> = ({
             setDiagVoltageRailsChecked(latestDiag.voltageRailsChecked || '');
             setDiagRecommendedAction(latestDiag.recommendedAction || '');
           }
+        } else {
+          setFetchError(res?.error || `Service Job record for identifier "${jobId}" could not be found.`);
         }
+      } else {
+        setFetchError('Electron jobs API is unavailable in this environment.');
       }
+    } catch (err: unknown) {
+      setFetchError((err as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -441,9 +450,50 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
   if (!data) {
     return (
-      <div style={{ padding: '30px', textAlign: 'center' }}>
-        <p style={{ color: 'var(--color-danger)' }}>Service Job record could not be found.</p>
-        <button onClick={onBack} className="btn-secondary" style={{ marginTop: '10px' }}>
+      <div
+        style={{
+          padding: '30px',
+          textAlign: 'center',
+          backgroundColor: 'var(--bg-card)',
+          borderRadius: '8px',
+          border: '1px solid var(--border-color)',
+          maxWidth: '600px',
+          margin: '40px auto',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '12px',
+        }}
+      >
+        <AlertTriangle size={36} color="var(--color-danger)" />
+        <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
+          Service Job Record Not Found
+        </div>
+        <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          Could not locate a service job matching the identifier:
+          <div style={{ marginTop: '6px', fontFamily: 'var(--font-mono)', color: 'var(--brand-primary)', fontWeight: 600, fontSize: '13px' }}>
+            {jobId}
+          </div>
+          {fetchError && (
+            <div style={{ marginTop: '8px', fontSize: '11px', color: '#f87171' }}>
+              Detail: {fetchError}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={onBack}
+          style={{
+            marginTop: '8px',
+            padding: '7px 16px',
+            borderRadius: '6px',
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border-color)',
+            color: 'var(--text-main)',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
           Back to List
         </button>
       </div>
@@ -451,7 +501,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
   }
 
   const { job, inspection, diagnoses, repairPlans, requiredParts, repairActivities, attachments, timeline, notes, photos } = data;
-
+  const accessoriesList = Array.isArray(job.accessoriesReceived) ? job.accessoriesReceived : [];
   const isTechnicianRole = currentUser?.roleId === 'ROLE_TECHNICIAN' || currentUser?.roleId === 'ROLE_OWNER' || hasPermission('jobs.diagnose');
 
   return (
@@ -783,7 +833,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
           {/* Admission accessories and condition tags */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
-            {job.accessoriesReceived.map((acc) => (
+            {accessoriesList.map((acc) => (
               <span
                 key={acc}
                 style={{
@@ -1039,7 +1089,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
               >
                 <option value="NORMAL">Clean / Untouched Board</option>
                 <option value="CORRODED">Corrosion / Rust Detected</option>
-                <option value="BURNT_COMPONENT">Burnt IC / Exploded Component</option>
+                <option value="BURNT_COMPONENT">BurNT IC / Exploded Component</option>
                 <option value="PREVIOUSLY_WORKED">Previous Repair Attempt / Tampered</option>
               </select>
             </div>

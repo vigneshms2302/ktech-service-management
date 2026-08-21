@@ -6,6 +6,25 @@ import path from 'node:path';
 import fs from 'node:fs';
 
 /**
+ * Safely parses JSON array with fallback.
+ */
+function safeParseJsonArray<T = string>(raw: unknown, fallback: T[] = []): T[] {
+  if (!raw) return fallback;
+  if (Array.isArray(raw)) return raw as T[];
+  if (typeof raw !== 'string') return fallback;
+  const trimmed = raw.trim();
+  if (!trimmed) return fallback;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return Array.isArray(parsed) ? parsed : [parsed as T];
+  } catch {
+    // If it's a comma-separated or plain text string
+    const parts = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
+    return parts.length > 0 ? (parts as unknown as T[]) : [trimmed as unknown as T];
+  }
+}
+
+/**
  * Validates allowed state transitions according to docs/WORKFLOW_STATE_MACHINE.md.
  */
 export function isValidTransition(fromStatus: string, toStatus: string): boolean {
@@ -273,9 +292,7 @@ export function registerJobIpc(): void {
             technicianName: (row as Record<string, unknown>).technician_name,
             creatorName: (row as Record<string, unknown>).creator_name,
             reportedIssue: (row as Record<string, unknown>).reported_issue,
-            accessoriesReceived: (row as Record<string, unknown>).accessories_received
-              ? JSON.parse((row as Record<string, unknown>).accessories_received as string)
-              : [],
+            accessoriesReceived: safeParseJsonArray((row as Record<string, unknown>).accessories_received),
             estimatedCost: Number((row as Record<string, unknown>).estimated_cost || 0),
             advanceDeposit: Number((row as Record<string, unknown>).advance_deposit || 0),
             promisedDeliveryDate: (row as Record<string, unknown>).promised_delivery_date,
@@ -340,17 +357,32 @@ export function registerJobIpc(): void {
     }
   });
 
-  // Get Comprehensive Job Details by ID
-  ipcMain.handle('job:getById', async (_event, { jobId }) => {
+  // Get Comprehensive Job Details by ID or Job Number (Universal Lookup)
+  ipcMain.handle('job:getById', async (_event, payload: unknown) => {
     try {
       const session = getActiveSession();
       if (!session || (!session.permissions.includes('jobs.read') && session.roleId !== 'ROLE_OWNER')) {
         return { success: false, error: 'Unauthorized: Permission jobs.read required' };
       }
 
+      let identifier: string | undefined;
+      if (typeof payload === 'string') {
+        identifier = payload.trim();
+      } else if (payload && typeof payload === 'object') {
+        const obj = payload as Record<string, unknown>;
+        identifier = (obj.jobId || obj.id || obj.jobNumber || obj.searchTerm) as string;
+        if (typeof identifier === 'string') {
+          identifier = identifier.trim();
+        }
+      }
+
+      if (!identifier) {
+        return { success: false, error: 'Invalid lookup parameter: Job identifier is required' };
+      }
+
       const client = getClient();
 
-      // 1. Service Job
+      // 1. Service Job (case-insensitive lookup by internal ID OR human-readable job_number)
       const jobRes = await client.execute({
         sql: `SELECT j.*, 
                 c.full_name as customer_name, c.primary_phone as customer_phone, c.secondary_phone as customer_secondary_phone, c.email as customer_email, c.customer_code,
@@ -363,12 +395,13 @@ export function registerJobIpc(): void {
               LEFT JOIN devices d ON j.device_id = d.id
               LEFT JOIN users u ON j.assigned_technician_id = u.id
               LEFT JOIN users cb ON j.created_by = cb.id
-              WHERE j.id = ? OR j.job_number = ?`,
-        args: [jobId, jobId],
+              WHERE LOWER(j.id) = LOWER(?) OR LOWER(j.job_number) = LOWER(?)
+              LIMIT 1`,
+        args: [identifier, identifier],
       });
 
       if (jobRes.rows.length === 0) {
-        return { success: false, error: 'Service job record not found' };
+        return { success: false, error: `Service job record "${identifier}" not found in database` };
       }
 
       const job = jobRes.rows[0] as Record<string, unknown>;
@@ -494,7 +527,7 @@ export function registerJobIpc(): void {
           authorName: (row.changed_by_name as string) || 'System',
           badgeText: (row.new_status as string),
           badgeColor: 'var(--brand-primary)',
-          createdAt: (row.created_at as string),
+          createdAt: (row.created_at as string) || new Date().toISOString(),
         });
       }
 
@@ -513,7 +546,7 @@ export function registerJobIpc(): void {
             faultyComponents: row.faulty_components_identified,
             recommendedAction: row.recommended_action,
           },
-          createdAt: (row.created_at as string),
+          createdAt: (row.created_at as string) || new Date().toISOString(),
         });
       }
 
@@ -528,7 +561,7 @@ export function registerJobIpc(): void {
           authorName: (row.technician_name as string) || 'Technician',
           badgeText: row.time_spent_minutes ? `${row.time_spent_minutes}m` : 'REPAIR WORK',
           badgeColor: 'var(--color-success)',
-          createdAt: (row.created_at as string),
+          createdAt: (row.created_at as string) || new Date().toISOString(),
         });
       }
 
@@ -543,7 +576,7 @@ export function registerJobIpc(): void {
           authorName: 'Technician',
           badgeText: 'PART LOGGED',
           badgeColor: 'var(--color-info)',
-          createdAt: (row.created_at as string),
+          createdAt: (row.created_at as string) || new Date().toISOString(),
         });
       }
 
@@ -558,7 +591,7 @@ export function registerJobIpc(): void {
           authorName: (row.author_name as string) || 'Staff',
           badgeText: (row.note_type as string),
           badgeColor: row.note_type === 'CUSTOMER_FACING' ? 'var(--color-info)' : 'var(--text-dim)',
-          createdAt: (row.created_at as string),
+          createdAt: (row.created_at as string) || new Date().toISOString(),
         });
       }
 
@@ -591,7 +624,7 @@ export function registerJobIpc(): void {
             technicianName: job.technician_name,
             creatorName: job.creator_name,
             reportedIssue: job.reported_issue,
-            accessoriesReceived: job.accessories_received ? JSON.parse(job.accessories_received as string) : [],
+            accessoriesReceived: safeParseJsonArray(job.accessories_received),
             physicalConditionNotes: job.physical_condition_notes,
             estimatedCost: Number(job.estimated_cost || 0),
             advanceDeposit: Number(job.advance_deposit || 0),
@@ -919,8 +952,8 @@ export function registerJobIpc(): void {
 
       const client = getClient();
       const currentRes = await client.execute({
-        sql: `SELECT id, job_number, assigned_technician_id, current_status FROM service_jobs WHERE id = ?`,
-        args: [jobId],
+        sql: `SELECT id, job_number, assigned_technician_id, current_status FROM service_jobs WHERE id = ? OR job_number = ?`,
+        args: [jobId, jobId],
       });
 
       if (currentRes.rows.length === 0) {
@@ -928,12 +961,13 @@ export function registerJobIpc(): void {
       }
 
       const currentJob = currentRes.rows[0] as Record<string, unknown>;
+      const actualJobId = currentJob.id as string;
       const previousTechId = currentJob.assigned_technician_id as string | null;
 
       // Update technician
       await client.execute({
         sql: `UPDATE service_jobs SET assigned_technician_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        args: [technicianId || null, jobId],
+        args: [technicianId || null, actualJobId],
       });
 
       // Get technician name for history
@@ -952,7 +986,7 @@ export function registerJobIpc(): void {
               VALUES (?, ?, ?, ?, ?, ?)`,
         args: [
           statusHistoryId,
-          jobId,
+          actualJobId,
           (currentJob.current_status as string),
           (currentJob.current_status as string),
           session.id,
@@ -964,7 +998,7 @@ export function registerJobIpc(): void {
         session.id,
         'JOB_ASSIGN_TECH',
         'service_jobs',
-        jobId,
+        actualJobId,
         { previousTechnicianId: previousTechId },
         { assignedTechnicianId: technicianId, technicianName: techName }
       );
@@ -996,8 +1030,8 @@ export function registerJobIpc(): void {
 
       const client = getClient();
       const jobRes = await client.execute({
-        sql: `SELECT id, current_status, assigned_technician_id FROM service_jobs WHERE id = ?`,
-        args: [payload.jobId],
+        sql: `SELECT id, current_status, assigned_technician_id FROM service_jobs WHERE id = ? OR job_number = ?`,
+        args: [payload.jobId, payload.jobId],
       });
 
       if (jobRes.rows.length === 0) {
@@ -1005,6 +1039,7 @@ export function registerJobIpc(): void {
       }
 
       const job = jobRes.rows[0] as Record<string, unknown>;
+      const actualJobId = job.id as string;
       const currentStatus = job.current_status as string;
       const inspectionId = `INSP-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
@@ -1020,7 +1055,7 @@ export function registerJobIpc(): void {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
             inspectionId,
-            payload.jobId,
+            actualJobId,
             session.id,
             payload.powerStatus || 'NORMAL_POWER',
             payload.displayStatus || null,
@@ -1039,7 +1074,7 @@ export function registerJobIpc(): void {
             await transaction.execute({
               sql: `INSERT INTO job_checklists (id, job_id, checklist_item_name, is_checked, checked_by, checked_at)
                     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-              args: [chkId, payload.jobId, item.name, item.isChecked ? 1 : 0, session.id],
+              args: [chkId, actualJobId, item.name, item.isChecked ? 1 : 0, session.id],
             });
           }
         }
@@ -1048,13 +1083,13 @@ export function registerJobIpc(): void {
         if (payload.transitionToUnderInspection && (currentStatus === 'RECEIVED' || currentStatus === 'WAITING_FOR_INSPECTION')) {
           await transaction.execute({
             sql: `UPDATE service_jobs SET current_status = 'UNDER_INSPECTION', assigned_technician_id = COALESCE(assigned_technician_id, ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-            args: [session.id, payload.jobId],
+            args: [session.id, actualJobId],
           });
 
           await transaction.execute({
             sql: `INSERT INTO job_status_history (id, job_id, previous_status, new_status, changed_by, reason_or_notes)
                   VALUES (?, ?, ?, 'UNDER_INSPECTION', ?, 'Technician initiated technical diagnostic inspection')`,
-            args: [`JSH-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`, payload.jobId, currentStatus, session.id],
+            args: [`JSH-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`, actualJobId, currentStatus, session.id],
           });
         }
 
@@ -1070,7 +1105,7 @@ export function registerJobIpc(): void {
         'job_inspections',
         inspectionId,
         null,
-        { jobId: payload.jobId, powerStatus: payload.powerStatus, notes: payload.inspectionNotes }
+        { jobId: actualJobId, powerStatus: payload.powerStatus, notes: payload.inspectionNotes }
       );
 
       return { success: true, data: { inspectionId } };
@@ -1102,8 +1137,8 @@ export function registerJobIpc(): void {
 
       const client = getClient();
       const jobRes = await client.execute({
-        sql: `SELECT id, current_status, assigned_technician_id FROM service_jobs WHERE id = ?`,
-        args: [payload.jobId],
+        sql: `SELECT id, current_status, assigned_technician_id FROM service_jobs WHERE id = ? OR job_number = ?`,
+        args: [payload.jobId, payload.jobId],
       });
 
       if (jobRes.rows.length === 0) {
@@ -1111,6 +1146,7 @@ export function registerJobIpc(): void {
       }
 
       const job = jobRes.rows[0] as Record<string, unknown>;
+      const actualJobId = job.id as string;
       const currentStatus = job.current_status as string;
       const diagnosisId = `DIAG-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
@@ -1132,7 +1168,7 @@ export function registerJobIpc(): void {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
           args: [
             diagnosisId,
-            payload.jobId,
+            actualJobId,
             session.id,
             payload.rootCauseAnalysis.trim(),
             payload.voltageRailsChecked ? payload.voltageRailsChecked.trim() : null,
@@ -1147,7 +1183,7 @@ export function registerJobIpc(): void {
             sql: `UPDATE service_jobs 
                   SET current_status = ?, assigned_technician_id = COALESCE(assigned_technician_id, ?), updated_at = CURRENT_TIMESTAMP
                   WHERE id = ?`,
-            args: [targetStatus, session.id, payload.jobId],
+            args: [targetStatus, session.id, actualJobId],
           });
 
           await transaction.execute({
@@ -1155,7 +1191,7 @@ export function registerJobIpc(): void {
                   VALUES (?, ?, ?, ?, ?, ?)`,
             args: [
               `JSH-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-              payload.jobId,
+              actualJobId,
               currentStatus,
               targetStatus,
               session.id,
@@ -1178,7 +1214,7 @@ export function registerJobIpc(): void {
         'job_diagnosis',
         diagnosisId,
         null,
-        { jobId: payload.jobId, outcome: payload.diagnosticOutcome, newStatus: targetStatus }
+        { jobId: actualJobId, outcome: payload.diagnosticOutcome, newStatus: targetStatus }
       );
 
       return { success: true, data: { diagnosisId, newStatus: targetStatus } };
@@ -1209,12 +1245,16 @@ export function registerJobIpc(): void {
       const client = getClient();
       const serviceId = `JSVC-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
+      // Resolve actual jobId
+      const jobRes = await client.execute({ sql: `SELECT id FROM service_jobs WHERE id = ? OR job_number = ?`, args: [payload.jobId, payload.jobId] });
+      const actualJobId = jobRes.rows.length > 0 ? (jobRes.rows[0] as Record<string, unknown>).id as string : payload.jobId;
+
       await client.execute({
         sql: `INSERT INTO job_services (id, job_id, service_name, sac_code, labor_charge, discount, tax_rate)
               VALUES (?, ?, ?, ?, ?, ?, ?)`,
         args: [
           serviceId,
-          payload.jobId,
+          actualJobId,
           payload.serviceName.trim(),
           payload.sacCode || '998713',
           payload.laborCharge || 0.0,
@@ -1229,7 +1269,7 @@ export function registerJobIpc(): void {
         'job_services',
         serviceId,
         null,
-        { jobId: payload.jobId, action: payload.serviceName }
+        { jobId: actualJobId, action: payload.serviceName }
       );
 
       return { success: true, data: { serviceId } };
@@ -1280,6 +1320,10 @@ export function registerJobIpc(): void {
       const client = getClient();
       const partId = `JPART-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
+      // Resolve actual jobId
+      const jobRes = await client.execute({ sql: `SELECT id FROM service_jobs WHERE id = ? OR job_number = ?`, args: [payload.jobId, payload.jobId] });
+      const actualJobId = jobRes.rows.length > 0 ? (jobRes.rows[0] as Record<string, unknown>).id as string : payload.jobId;
+
       await client.execute({
         sql: `INSERT INTO job_parts (
                 id, job_id, part_name, serial_number, quantity,
@@ -1287,7 +1331,7 @@ export function registerJobIpc(): void {
               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           partId,
-          payload.jobId,
+          actualJobId,
           payload.partName.trim(),
           payload.serialNumber ? payload.serialNumber.trim() : null,
           payload.quantity || 1,
@@ -1305,7 +1349,7 @@ export function registerJobIpc(): void {
         'job_parts',
         partId,
         null,
-        { jobId: payload.jobId, part: payload.partName, qty: payload.quantity }
+        { jobId: actualJobId, part: payload.partName, qty: payload.quantity }
       );
 
       return { success: true, data: { partId } };
@@ -1352,15 +1396,17 @@ export function registerJobIpc(): void {
       const activityId = `JACT-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
       const jobRes = await client.execute({
-        sql: `SELECT id, current_status FROM service_jobs WHERE id = ?`,
-        args: [payload.jobId],
+        sql: `SELECT id, current_status FROM service_jobs WHERE id = ? OR job_number = ?`,
+        args: [payload.jobId, payload.jobId],
       });
 
       if (jobRes.rows.length === 0) {
         return { success: false, error: 'Service job not found' };
       }
 
-      const currentStatus = (jobRes.rows[0] as Record<string, unknown>).current_status as string;
+      const jobRow = jobRes.rows[0] as Record<string, unknown>;
+      const actualJobId = jobRow.id as string;
+      const currentStatus = jobRow.current_status as string;
 
       const transaction = await client.transaction('write');
 
@@ -1371,7 +1417,7 @@ export function registerJobIpc(): void {
                 VALUES (?, ?, ?, ?, ?, ?)`,
           args: [
             activityId,
-            payload.jobId,
+            actualJobId,
             session.id,
             payload.activityTitle.trim(),
             payload.description ? payload.description.trim() : null,
@@ -1383,7 +1429,7 @@ export function registerJobIpc(): void {
         if (payload.transitionToUnderRepair && (currentStatus === 'DIAGNOSIS_COMPLETED' || currentStatus === 'APPROVED' || currentStatus === 'WAITING_FOR_PARTS')) {
           await transaction.execute({
             sql: `UPDATE service_jobs SET current_status = 'UNDER_REPAIR', assigned_technician_id = COALESCE(assigned_technician_id, ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-            args: [session.id, payload.jobId],
+            args: [session.id, actualJobId],
           });
 
           await transaction.execute({
@@ -1391,7 +1437,7 @@ export function registerJobIpc(): void {
                   VALUES (?, ?, ?, 'UNDER_REPAIR', ?, ?)`,
             args: [
               `JSH-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-              payload.jobId,
+              actualJobId,
               currentStatus,
               session.id,
               `Repair work commenced: ${payload.activityTitle.trim()}`,
@@ -1411,7 +1457,7 @@ export function registerJobIpc(): void {
         'job_repair_activities',
         activityId,
         null,
-        { jobId: payload.jobId, title: payload.activityTitle }
+        { jobId: actualJobId, title: payload.activityTitle }
       );
 
       return { success: true, data: { activityId } };
@@ -1439,6 +1485,15 @@ export function registerJobIpc(): void {
       const attachmentId = `ATT-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
       const { attachmentsDir, photosDir } = ensureDirectories();
 
+      // Resolve actual jobId
+      const jobRes = await client.execute({ sql: `SELECT id, device_id FROM service_jobs WHERE id = ? OR job_number = ?`, args: [payload.jobId, payload.jobId] });
+      if (jobRes.rows.length === 0) {
+        return { success: false, error: 'Service job record not found' };
+      }
+      const jobRow = jobRes.rows[0] as Record<string, unknown>;
+      const actualJobId = jobRow.id as string;
+      const deviceId = (jobRow.device_id as string) || 'DEV-UNKNOWN';
+
       const monthFolder = new Date().toISOString().substring(0, 7);
       const targetDir = payload.isPhoto ? path.join(photosDir, monthFolder) : path.join(attachmentsDir, monthFolder);
 
@@ -1457,20 +1512,16 @@ export function registerJobIpc(): void {
 
       // Save metadata in SQLite
       if (payload.isPhoto) {
-        // Also query device_id
-        const devRes = await client.execute({ sql: `SELECT device_id FROM service_jobs WHERE id = ?`, args: [payload.jobId] });
-        const deviceId = devRes.rows.length > 0 ? (devRes.rows[0] as Record<string, unknown>).device_id as string : 'DEV-UNKNOWN';
-
         await client.execute({
           sql: `INSERT INTO device_photos (id, device_id, job_id, photo_type, file_path, caption)
                 VALUES (?, ?, ?, 'DAMAGE_PROOF', ?, ?)`,
-          args: [attachmentId, deviceId, payload.jobId, filePath, payload.caption || payload.fileName],
+          args: [attachmentId, deviceId, actualJobId, filePath, payload.caption || payload.fileName],
         });
       } else {
         await client.execute({
           sql: `INSERT INTO job_attachments (id, job_id, file_name, file_path, file_type, file_size_bytes)
                 VALUES (?, ?, ?, ?, ?, ?)`,
-          args: [attachmentId, payload.jobId, payload.fileName, filePath, payload.fileType || 'application/octet-stream', buffer.length],
+          args: [attachmentId, actualJobId, payload.fileName, filePath, payload.fileType || 'application/octet-stream', buffer.length],
         });
       }
 
@@ -1480,7 +1531,7 @@ export function registerJobIpc(): void {
         'job_attachments',
         attachmentId,
         null,
-        { jobId: payload.jobId, fileName: payload.fileName }
+        { jobId: actualJobId, fileName: payload.fileName }
       );
 
       return { success: true, data: { attachmentId, filePath } };
@@ -1504,15 +1555,17 @@ export function registerJobIpc(): void {
 
       const client = getClient();
       const jobRes = await client.execute({
-        sql: `SELECT id, current_status FROM service_jobs WHERE id = ?`,
-        args: [payload.jobId],
+        sql: `SELECT id, current_status FROM service_jobs WHERE id = ? OR job_number = ?`,
+        args: [payload.jobId, payload.jobId],
       });
 
       if (jobRes.rows.length === 0) {
         return { success: false, error: 'Service job record not found' };
       }
 
-      const currentStatus = (jobRes.rows[0] as Record<string, unknown>).current_status as string;
+      const jobRow = jobRes.rows[0] as Record<string, unknown>;
+      const actualJobId = jobRow.id as string;
+      const currentStatus = jobRow.current_status as string;
       const targetStatus = 'REPAIR_COMPLETED';
 
       if (!isValidTransition(currentStatus, targetStatus)) {
@@ -1525,7 +1578,7 @@ export function registerJobIpc(): void {
         // 1. Update status
         await transaction.execute({
           sql: `UPDATE service_jobs SET current_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-          args: [targetStatus, payload.jobId],
+          args: [targetStatus, actualJobId],
         });
 
         // 2. Insert completion activity
@@ -1534,7 +1587,7 @@ export function registerJobIpc(): void {
                 VALUES (?, ?, ?, 'Repair Completed & Bench Tested', ?)`,
           args: [
             `JACT-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-            payload.jobId,
+            actualJobId,
             session.id,
             payload.summaryNotes || 'All planned repairs and hardware replacements completed.',
           ],
@@ -1546,7 +1599,7 @@ export function registerJobIpc(): void {
                 VALUES (?, ?, ?, ?, ?, ?)`,
           args: [
             `JSH-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-            payload.jobId,
+            actualJobId,
             currentStatus,
             targetStatus,
             session.id,
@@ -1564,12 +1617,12 @@ export function registerJobIpc(): void {
         session.id,
         'JOB_REPAIR_COMPLETE',
         'service_jobs',
-        payload.jobId,
+        actualJobId,
         { previousStatus: currentStatus },
         { newStatus: targetStatus }
       );
 
-      return { success: true, data: { jobId: payload.jobId } };
+      return { success: true, data: { jobId: actualJobId } };
     } catch (error: unknown) {
       return { success: false, error: (error as Error).message };
     }
@@ -1594,15 +1647,17 @@ export function registerJobIpc(): void {
 
       const client = getClient();
       const jobRes = await client.execute({
-        sql: `SELECT id, current_status FROM service_jobs WHERE id = ?`,
-        args: [payload.jobId],
+        sql: `SELECT id, current_status FROM service_jobs WHERE id = ? OR job_number = ?`,
+        args: [payload.jobId, payload.jobId],
       });
 
       if (jobRes.rows.length === 0) {
         return { success: false, error: 'Service job record not found' };
       }
 
-      const currentStatus = (jobRes.rows[0] as Record<string, unknown>).current_status as string;
+      const jobRow = jobRes.rows[0] as Record<string, unknown>;
+      const actualJobId = jobRow.id as string;
+      const currentStatus = jobRow.current_status as string;
       const targetStatus = 'UNREPAIRABLE';
 
       if (!isValidTransition(currentStatus, targetStatus)) {
@@ -1615,7 +1670,7 @@ export function registerJobIpc(): void {
         // 1. Update status
         await transaction.execute({
           sql: `UPDATE service_jobs SET current_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-          args: [targetStatus, payload.jobId],
+          args: [targetStatus, actualJobId],
         });
 
         // 2. Insert diagnosis record
@@ -1624,7 +1679,7 @@ export function registerJobIpc(): void {
                 VALUES (?, ?, ?, ?, 'Device deemed unrepairable due to fatal damage')`,
           args: [
             `DIAG-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-            payload.jobId,
+            actualJobId,
             session.id,
             `UNREPAIRABLE: ${payload.rootCause || ''} - ${payload.technicalJustification.trim()}`,
           ],
@@ -1636,7 +1691,7 @@ export function registerJobIpc(): void {
                 VALUES (?, ?, ?, ?, ?, ?)`,
           args: [
             `JSH-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-            payload.jobId,
+            actualJobId,
             currentStatus,
             targetStatus,
             session.id,
@@ -1654,12 +1709,12 @@ export function registerJobIpc(): void {
         session.id,
         'JOB_MARK_UNREPAIRABLE',
         'service_jobs',
-        payload.jobId,
+        actualJobId,
         { previousStatus: currentStatus },
         { justification: payload.technicalJustification }
       );
 
-      return { success: true, data: { jobId: payload.jobId } };
+      return { success: true, data: { jobId: actualJobId } };
     } catch (error: unknown) {
       return { success: false, error: (error as Error).message };
     }
@@ -1680,8 +1735,8 @@ export function registerJobIpc(): void {
 
       const client = getClient();
       const currentJobRes = await client.execute({
-        sql: `SELECT id, current_status, assigned_technician_id FROM service_jobs WHERE id = ?`,
-        args: [payload.jobId],
+        sql: `SELECT id, current_status, assigned_technician_id FROM service_jobs WHERE id = ? OR job_number = ?`,
+        args: [payload.jobId, payload.jobId],
       });
 
       if (currentJobRes.rows.length === 0) {
@@ -1689,6 +1744,7 @@ export function registerJobIpc(): void {
       }
 
       const currentJob = currentJobRes.rows[0] as Record<string, unknown>;
+      const actualJobId = currentJob.id as string;
       const currentStatus = currentJob.current_status as string;
       const newStatus = payload.newStatus;
 
@@ -1717,7 +1773,7 @@ export function registerJobIpc(): void {
           sql: `UPDATE service_jobs 
                 SET current_status = ?, assigned_technician_id = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?`,
-          args: [newStatus, techIdToAssign, payload.jobId],
+          args: [newStatus, techIdToAssign, actualJobId],
         });
 
         // Insert status history entry
@@ -1727,7 +1783,7 @@ export function registerJobIpc(): void {
                 ) VALUES (?, ?, ?, ?, ?, ?)`,
           args: [
             statusHistoryId,
-            payload.jobId,
+            actualJobId,
             currentStatus,
             newStatus,
             session.id,
@@ -1745,7 +1801,7 @@ export function registerJobIpc(): void {
         session.id,
         'JOB_STATUS_CHANGE',
         'service_jobs',
-        payload.jobId,
+        actualJobId,
         { previousStatus: currentStatus },
         { newStatus, reason: payload.reasonOrNotes }
       );
@@ -1753,7 +1809,7 @@ export function registerJobIpc(): void {
       return {
         success: true,
         data: {
-          jobId: payload.jobId,
+          jobId: actualJobId,
           previousStatus: currentStatus,
           newStatus,
         },
@@ -1782,12 +1838,16 @@ export function registerJobIpc(): void {
       const client = getClient();
       const noteId = `JN-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
+      // Resolve actual jobId
+      const jobRes = await client.execute({ sql: `SELECT id FROM service_jobs WHERE id = ? OR job_number = ?`, args: [payload.jobId, payload.jobId] });
+      const actualJobId = jobRes.rows.length > 0 ? (jobRes.rows[0] as Record<string, unknown>).id as string : payload.jobId;
+
       await client.execute({
         sql: `INSERT INTO job_notes (id, job_id, user_id, note_type, content)
               VALUES (?, ?, ?, ?, ?)`,
         args: [
           noteId,
-          payload.jobId,
+          actualJobId,
           session.id,
           payload.noteType || 'INTERNAL',
           payload.content.trim(),
