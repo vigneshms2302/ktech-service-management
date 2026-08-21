@@ -13,7 +13,15 @@ export default defineConfig({
           build: {
             outDir: 'dist-electron',
             rollupOptions: {
-              external: ['better-sqlite3'],
+              external: [
+                '@libsql/client',
+                '@libsql/core',
+                '@libsql/hrana-client',
+                '@libsql/win32-x64-msvc',
+                'libsql',
+                'better-sqlite3',
+                /^@libsql\//,
+              ],
             },
           },
         },
