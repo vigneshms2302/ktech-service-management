@@ -651,6 +651,279 @@ export interface ElectronAPI {
   search: {
     global: (params: { query: string }) => Promise<IPCResponse<GlobalSearchResults>>;
   };
+  inventory: {
+    generateSku: (params?: { categoryCode?: string }) => Promise<IPCResponse<{ sku: string }>>;
+    list: (params?: { search?: string; categoryId?: string; itemType?: string; lowStockOnly?: boolean; page?: number; limit?: number }) => Promise<IPCResponse<{
+      items: Array<{
+        id: string;
+        sku: string;
+        name: string;
+        categoryId: string;
+        categoryName: string;
+        categoryCode: string;
+        itemType: string;
+        serialNumber?: string | null;
+        costPrice: number;
+        sellingPrice: number;
+        hsnCode?: string | null;
+        taxRate: number;
+        quantityOnHand: number;
+        minReorderLevel: number;
+        locationId?: string | null;
+        locationName?: string | null;
+        supplierId?: string | null;
+        supplierName?: string | null;
+        salvageSourceId?: string | null;
+        salvageCode?: string | null;
+        warrantyMonths: number;
+        isLowStock: boolean;
+        createdAt: string;
+      }>;
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+      metrics: { totalItems: number; totalUnits: number; totalValuation: number; lowStockCount: number; salvagePartsCount: number };
+    }>>;
+    getById: (params: { itemId: string }) => Promise<IPCResponse<{
+      item: Record<string, unknown>;
+      transactions: Array<{
+        id: string;
+        transactionType: string;
+        quantityDelta: number;
+        balanceAfter: number;
+        referenceType: string;
+        referenceId?: string | null;
+        notes?: string | null;
+        createdByName: string;
+        createdAt: string;
+      }>;
+    }>>;
+    create: (payload: {
+      sku?: string;
+      name: string;
+      categoryId: string;
+      itemType: string;
+      serialNumber?: string;
+      costPrice: number;
+      sellingPrice: number;
+      hsnCode?: string;
+      taxRate?: number;
+      initialQuantity?: number;
+      minReorderLevel?: number;
+      locationId?: string;
+      supplierId?: string;
+      salvageSourceId?: string;
+      warrantyMonths?: number;
+    }) => Promise<IPCResponse<{ itemId: string; sku: string }>>;
+    adjustStock: (payload: {
+      itemId: string;
+      transactionType: string;
+      quantityDelta: number;
+      referenceType?: string;
+      referenceId?: string;
+      notes?: string;
+    }) => Promise<IPCResponse<{ itemId: string; previousQuantity: number; newQuantity: number; delta: number }>>;
+    listCategories: () => Promise<IPCResponse<Array<{ id: string; name: string; code: string; description?: string }>>>;
+    listLocations: () => Promise<IPCResponse<Array<{ id: string; name: string; description?: string }>>>;
+    listSuppliers: () => Promise<IPCResponse<Array<{ id: string; company_name: string; contact_person?: string; phone?: string; email?: string; gstin?: string; address?: string; item_count: number }>>>;
+    createSupplier: (payload: { companyName: string; contactPerson?: string; phone?: string; email?: string; gstin?: string; address?: string }) => Promise<IPCResponse<{ supplierId: string }>>;
+  };
+  salvage: {
+    list: () => Promise<IPCResponse<Array<{
+      id: string;
+      salvage_code: string;
+      original_service_job_id?: string;
+      equipment_type: string;
+      brand: string;
+      model_name: string;
+      serial_number?: string;
+      acquisition_type: string;
+      acquisition_cost: number;
+      dismantled_by_name: string;
+      harvested_parts_count: number;
+      total_harvested_value: number;
+      original_job_number?: string;
+      original_customer_name?: string;
+      created_at: string;
+    }>>>;
+    intake: (payload: {
+      originalServiceJobId?: string;
+      equipmentType: string;
+      brand: string;
+      modelName: string;
+      serialNumber?: string;
+      acquisitionType: string;
+      acquisitionCost?: number;
+      notes?: string;
+    }) => Promise<IPCResponse<{ salvageId: string; salvageCode: string }>>;
+    harvestComponents: (payload: {
+      salvageDeviceId: string;
+      harvestedParts: Array<{
+        partName: string;
+        categoryId: string;
+        serialNumber?: string;
+        testedCondition: string;
+        estimatedValue: number;
+        sellingPrice?: number;
+        locationId?: string;
+        notes?: string;
+      }>;
+    }) => Promise<IPCResponse<{ salvageId: string; harvestedCount: number; createdItemIds: string[] }>>;
+    getById: (params: { salvageId: string }) => Promise<IPCResponse<{
+      device: Record<string, unknown>;
+      harvestedParts: Array<Record<string, unknown>>;
+    }>>;
+  };
+  billing: {
+    generateQuotationNumber: () => Promise<IPCResponse<{ quotationNumber: string }>>;
+    generateInvoiceNumber: () => Promise<IPCResponse<{ invoiceNumber: string }>>;
+    generateReceiptNumber: () => Promise<IPCResponse<{ receiptNumber: string }>>;
+    listQuotations: (params?: { jobId?: string; status?: string; search?: string }) => Promise<IPCResponse<Array<Record<string, unknown>>>>;
+    getQuotationById: (params: { quotationId: string }) => Promise<IPCResponse<{ quotation: Record<string, unknown>; items: Array<Record<string, unknown>>; approval: Record<string, unknown> | null }>>;
+    createQuotation: (payload: {
+      jobId: string;
+      validityDays?: number;
+      discountAmount?: number;
+      items: Array<{
+        itemType: 'PART' | 'LABOR' | 'OTHER';
+        inventoryItemId?: string;
+        description: string;
+        quantity: number;
+        unitPrice: number;
+        taxRate?: number;
+      }>;
+    }) => Promise<IPCResponse<{ quotationId: string; quotationNumber: string; totalAmount: number }>>;
+    recordApproval: (payload: {
+      quotationId: string;
+      approvalStatus: 'APPROVED' | 'PARTIAL_APPROVAL' | 'REJECTED';
+      approvedAmount: number;
+      approvalMethod: string;
+      customerContactUsed: string;
+      notes?: string;
+    }) => Promise<IPCResponse<{ approvalId: string; status: string }>>;
+    listInvoices: (params?: { paymentStatus?: string; customerId?: string; search?: string }) => Promise<IPCResponse<Array<Record<string, unknown>>>>;
+    getInvoiceById: (params: { invoiceId: string }) => Promise<IPCResponse<{ invoice: Record<string, unknown>; items: Array<Record<string, unknown>>; payments: Array<Record<string, unknown>> }>>;
+    createInvoice: (payload: {
+      customerId: string;
+      serviceJobId?: string;
+      invoiceType?: string;
+      isGstInvoice?: boolean;
+      customerGstin?: string;
+      advanceAdjusted?: number;
+      discountAmount?: number;
+      items: Array<{
+        itemType: string;
+        itemRefId?: string;
+        description: string;
+        hsnSacCode?: string;
+        quantity: number;
+        unitPrice: number;
+        discount?: number;
+        taxRate?: number;
+      }>;
+    }) => Promise<IPCResponse<{ invoiceId: string; invoiceNumber: string; totalAmount: number; balanceDue: number }>>;
+    recordPayment: (payload: {
+      invoiceId: string;
+      amount: number;
+      paymentMode: string;
+      paymentType?: string;
+      transactionReference?: string;
+      markJobDelivered?: boolean;
+    }) => Promise<IPCResponse<{ receiptNumber: string; amountPaid: number; balanceDue: number; paymentStatus: string }>>;
+  };
+  datarecovery: {
+    list: () => Promise<IPCResponse<Array<Record<string, unknown>>>>;
+    intake: (payload: {
+      serviceJobId: string;
+      storageType: string;
+      capacityGb: number;
+      fileSystem?: string;
+      detectionStatus: string;
+      damageType: string;
+      recoveryComplexity: string;
+      targetDataDescription?: string;
+      destinationMediaType: string;
+      destinationMediaDetails?: string;
+      disclaimerAcknowledged: boolean;
+    }) => Promise<IPCResponse<{ dataRecoveryId: string }>>;
+    updateAssessment: (payload: {
+      dataRecoveryId: string;
+      recoveredSizeGb: number;
+      recoveryOutcome: string;
+      notes?: string;
+    }) => Promise<IPCResponse<{ status: string }>>;
+  };
+  refurb: {
+    list: (params?: { status?: string }) => Promise<IPCResponse<Array<Record<string, unknown>>>>;
+    create: (payload: {
+      productType: string;
+      brand: string;
+      modelName: string;
+      serialNumber?: string;
+      specs: string;
+      cosmeticGrade: string;
+      acquisitionCost: number;
+      refurbCostSpent: number;
+      sellingPrice: number;
+      warrantyMonths?: number;
+    }) => Promise<IPCResponse<{ productId: string; productCode: string }>>;
+    sell: (payload: {
+      productId: string;
+      customerId: string;
+      sellingPrice: number;
+      paymentMode: string;
+      warrantyMonths?: number;
+    }) => Promise<IPCResponse<{ saleNumber: string; productId: string }>>;
+  };
+  pcbuilder: {
+    list: () => Promise<IPCResponse<Array<Record<string, unknown>>>>;
+    create: (payload: {
+      customerId: string;
+      buildName: string;
+      targetBudget?: number;
+      assemblyLaborFee: number;
+      discountAmount?: number;
+      slots: Array<{
+        componentSlot: string;
+        inventoryItemId?: string;
+        itemName: string;
+        specs?: string;
+        quantity: number;
+        unitCost: number;
+        unitPrice: number;
+        taxRate?: number;
+      }>;
+    }) => Promise<IPCResponse<{ buildId: string; buildNumber: string; finalQuotedPrice: number }>>;
+  };
+  warranty: {
+    list: (params?: { search?: string; customerId?: string }) => Promise<IPCResponse<Array<Record<string, unknown>>>>;
+    createClaimJob: (payload: {
+      warrantyId: string;
+      reportedIssue: string;
+      priority?: string;
+      notes?: string;
+    }) => Promise<IPCResponse<{ claimJobId: string; claimJobNumber: string }>>;
+  };
+  communication: {
+    listTemplates: () => Promise<IPCResponse<Array<{ id: string; template_key: string; name: string; template_body: string }>>>;
+    listMessages: (params?: { status?: string; limit?: number }) => Promise<IPCResponse<Array<Record<string, unknown>>>>;
+    queueMessage: (payload: {
+      customerId: string;
+      serviceJobId?: string;
+      templateKey: string;
+      recipientPhone: string;
+      messagePayload: string;
+    }) => Promise<IPCResponse<{ messageId: string; dispatchStatus: string; waDeepLink: string }>>;
+    retryMessage: (params: { messageId: string }) => Promise<IPCResponse<{ status: string }>>;
+  };
+  reports: {
+    getOverview: () => Promise<IPCResponse<{
+      jobs: { total: number; active: number; intakePending: number; inRepair: number; readyForDelivery: number; delivered: number; unrepairable: number };
+      finances: { totalInvoices: number; totalBilled: number; totalCollected: number; totalOutstanding: number; totalGstCollected: number };
+      inventory: { totalSkus: number; totalUnitsInStock: number; stockValuation: number; lowStockAlerts: number; salvageDevicesCount: number; salvageAcquisitionsCost: number };
+      crm: { totalCustomers: number; activeWarranties: number; warrantyClaimsHandled: number };
+    }>>;
+    getTechnicianPerformance: () => Promise<IPCResponse<Array<Record<string, unknown>>>>;
+    getEquipmentFailureBreakdown: () => Promise<IPCResponse<Array<{ equipment_type: string; job_count: number }>>>;
+  };
 }
 
 declare global {

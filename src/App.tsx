@@ -9,11 +9,15 @@ import { JobList } from './components/jobs/JobList.tsx';
 import { JobDetail } from './components/jobs/JobDetail.tsx';
 import { NewJobWizard } from './components/jobs/NewJobWizard.tsx';
 import { TechnicianWorkspace } from './components/technician/TechnicianWorkspace.tsx';
+import { InventoryWorkspace } from './components/inventory/InventoryWorkspace.tsx';
+import { BillingWorkspace } from './components/billing/BillingWorkspace.tsx';
+import { SpecializedWorkspace } from './components/specialized/SpecializedWorkspace.tsx';
+import { WhatsAppCenter } from './components/communication/WhatsAppCenter.tsx';
+import { ReportsDashboard } from './components/reports/ReportsDashboard.tsx';
 import { GlobalSearchModal } from './components/search/GlobalSearchModal.tsx';
 import { LoginModal } from './components/auth/LoginModal.tsx';
 import { PinModal } from './components/auth/PinModal.tsx';
 import { useAuth } from './context/AuthContext.tsx';
-import { Clock } from 'lucide-react';
 
 export const App: React.FC = () => {
   const { isLoading } = useAuth();
@@ -205,42 +209,33 @@ export const App: React.FC = () => {
       );
     }
 
-    // 5. Phase 1 System Dashboard
-    if (activeTab === 'dashboard') {
-      return <Phase1Dashboard />;
+    // 5. Inventory & Salvage Hub
+    if (activeTab === 'inventory' || activeTab === 'salvage') {
+      return <InventoryWorkspace />;
     }
 
-    // 5. Subsequent Phases Workspace Placeholders
-    return (
-      <div style={{ padding: '30px', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
-        <div className="card" style={{ padding: '40px 24px' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              backgroundColor: 'var(--color-info-bg)',
-              color: 'var(--color-info)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px',
-            }}
-          >
-            <Clock size={24} />
-          </div>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>
-            Module Scheduled for Subsequent Phase
-          </h2>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '520px', margin: '0 auto 20px', lineHeight: 1.5 }}>
-            The relational database tables, Drizzle ORM schema, and IPC controllers for <strong>{activeTab.toUpperCase()}</strong> are fully compiled and active in the database engine. The full UI workflows will be constructed in their dedicated phases according to the approved roadmap.
-          </p>
-          <button className="btn btn-primary" onClick={() => setActiveTab('dashboard')}>
-            Return to Phase 1 System Dashboard
-          </button>
-        </div>
-      </div>
-    );
+    // 6. Billing & GST Invoices
+    if (activeTab === 'billing') {
+      return <BillingWorkspace />;
+    }
+
+    // 7. Specialized Modules: Data Recovery, Refurbished, PC Builder, Warranties
+    if (activeTab === 'data-recovery' || activeTab === 'refurb' || activeTab === 'pc-builder' || activeTab === 'warranties') {
+      return <SpecializedWorkspace />;
+    }
+
+    // 8. WhatsApp Communication
+    if (activeTab === 'whatsapp') {
+      return <WhatsAppCenter />;
+    }
+
+    // 9. Analytics & Business Intelligence
+    if (activeTab === 'reports') {
+      return <ReportsDashboard />;
+    }
+
+    // 10. Dashboard & System Settings
+    return <Phase1Dashboard />;
   };
 
   return (

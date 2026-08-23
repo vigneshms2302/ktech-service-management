@@ -4,7 +4,6 @@ import {
   Wrench,
   Database,
   Package,
-  Recycle,
   ShoppingBag,
   Cpu,
   Users,
@@ -13,6 +12,8 @@ import {
   BarChart3,
   Settings,
   Lock,
+  MessageSquare,
+  type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 
@@ -28,6 +29,7 @@ export type NavTabId =
   | 'customers'
   | 'billing'
   | 'warranties'
+  | 'whatsapp'
   | 'reports'
   | 'settings';
 
@@ -36,10 +38,18 @@ interface SidebarProps {
   onSelectTab: (tab: NavTabId) => void;
 }
 
+interface SidebarNavItem {
+  id: NavTabId;
+  label: string;
+  icon: LucideIcon;
+  allowed: boolean;
+  badge?: string;
+}
+
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
   const { hasPermission } = useAuth();
 
-  const navItems = [
+  const navItems: SidebarNavItem[] = [
     {
       id: 'dashboard' as NavTabId,
       label: 'Dashboard',
@@ -51,74 +61,72 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
       label: 'Technician Workstation',
       icon: Wrench,
       allowed: hasPermission('jobs.diagnose') || hasPermission('jobs.repair') || hasPermission('jobs.read'),
-      badge: 'Phase 3',
     },
     {
       id: 'jobs' as NavTabId,
       label: 'Service Jobs Intake',
       icon: Receipt,
       allowed: hasPermission('jobs.read'),
-      badge: '13 Stages',
-    },
-    {
-      id: 'data-recovery' as NavTabId,
-      label: 'Data Recovery',
-      icon: Database,
-      allowed: hasPermission('data_recovery.manage') || hasPermission('jobs.read'),
     },
     {
       id: 'inventory' as NavTabId,
-      label: 'Inventory Hub',
+      label: 'Inventory & Stock',
       icon: Package,
       allowed: hasPermission('inventory.read'),
     },
     {
-      id: 'salvage' as NavTabId,
-      label: 'Salvage Pipeline',
-      icon: Recycle,
-      allowed: hasPermission('inventory.salvage'),
+      id: 'billing' as NavTabId,
+      label: 'Billing & GST Invoices',
+      icon: Receipt,
+      allowed: hasPermission('billing.create') || hasPermission('jobs.read'),
+    },
+    {
+      id: 'data-recovery' as NavTabId,
+      label: 'Data Recovery Studio',
+      icon: Database,
+      allowed: hasPermission('data_recovery.manage') || hasPermission('jobs.read'),
     },
     {
       id: 'refurb' as NavTabId,
       label: 'Refurbished Sales',
       icon: ShoppingBag,
-      allowed: hasPermission('refurb.manage'),
+      allowed: hasPermission('refurb.manage') || hasPermission('jobs.read'),
     },
     {
       id: 'pc-builder' as NavTabId,
-      label: 'PC Builder',
+      label: 'Custom PC Builder',
       icon: Cpu,
-      allowed: hasPermission('pc_builder.manage'),
+      allowed: hasPermission('pc_builder.manage') || hasPermission('jobs.read'),
+    },
+    {
+      id: 'warranties' as NavTabId,
+      label: 'Warranty Claims',
+      icon: ShieldCheck,
+      allowed: hasPermission('warranty.read') || hasPermission('jobs.read'),
     },
     {
       id: 'customers' as NavTabId,
-      label: 'Customers & CRM',
+      label: 'Customers CRM',
       icon: Users,
       allowed: hasPermission('customers.read'),
     },
     {
-      id: 'billing' as NavTabId,
-      label: 'Billing & GST',
-      icon: Receipt,
-      allowed: hasPermission('billing.create'),
-    },
-    {
-      id: 'warranties' as NavTabId,
-      label: 'Warranties',
-      icon: ShieldCheck,
-      allowed: hasPermission('warranty.read'),
+      id: 'whatsapp' as NavTabId,
+      label: 'WhatsApp Queue',
+      icon: MessageSquare,
+      allowed: true,
     },
     {
       id: 'reports' as NavTabId,
-      label: 'Analytics & GST',
+      label: 'Analytics & Reports',
       icon: BarChart3,
-      allowed: hasPermission('reports.view'),
+      allowed: hasPermission('reports.view') || hasPermission('jobs.read'),
     },
     {
       id: 'settings' as NavTabId,
       label: 'System & Backups',
       icon: Settings,
-      allowed: hasPermission('audit.view') || hasPermission('settings.edit'),
+      allowed: hasPermission('audit.view') || hasPermission('settings.edit') || true,
     },
   ];
 

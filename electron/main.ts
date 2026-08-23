@@ -9,6 +9,11 @@ import { registerCustomerIpc } from './ipc/customerIpc.ts';
 import { registerDeviceIpc } from './ipc/deviceIpc.ts';
 import { registerJobIpc } from './ipc/jobIpc.ts';
 import { registerSearchIpc } from './ipc/searchIpc.ts';
+import { registerInventoryIpc } from './ipc/inventoryIpc.ts';
+import { registerBillingIpc } from './ipc/billingIpc.ts';
+import { registerSpecializedIpc } from './ipc/specializedIpc.ts';
+import { registerCommunicationIpc } from './ipc/communicationIpc.ts';
+import { registerReportsIpc } from './ipc/reportsIpc.ts';
 
 process.env.DIST = path.join(__dirname, '../dist');
 process.env.VITE_PUBLIC = app.isPackaged
@@ -42,6 +47,11 @@ async function bootstrap(): Promise<void> {
   registerDeviceIpc();
   registerJobIpc();
   registerSearchIpc();
+  registerInventoryIpc();
+  registerBillingIpc();
+  registerSpecializedIpc();
+  registerCommunicationIpc();
+  registerReportsIpc();
 }
 
 function createWindow(): void {
