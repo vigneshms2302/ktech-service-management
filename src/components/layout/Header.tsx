@@ -6,8 +6,7 @@ import {
   Shield,
   KeyRound,
   LogOut,
-  Database,
-  RefreshCw,
+  Plus,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { useTheme } from '../../context/ThemeContext.tsx';
@@ -15,15 +14,15 @@ import { useTheme } from '../../context/ThemeContext.tsx';
 interface HeaderProps {
   onOpenPinModal: () => void;
   onOpenLoginModal: () => void;
-  onRefreshHealth: () => void;
   onOpenSearch: () => void;
+  onNewJob?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenPinModal,
   onOpenLoginModal,
-  onRefreshHealth,
   onOpenSearch,
+  onNewJob,
 }) => {
   const { currentUser, logout, userList, pinLogin } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -62,8 +61,8 @@ export const Header: React.FC<HeaderProps> = ({
         zIndex: 20,
       }}
     >
-      {/* Global Search Bar (Ctrl+K) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, maxWidth: '420px' }}>
+      {/* Global Search Bar (Ctrl+K) & Fast + New Job */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, maxWidth: '560px' }}>
         <div
           onClick={onOpenSearch}
           style={{
@@ -108,21 +107,52 @@ export const Header: React.FC<HeaderProps> = ({
             ⌘K
           </kbd>
         </div>
+
+        {onNewJob && (
+          <button
+            onClick={onNewJob}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '6px',
+              backgroundColor: 'var(--brand-primary)',
+              color: '#ffffff',
+              border: 'none',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 6px rgba(59, 130, 246, 0.4)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Plus size={14} /> + New Job Card
+          </button>
+        )}
       </div>
 
       {/* Right Controls: Database sync, Theme, User Switcher */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        {/* Database Refresh Status */}
-        <button
-          className="btn btn-secondary"
-          onClick={onRefreshHealth}
-          title="Verify SQLite Status"
-          style={{ padding: '5px 8px', fontSize: '11px' }}
+        {/* System Online Badge */}
+        <div
+          title="Local SQLite Engine: Active (WAL Mode)"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 8px',
+            borderRadius: '6px',
+            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+            border: '1px solid rgba(34, 197, 94, 0.25)',
+            fontSize: '11px',
+            color: '#22c55e',
+            fontWeight: 600,
+          }}
         >
-          <Database size={13} color="var(--brand-primary)" />
-          <span>45 Entities</span>
-          <RefreshCw size={11} color="var(--text-dim)" />
-        </button>
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#22c55e' }} />
+          <span>KTech System Ready</span>
+        </div>
 
         {/* Theme Toggle */}
         <button

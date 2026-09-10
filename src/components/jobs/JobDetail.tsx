@@ -18,6 +18,9 @@ import {
   Eye,
   Camera,
   AlertTriangle,
+  MessageSquare,
+  Printer,
+  Receipt,
 } from 'lucide-react';
 import type { JobDetailData } from '../../types/index.ts';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
@@ -78,15 +81,24 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
   // Repair Plan form states
   const [planServiceName, setPlanServiceName] = useState('');
-  const [planLaborCharge, setPlanLaborCharge] = useState<number>(0);
+  const [planLaborChargeStr, setPlanLaborChargeStr] = useState('');
+  const planLaborCharge = Number(planLaborChargeStr) || 0;
 
   // Required Part form states
   const [partName, setPartName] = useState('');
   const [partSerialNumber, setPartSerialNumber] = useState('');
   const [partQuantity, setPartQuantity] = useState(1);
-  const [partCost, setPartCost] = useState<number>(0);
-  const [partPrice, setPartPrice] = useState<number>(0);
+  const [partCostStr, setPartCostStr] = useState('');
+  const [partPriceStr, setPartPriceStr] = useState('');
   const [partWarrantyMonths] = useState(3);
+  const partCost = Number(partCostStr) || 0;
+  const partPrice = Number(partPriceStr) || 0;
+
+  // Modals & Action States
+  const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false);
+  const [showPrintSlipModal, setShowPrintSlipModal] = useState(false);
+  const [isCreatingQuotation, setIsCreatingQuotation] = useState(false);
+  const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
 
   // Repair Activity form states
   const [actTitle, setActTitle] = useState('');
@@ -255,7 +267,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
       if (res.success) {
         setPlanServiceName('');
-        setPlanLaborCharge(0);
+        setPlanLaborChargeStr('');
         fetchJob();
       } else {
         alert(res.error || 'Failed to add repair plan action');
@@ -293,8 +305,8 @@ export const JobDetail: React.FC<JobDetailProps> = ({
         setPartName('');
         setPartSerialNumber('');
         setPartQuantity(1);
-        setPartCost(0);
-        setPartPrice(0);
+        setPartCostStr('');
+        setPartPriceStr('');
         fetchJob();
       } else {
         alert(res.error || 'Failed to add required part');
@@ -310,6 +322,180 @@ export const JobDetail: React.FC<JobDetailProps> = ({
     if (res.success) {
       fetchJob();
     }
+  };
+
+  const handleCreateQuotation = async () => {
+    if (!data) return;
+    setIsCreatingQuotation(true);
+    try {
+      if (!window.electronAPI?.billing?.createQuotation) {
+        alert('Billing API not available');
+        return;
+      }
+
+      const items: Array<{
+        itemType: 'PART' | 'LABOR';
+        inventoryItemId?: string;
+        description: string;
+        quantity: number;
+        unitPrice: number;
+        taxRate: number;
+      }> = [];
+
+      if (data.repairPlans && data.repairPlans.length > 0) {
+        data.repairPlans.forEach((p) => {
+          items.push({
+            itemType: 'LABOR',
+            description: p.serviceName,
+            quantity: 1,
+            unitPrice: p.laborCharge,
+            taxRate: p.taxRate || 18,
+          });
+        });
+      }
+
+      if (data.requiredParts && data.requiredParts.length > 0) {
+        data.requiredParts.forEach((part) => {
+          items.push({
+            itemType: 'PART',
+            inventoryItemId: part.inventoryItemId || undefined,
+            description: part.partName + (part.serialNumber ? ` (S/N: ${part.serialNumber})` : ''),
+            quantity: part.quantity || 1,
+            unitPrice: part.unitSellingPrice || 0,
+            taxRate: part.taxRate || 18,
+          });
+        });
+      }
+
+      if (items.length === 0) {
+        items.push({
+          itemType: 'LABOR',
+          description: `${data.job.deviceBrand} ${data.job.deviceModel} - Service & Repair Charges`,
+          quantity: 1,
+          unitPrice: data.job.estimatedCost > 0 ? data.job.estimatedCost : 500,
+          taxRate: 18,
+        });
+      }
+
+      const res = await window.electronAPI.billing.createQuotation({
+        jobId: data.job.id,
+        items,
+      });
+
+      if (res.success) {
+        alert('Quotation Estimate generated successfully! Ticket updated to Awaiting Approval.');
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to create quotation');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    } finally {
+      setIsCreatingQuotation(false);
+    }
+  };
+
+  const handleCreateInvoice = async () => {
+    if (!data) return;
+    setIsCreatingInvoice(true);
+    try {
+      if (!window.electronAPI?.billing?.createInvoice) {
+        alert('Billing API not available');
+        return;
+      }
+
+      const items: Array<{
+        itemType: 'PART' | 'LABOR';
+        itemRefId?: string;
+        description: string;
+        quantity: number;
+        unitPrice: number;
+        taxRate: number;
+      }> = [];
+
+      if (data.repairPlans && data.repairPlans.length > 0) {
+        data.repairPlans.forEach((p) => {
+          items.push({
+            itemType: 'LABOR',
+            description: p.serviceName,
+            quantity: 1,
+            unitPrice: p.laborCharge,
+            taxRate: p.taxRate || 18,
+          });
+        });
+      }
+
+      if (data.requiredParts && data.requiredParts.length > 0) {
+        data.requiredParts.forEach((part) => {
+          items.push({
+            itemType: 'PART',
+            itemRefId: part.inventoryItemId || undefined,
+            description: part.partName + (part.serialNumber ? ` (S/N: ${part.serialNumber})` : ''),
+            quantity: part.quantity || 1,
+            unitPrice: part.unitSellingPrice || 0,
+            taxRate: part.taxRate || 18,
+          });
+        });
+      }
+
+      if (items.length === 0) {
+        items.push({
+          itemType: 'LABOR',
+          description: `${data.job.deviceBrand} ${data.job.deviceModel} - Service & Labor Charges`,
+          quantity: 1,
+          unitPrice: data.job.estimatedCost > 0 ? data.job.estimatedCost : 500,
+          taxRate: 18,
+        });
+      }
+
+      const res = await window.electronAPI.billing.createInvoice({
+        customerId: data.job.customerId,
+        serviceJobId: data.job.id,
+        invoiceType: 'SERVICE_REPAIR',
+        isGstInvoice: true,
+        advanceAdjusted: data.job.advanceDeposit || 0,
+        items,
+      });
+
+      if (res.success) {
+        alert('Tax Invoice generated successfully! Device is now Ready for Delivery.');
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to generate invoice');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    } finally {
+      setIsCreatingInvoice(false);
+    }
+  };
+
+  const handleSendWhatsApp = (type: 'intake' | 'estimate' | 'ready' | 'delivery') => {
+    if (!data) return;
+    const j = data.job;
+    const cleanPhone = (j.customerPhone || '').replace(/[^0-9]/g, '');
+    if (!cleanPhone) {
+      alert('No valid customer phone number found.');
+      return;
+    }
+    const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+
+    let msg = '';
+    if (type === 'intake') {
+      msg = `*KTECH COMPUTERS - SERVICE INTAKE RECEIPT* 🛠️\n\nDear *${j.customerName}*,\nWe have received your device for repair service.\n\n📋 *Job Number:* ${j.jobNumber}\n💻 *Device:* ${j.deviceBrand} ${j.deviceModel}\n🔍 *Reported Issue:* ${j.reportedIssue}\n💰 *Est. Cost:* ₹${j.estimatedCost.toFixed(2)}\n💵 *Advance Paid:* ₹${j.advanceDeposit.toFixed(2)}\n\nOur certified technician is inspecting your device. You will receive diagnosis updates shortly!\n\n📍 *KTech Computers*, 1st Floor, Gandhi Road\n📞 Support: +91 98400 12345`;
+    } else if (type === 'estimate') {
+      const diagText = data.diagnoses?.[0]?.rootCauseAnalysis || 'Inspection and circuit test completed';
+      msg = `*KTECH COMPUTERS - ESTIMATE APPROVAL REQUIRED* 📋\n\nDear *${j.customerName}*,\nDiagnosis is complete for your *${j.deviceBrand} ${j.deviceModel}* (Job: ${j.jobNumber}).\n\n🔍 *Diagnosis:* ${diagText}\n💰 *Total Estimate:* ₹${j.estimatedCost.toFixed(2)}\n\nPlease reply *APPROVE* to authorize repair work or call us if you have any questions.\n\n📞 +91 98400 12345 | KTech Computers`;
+    } else if (type === 'ready') {
+      const balance = Math.max(0, j.estimatedCost - j.advanceDeposit);
+      msg = `*KTECH COMPUTERS - DEVICE READY FOR PICKUP* ✅\n\nDear *${j.customerName}*,\nGreat news! Your *${j.deviceBrand} ${j.deviceModel}* (Job: ${j.jobNumber}) is fully repaired and bench-tested.\n\n💰 *Total Bill:* ₹${j.estimatedCost.toFixed(2)}\n💵 *Advance Deducted:* ₹${j.advanceDeposit.toFixed(2)}\n💳 *Balance Payable:* ₹${balance.toFixed(2)}\n\n⏰ Pickup Hours: 10:00 AM - 9:00 PM\n📍 KTech Computers, 1st Floor, Gandhi Road\nSee you soon!`;
+    } else if (type === 'delivery') {
+      msg = `*KTECH COMPUTERS - THANK YOU & WARRANTY* 🤝\n\nDear *${j.customerName}*,\nThank you for collecting your *${j.deviceBrand} ${j.deviceModel}* (Job: ${j.jobNumber}).\n\nWe appreciate your business! All repairs are backed by our service warranty.\nNeed any assistance in future? Contact us anytime at +91 98400 12345.`;
+    }
+
+    const url = `https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+    setShowWhatsAppMenu(false);
   };
 
   const handleAddRepairActivity = async (e: React.FormEvent) => {
@@ -510,7 +696,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', height: '100%', overflowY: 'auto' }}>
       {/* Top Breadcrumb & Status Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button
             onClick={onBack}
@@ -531,7 +717,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           </button>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, fontFamily: 'var(--font-mono)', color: '#f8fafc' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, fontFamily: 'var(--font-mono)', color: 'var(--text-main)' }}>
                 {job.jobNumber}
               </h2>
               <span
@@ -697,6 +883,74 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                 </>
               )}
 
+              {/* Step: Quotation / Estimate generation */}
+              {(job.currentStatus === 'DIAGNOSIS_COMPLETED' || job.currentStatus === 'WAITING_FOR_APPROVAL') && (
+                <button
+                  onClick={handleCreateQuotation}
+                  disabled={isCreatingQuotation}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    backgroundColor: '#8b5cf6',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <FileText size={13} /> {isCreatingQuotation ? 'Generating...' : 'Create Estimate'}
+                </button>
+              )}
+
+              {/* Step: Tax Invoice generation */}
+              {(job.currentStatus === 'REPAIR_COMPLETED' || job.currentStatus === 'UNDER_REPAIR') && (
+                <button
+                  onClick={handleCreateInvoice}
+                  disabled={isCreatingInvoice}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    backgroundColor: 'var(--brand-primary)',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <Receipt size={13} /> {isCreatingInvoice ? 'Billing...' : 'Generate Tax Bill'}
+                </button>
+              )}
+
+              {/* Step: Handover & Deliver */}
+              {job.currentStatus === 'READY_FOR_DELIVERY' && (
+                <button
+                  onClick={() => handleStatusTransition('DELIVERED', 'Device handed over to customer and final payment settled')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    backgroundColor: '#10b981',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <CheckCircle2 size={13} /> Deliver to Customer
+                </button>
+              )}
+
               {job.currentStatus !== 'UNREPAIRABLE' && job.currentStatus !== 'DELIVERED' && (
                 <button
                   onClick={handleMarkUnrepairable}
@@ -715,6 +969,149 @@ export const JobDetail: React.FC<JobDetailProps> = ({
               )}
             </div>
           )}
+
+          {/* 1-Click Integrated WhatsApp Menu */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                backgroundColor: '#25D366',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <MessageSquare size={13} /> 📲 WhatsApp
+            </button>
+            {showWhatsAppMenu && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '6px',
+                  backgroundColor: 'var(--bg-card)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                  padding: '6px',
+                  zIndex: 50,
+                  minWidth: '220px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
+                <button
+                  onClick={() => handleSendWhatsApp('intake')}
+                  style={{
+                    padding: '8px 12px',
+                    textAlign: 'left',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-main)',
+                    fontSize: '12px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  📄 Admission / Intake Slip
+                </button>
+                <button
+                  onClick={() => handleSendWhatsApp('estimate')}
+                  style={{
+                    padding: '8px 12px',
+                    textAlign: 'left',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-main)',
+                    fontSize: '12px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  📋 Estimate Approval Request
+                </button>
+                <button
+                  onClick={() => handleSendWhatsApp('ready')}
+                  style={{
+                    padding: '8px 12px',
+                    textAlign: 'left',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-main)',
+                    fontSize: '12px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  ✅ Ready for Pickup Alert
+                </button>
+                <button
+                  onClick={() => handleSendWhatsApp('delivery')}
+                  style={{
+                    padding: '8px 12px',
+                    textAlign: 'left',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-main)',
+                    fontSize: '12px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  🤝 Delivery & Warranty Receipt
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Print Slip Button */}
+          <button
+            onClick={() => setShowPrintSlipModal(true)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              backgroundColor: 'var(--bg-surface)',
+              color: 'var(--text-main)',
+              border: '1px solid var(--border-color)',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <Printer size={13} /> Print Slip
+          </button>
         </div>
       </div>
 
@@ -739,6 +1136,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: '12px',
+          flexShrink: 0,
         }}
       >
         {/* Customer & Equipment Card */}
@@ -812,8 +1210,8 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           style={{
             padding: '14px',
             borderRadius: '8px',
-            backgroundColor: 'rgba(234, 179, 8, 0.05)',
-            border: '1.5px solid rgba(234, 179, 8, 0.3)',
+            backgroundColor: 'rgba(234, 179, 8, 0.08)',
+            border: '1.5px solid rgba(234, 179, 8, 0.35)',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
@@ -822,36 +1220,38 @@ export const JobDetail: React.FC<JobDetailProps> = ({
         >
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#facc15', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-warning)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Customer Reported Complaint (Admission)
               </span>
-              <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                 [Immutable Customer Record]
               </span>
             </div>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#f8fafc', marginTop: '6px', lineHeight: 1.4 }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', marginTop: '6px', lineHeight: 1.4 }}>
               "{job.reportedIssue}"
             </div>
           </div>
 
           {/* Admission accessories and condition tags */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
             {accessoriesList.map((acc) => (
               <span
                 key={acc}
                 style={{
                   fontSize: '10px',
-                  padding: '2px 6px',
+                  padding: '2px 8px',
                   borderRadius: '4px',
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                  color: 'var(--text-muted)',
+                  backgroundColor: 'var(--bg-surface)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-main)',
+                  fontWeight: 500,
                 }}
               >
                 + {acc}
               </span>
             ))}
             {job.physicalConditionNotes && (
-              <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                 Cond: {job.physicalConditionNotes}
               </span>
             )}
@@ -862,10 +1262,20 @@ export const JobDetail: React.FC<JobDetailProps> = ({
       {/* Technician Tabs Navigation */}
       <div
         style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 15,
+          backgroundColor: 'var(--bg-app)',
+          paddingTop: '6px',
+          paddingBottom: '2px',
           display: 'flex',
+          alignItems: 'center',
           borderBottom: '1px solid var(--border-color)',
-          gap: '4px',
+          gap: '6px',
           overflowX: 'auto',
+          scrollbarWidth: 'thin',
+          flexShrink: 0,
+          minHeight: '44px',
         }}
       >
         {[
@@ -888,8 +1298,9 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                 padding: '8px 14px',
                 border: 'none',
                 borderBottom: isActive ? '2px solid var(--brand-primary)' : '2px solid transparent',
-                backgroundColor: 'transparent',
-                color: isActive ? '#ffffff' : 'var(--text-muted)',
+                backgroundColor: isActive ? 'rgba(2, 132, 199, 0.1)' : 'transparent',
+                borderRadius: '6px 6px 0 0',
+                color: isActive ? 'var(--brand-primary)' : 'var(--text-muted)',
                 fontWeight: isActive ? 700 : 500,
                 fontSize: '12px',
                 cursor: 'pointer',
@@ -897,18 +1308,22 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                 alignItems: 'center',
                 gap: '6px',
                 whiteSpace: 'nowrap',
+                transition: 'all 0.12s ease',
+                flexShrink: 0,
               }}
             >
               <Icon size={14} color={isActive ? 'var(--brand-primary)' : 'var(--text-dim)'} />
-              {tab.label}
+              <span>{tab.label}</span>
               {tab.badge && (
                 <span
                   style={{
                     fontSize: '10px',
-                    padding: '1px 5px',
+                    fontWeight: 700,
+                    padding: '1px 6px',
                     borderRadius: '10px',
                     backgroundColor: isActive ? 'var(--brand-primary)' : 'var(--bg-surface)',
                     color: isActive ? '#ffffff' : 'var(--text-dim)',
+                    border: isActive ? 'none' : '1px solid var(--border-color)',
                   }}
                 >
                   {tab.badge}
@@ -921,7 +1336,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
       {/* TAB 1: WORKSTATION OVERVIEW */}
       {activeTab === 'overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px', flexShrink: 0 }}>
           {/* Diagnostic Findings Card */}
           <div style={{ padding: '16px', borderRadius: '8px', backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -1025,7 +1440,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
       {/* TAB 2: ADAPTIVE TECHNICAL INSPECTION */}
       {activeTab === 'inspection' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <h3 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
@@ -1191,7 +1606,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
       {/* TAB 3: DIAGNOSIS & ROOT CAUSE */}
       {activeTab === 'diagnosis' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <h3 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
@@ -1297,7 +1712,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
       {/* TAB 4: REPAIR PLAN & REQUIRED PARTS */}
       {activeTab === 'repair' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px', flexShrink: 0 }}>
           {/* Planned Services / Actions */}
           <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
             <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 10px 0', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1313,11 +1728,12 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                 style={{ flex: 1, padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
               />
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 placeholder="Labor ₹"
-                value={planLaborCharge || ''}
-                onChange={(e) => setPlanLaborCharge(Number(e.target.value))}
-                style={{ width: '80px', padding: '7px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
+                value={planLaborChargeStr}
+                onChange={(e) => setPlanLaborChargeStr(e.target.value.replace(/[^0-9.]/g, ''))}
+                style={{ width: '90px', padding: '7px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
               />
               <button
                 type="submit"
@@ -1364,24 +1780,26 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                   type="number"
                   placeholder="Qty"
                   value={partQuantity}
-                  onChange={(e) => setPartQuantity(Number(e.target.value))}
+                  onChange={(e) => setPartQuantity(Math.max(1, Number(e.target.value)))}
                   style={{ width: '60px', padding: '7px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
               </div>
 
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
-                  type="number"
-                  placeholder="Est. Cost Price ₹"
-                  value={partCost || ''}
-                  onChange={(e) => setPartCost(Number(e.target.value))}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Cost Price ₹"
+                  value={partCostStr}
+                  onChange={(e) => setPartCostStr(e.target.value.replace(/[^0-9.]/g, ''))}
                   style={{ flex: 1, padding: '7px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
                 <input
-                  type="number"
-                  placeholder="Est. Sell Price ₹"
-                  value={partPrice || ''}
-                  onChange={(e) => setPartPrice(Number(e.target.value))}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Selling Price ₹"
+                  value={partPriceStr}
+                  onChange={(e) => setPartPriceStr(e.target.value.replace(/[^0-9.]/g, ''))}
                   style={{ flex: 1, padding: '7px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
                 <button
@@ -1414,12 +1832,40 @@ export const JobDetail: React.FC<JobDetailProps> = ({
               ))}
             </div>
           </div>
+
+          {/* Quick Conversion Banner */}
+          <div style={{ gridColumn: '1 / -1', padding: '14px 18px', borderRadius: '8px', backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-primary)' }}>
+                Ready to Quote or Bill this Service?
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                All repair actions & parts above will automatically become billable items with GST calculations.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={handleCreateQuotation}
+                disabled={isCreatingQuotation}
+                style={{ padding: '8px 16px', borderRadius: '6px', backgroundColor: '#8b5cf6', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <FileText size={14} /> {isCreatingQuotation ? 'Generating...' : '1-Click Estimate'}
+              </button>
+              <button
+                onClick={handleCreateInvoice}
+                disabled={isCreatingInvoice}
+                style={{ padding: '8px 16px', borderRadius: '6px', backgroundColor: 'var(--brand-primary)', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Receipt size={14} /> {isCreatingInvoice ? 'Billing...' : '1-Click Tax Invoice'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {/* TAB 5: REPAIR ACTIVITIES LOG */}
       {activeTab === 'activities' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', flexShrink: 0 }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Activity size={16} color="var(--color-success)" /> Live Repair Activities Log
           </h3>
@@ -1482,7 +1928,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
       {/* TAB 6: PHOTOS & ATTACHMENTS */}
       {activeTab === 'attachments' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Camera size={16} color="var(--brand-primary)" /> Technical Photos & Microscope Captures
@@ -1543,7 +1989,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
       {/* TAB 7: CHRONOLOGICAL UNIFIED TIMELINE */}
       {activeTab === 'timeline' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', flexShrink: 0 }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Clock size={16} color="var(--brand-primary)" /> Unified Chronological Ticket Stream
           </h3>
@@ -1581,7 +2027,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
       {/* TAB 8: STAFF NOTES */}
       {activeTab === 'notes' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', flexShrink: 0 }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
             Staff Notes & Remarks
           </h3>
@@ -1641,6 +2087,188 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Printable Job Intake Counter Slip Modal */}
+      {showPrintSlipModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              color: '#0f172a',
+              borderRadius: '12px',
+              maxWidth: '680px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '28px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              position: 'relative',
+            }}
+          >
+            {/* Modal Controls (Hidden in Print) */}
+            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ fontWeight: 700, fontSize: '14px', color: '#334155' }}>Counter Intake Slip Preview</div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => window.print()}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <Printer size={15} /> Print Now
+                </button>
+                <button
+                  onClick={() => setShowPrintSlipModal(false)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    backgroundColor: '#f1f5f9',
+                    color: '#475569',
+                    border: '1px solid #cbd5e1',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Document Sheet */}
+            <div id="printable-intake-slip" style={{ fontFamily: 'system-ui, sans-serif' }}>
+              {/* Slip Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #0f172a', paddingBottom: '12px' }}>
+                <div>
+                  <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 900, letterSpacing: '-0.5px', color: '#0f172a' }}>
+                    KTECH COMPUTERS
+                  </h1>
+                  <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>
+                    Chip-Level Laptop, Desktop & Electronic Repair Lab
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#64748b' }}>
+                    1st Floor, Gandhi Road, Main Market | Phone: +91 98400 12345
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '18px', fontWeight: 900, fontFamily: 'monospace', color: '#2563eb' }}>
+                    {job.jobNumber}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#64748b' }}>
+                    Date: {new Date(job.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid Details */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px', fontSize: '12px' }}>
+                {/* Customer Box */}
+                <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontWeight: 800, fontSize: '11px', textTransform: 'uppercase', color: '#64748b', marginBottom: '4px' }}>
+                    Customer Details
+                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{job.customerName}</div>
+                  <div style={{ color: '#334155' }}>Phone: {job.customerPhone}</div>
+                  {job.customerSecondaryPhone && <div style={{ color: '#64748b', fontSize: '11px' }}>Alt: {job.customerSecondaryPhone}</div>}
+                  <div style={{ color: '#64748b', fontSize: '11px' }}>Customer Code: {job.customerCode}</div>
+                </div>
+
+                {/* Device Box */}
+                <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontWeight: 800, fontSize: '11px', textTransform: 'uppercase', color: '#64748b', marginBottom: '4px' }}>
+                    Device Information
+                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                    {job.deviceBrand} {job.deviceModel}
+                  </div>
+                  <div style={{ color: '#334155' }}>Type: {job.equipmentType.replace(/_/g, ' ')}</div>
+                  {job.deviceSerial && <div style={{ color: '#64748b', fontSize: '11px' }}>S/N: {job.deviceSerial}</div>}
+                  <div style={{ color: '#64748b', fontSize: '11px' }}>Passcode: {job.hasPasscode ? 'Provided in Vault' : 'None / Pattern'}</div>
+                </div>
+              </div>
+
+              {/* Problem Description */}
+              <div style={{ marginTop: '14px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '12px' }}>
+                <div style={{ fontWeight: 800, fontSize: '11px', textTransform: 'uppercase', color: '#64748b', marginBottom: '4px' }}>
+                  Customer Complaint / Reported Defect
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 600 }}>{job.reportedIssue}</div>
+                {job.physicalConditionNotes && (
+                  <div style={{ color: '#64748b', fontSize: '11px', marginTop: '4px' }}>
+                    Physical Condition: {job.physicalConditionNotes}
+                  </div>
+                )}
+                {accessoriesList.length > 0 && (
+                  <div style={{ color: '#64748b', fontSize: '11px', marginTop: '2px' }}>
+                    Accessories Received: {accessoriesList.join(', ')}
+                  </div>
+                )}
+              </div>
+
+              {/* Financial Breakdown */}
+              <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', textAlign: 'center' }}>
+                <div style={{ padding: '10px', backgroundColor: '#eff6ff', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+                  <div style={{ fontSize: '10px', color: '#1e40af', fontWeight: 700, textTransform: 'uppercase' }}>Est. Cost</div>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#1e3a8a', marginTop: '2px' }}>
+                    ₹{job.estimatedCost.toFixed(2)}
+                  </div>
+                </div>
+                <div style={{ padding: '10px', backgroundColor: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
+                  <div style={{ fontSize: '10px', color: '#166534', fontWeight: 700, textTransform: 'uppercase' }}>Advance Paid</div>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#14532d', marginTop: '2px' }}>
+                    ₹{job.advanceDeposit.toFixed(2)}
+                  </div>
+                </div>
+                <div style={{ padding: '10px', backgroundColor: '#fff7ed', borderRadius: '6px', border: '1px solid #fed7aa' }}>
+                  <div style={{ fontSize: '10px', color: '#9a3412', fontWeight: 700, textTransform: 'uppercase' }}>Est. Balance</div>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#7c2d12', marginTop: '2px' }}>
+                    ₹{Math.max(0, job.estimatedCost - job.advanceDeposit).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Terms & Conditions */}
+              <div style={{ marginTop: '16px', padding: '8px 12px', borderLeft: '3px solid #cbd5e1', fontSize: '10px', color: '#64748b', lineHeight: 1.4 }}>
+                1. Devices unclaimed within 30 days of completion notification may be disposed to recover repair costs.<br />
+                2. Customers are advised to maintain backup of data. KTech is not responsible for data loss during hardware repair.<br />
+                3. Physical damages during unboxing or pre-existing liquid corrosion are customer risks.<br />
+                4. Production of this original intake slip is compulsory for device collection.
+              </div>
+
+              {/* Signatures */}
+              <div style={{ marginTop: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: '10px' }}>
+                <div style={{ textAlign: 'center', width: '200px', borderTop: '1px dashed #94a3b8', paddingTop: '6px', fontSize: '11px', color: '#475569' }}>
+                  Customer Signature
+                </div>
+                <div style={{ textAlign: 'center', width: '200px', borderTop: '1px dashed #94a3b8', paddingTop: '6px', fontSize: '11px', color: '#475569' }}>
+                  Authorized Signatory (KTech)
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

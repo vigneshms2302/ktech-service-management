@@ -7,7 +7,8 @@ import {
   Wrench,
   Plus,
   ArrowLeft,
-  Clock,
+  Receipt,
+  MessageSquare,
 } from 'lucide-react';
 import type { CustomerProfileData } from '../../types/index.ts';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
@@ -30,8 +31,9 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
   onAddEquipment,
 }) => {
   const [profile, setProfile] = useState<CustomerProfileData | null>(null);
+  const [customerInvoices, setCustomerInvoices] = useState<Array<Record<string, unknown>>>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'devices' | 'jobs' | 'invoices' | 'warranties'>('devices');
+  const [activeTab, setActiveTab] = useState<'devices' | 'jobs' | 'invoices'>('devices');
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -41,6 +43,12 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           const res = await window.electronAPI.customers.getById({ customerId });
           if (res.success && res.data) {
             setProfile(res.data);
+          }
+        }
+        if (window.electronAPI?.billing?.listInvoices) {
+          const invRes = await window.electronAPI.billing.listInvoices({ customerId });
+          if (invRes.success && invRes.data) {
+            setCustomerInvoices(invRes.data);
           }
         }
       } finally {
@@ -197,6 +205,36 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '14px' }}>
             <button
+              onClick={() => {
+                const cleanPhone = (customer.primaryPhone || '').replace(/[^0-9]/g, '');
+                if (!cleanPhone) {
+                  alert('No customer phone number found.');
+                  return;
+                }
+                const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+                const msg = `Hello ${customer.fullName}, greetings from KTech Computers!`;
+                window.open(`https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`, '_blank');
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                backgroundColor: '#25D366',
+                color: '#ffffff',
+                border: 'none',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                fontWeight: 700,
+                fontSize: '12px',
+                cursor: 'pointer',
+                width: '100%',
+              }}
+            >
+              <MessageSquare size={14} />
+              <span>Chat on WhatsApp</span>
+            </button>
+            <button
               className="btn btn-primary"
               onClick={() => onNewJobForCustomer(customer.id)}
               style={{ width: '100%' }}
@@ -226,7 +264,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
             borderBottom: activeTab === 'devices' ? '2px solid var(--brand-primary)' : '2px solid transparent',
             background: 'transparent',
             color: activeTab === 'devices' ? 'var(--brand-primary)' : 'var(--text-muted)',
-            fontWeight: activeTab === 'devices' ? 600 : 500,
+            fontWeight: activeTab === 'devices' ? 700 : 500,
             cursor: 'pointer',
             fontSize: '12px',
           }}
@@ -242,7 +280,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
             borderBottom: activeTab === 'jobs' ? '2px solid var(--brand-primary)' : '2px solid transparent',
             background: 'transparent',
             color: activeTab === 'jobs' ? 'var(--brand-primary)' : 'var(--text-muted)',
-            fontWeight: activeTab === 'jobs' ? 600 : 500,
+            fontWeight: activeTab === 'jobs' ? 700 : 500,
             cursor: 'pointer',
             fontSize: '12px',
           }}
@@ -250,7 +288,6 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           Service Job History ({jobs.length})
         </button>
 
-        {/* Extension Points for Future Phases */}
         <button
           onClick={() => setActiveTab('invoices')}
           style={{
@@ -258,29 +295,13 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
             border: 'none',
             borderBottom: activeTab === 'invoices' ? '2px solid var(--brand-primary)' : '2px solid transparent',
             background: 'transparent',
-            color: activeTab === 'invoices' ? 'var(--brand-primary)' : 'var(--text-dim)',
-            fontWeight: 500,
+            color: activeTab === 'invoices' ? 'var(--brand-primary)' : 'var(--text-muted)',
+            fontWeight: activeTab === 'invoices' ? 700 : 500,
             cursor: 'pointer',
             fontSize: '12px',
           }}
         >
-          Invoices & GST (Phase 4)
-        </button>
-
-        <button
-          onClick={() => setActiveTab('warranties')}
-          style={{
-            padding: '8px 16px',
-            border: 'none',
-            borderBottom: activeTab === 'warranties' ? '2px solid var(--brand-primary)' : '2px solid transparent',
-            background: 'transparent',
-            color: activeTab === 'warranties' ? 'var(--brand-primary)' : 'var(--text-dim)',
-            fontWeight: 500,
-            cursor: 'pointer',
-            fontSize: '12px',
-          }}
-        >
-          Warranties (Phase 5)
+          Invoices & Billing ({customerInvoices.length})
         </button>
       </div>
 
@@ -422,16 +443,84 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
         </div>
       )}
 
-      {/* Tab 3 & 4: Extension Point Placeholders */}
-      {(activeTab === 'invoices' || activeTab === 'warranties') && (
-        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
-          <Clock size={32} color="var(--brand-primary)" style={{ margin: '0 auto 10px' }} />
-          <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>
-            {activeTab === 'invoices' ? 'Invoices, Billing & GST Subsystem' : 'Warranty Lifecycle & Claims Subsystem'}
-          </h3>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', maxWidth: '480px', margin: '0 auto' }}>
-            This customer profile tab is architected and ready. Its complete billing, receipt, and warranty processing workflows will activate in dedicated subsequent phases according to the approved roadmap.
-          </p>
+      {/* Tab 3: Customer Invoices & Bills */}
+      {activeTab === 'invoices' && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          {customerInvoices.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '36px' }}>
+              <Receipt size={32} color="var(--text-dim)" style={{ margin: '0 auto 10px' }} />
+              <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No invoices or bills generated for this customer yet.</p>
+            </div>
+          ) : (
+            <table className="ktech-table">
+              <thead>
+                <tr>
+                  <th>Invoice #</th>
+                  <th>Job #</th>
+                  <th>Date</th>
+                  <th>Total Amount</th>
+                  <th>Amount Paid</th>
+                  <th>Balance Due</th>
+                  <th>Payment Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customerInvoices.map((inv) => (
+                  <tr key={inv.id as string}>
+                    <td>
+                      <strong style={{ color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
+                        {inv.invoice_number as string}
+                      </strong>
+                    </td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
+                      {(inv.job_number as string) || '-'}
+                    </td>
+                    <td style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      {new Date(inv.created_at as string).toLocaleDateString('en-IN')}
+                    </td>
+                    <td style={{ fontWeight: 700 }}>₹{Number(inv.total_amount || 0).toFixed(2)}</td>
+                    <td style={{ color: 'var(--color-success)' }}>₹{Number(inv.amount_paid || 0).toFixed(2)}</td>
+                    <td style={{ color: Number(inv.balance_due || 0) > 0 ? '#f87171' : 'var(--text-dim)', fontWeight: 600 }}>
+                      ₹{Number(inv.balance_due || 0).toFixed(2)}
+                    </td>
+                    <td>
+                      <span className={`badge ${inv.payment_status === 'PAID' ? 'badge-success' : inv.payment_status === 'PARTIALLY_PAID' ? 'badge-warning' : 'badge-danger'}`}>
+                        {(inv.payment_status as string).replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => {
+                          const cleanPhone = (customer.primaryPhone || '').replace(/[^0-9]/g, '');
+                          if (cleanPhone) {
+                            const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+                            const msg = `*KTECH COMPUTERS - TAX INVOICE* 🧾\n\nDear *${customer.fullName}*,\nYour invoice *${inv.invoice_number}* is ready.\n\n💰 *Total:* ₹${Number(inv.total_amount || 0).toFixed(2)}\n💵 *Paid:* ₹${Number(inv.amount_paid || 0).toFixed(2)}\n💳 *Balance:* ₹${Number(inv.balance_due || 0).toFixed(2)}\n\nThank you for choosing KTech Computers!\nSupport: +91 98400 12345`;
+                            window.open(`https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`, '_blank');
+                          }
+                        }}
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                          border: '1px solid rgba(34, 197, 94, 0.4)',
+                          color: '#22c55e',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        📲 WhatsApp
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
     </div>

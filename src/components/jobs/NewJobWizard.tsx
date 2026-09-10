@@ -9,6 +9,9 @@ import {
   ArrowRight,
   ArrowLeft,
   Camera,
+  MessageSquare,
+  Printer,
+  X,
 } from 'lucide-react';
 import type { EquipmentType } from '../../types/index.ts';
 import { CustomerModal } from '../customers/CustomerModal.tsx';
@@ -92,8 +95,8 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
   const [physicalConditionNotes, setPhysicalConditionNotes] = useState('');
   const [selectedAccessories, setSelectedAccessories] = useState<string[]>(['Charger / Power Adapter']);
   const [customAccessory, setCustomAccessory] = useState('');
-  const [estimatedCost, setEstimatedCost] = useState<number>(0);
-  const [advanceDeposit, setAdvanceDeposit] = useState<number>(0);
+  const [estimatedCostStr, setEstimatedCostStr] = useState<string>('');
+  const [advanceDepositStr, setAdvanceDepositStr] = useState<string>('');
   const [promisedDeliveryDate, setPromisedDeliveryDate] = useState<string>('');
   const [initialNote, setInitialNote] = useState('');
 
@@ -104,6 +107,10 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdJob, setCreatedJob] = useState<{ id: string; jobNumber: string; warning?: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showPrintIntakeModal, setShowPrintIntakeModal] = useState(false);
+
+  const estimatedCost = Number(estimatedCostStr) || 0;
+  const advanceDeposit = Number(advanceDepositStr) || 0;
 
   // Auto load initial customer if provided
   useEffect(() => {
@@ -256,6 +263,24 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSendWhatsAppSlip = () => {
+    if (!selectedCustomer || !createdJob || !selectedDevice) return;
+    const cleanPhone = selectedCustomer.primaryPhone.replace(/[^0-9]/g, '');
+    const waPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone.slice(-10)}`;
+    const text = `🔧 *KTech Computers - Service Admission Receipt*\n\n` +
+      `Hello *${selectedCustomer.fullName}*,\n` +
+      `We have admitted your *${selectedDevice.brand} ${selectedDevice.modelName}* for service.\n\n` +
+      `📋 *Job Card No:* ${createdJob.jobNumber}\n` +
+      `⚠️ *Reported Problem:* ${reportedIssue}\n` +
+      `📦 *Accessories Received:* ${selectedAccessories.length > 0 ? selectedAccessories.join(', ') : 'Unit only'}\n` +
+      `💰 *Estimated Cost:* ₹${estimatedCost.toFixed(2)}\n` +
+      `💵 *Advance Received:* ₹${advanceDeposit.toFixed(2)}\n` +
+      (promisedDeliveryDate ? `📅 *Promised Delivery:* ${promisedDeliveryDate}\n` : '') +
+      `\n📍 *KTech Computers* | 📞 Helpline: +91 98765 43210\n` +
+      `We will notify you once diagnostic inspection is complete!`;
+    window.open(`https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(text)}`, '_blank');
   };
 
   return (
@@ -785,11 +810,11 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                   ESTIMATED CHARGE (₹)
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   className="input-field"
-                  value={estimatedCost}
-                  onChange={(e) => setEstimatedCost(Number(e.target.value))}
-                  placeholder="0.00"
+                  value={estimatedCostStr}
+                  onChange={(e) => setEstimatedCostStr(e.target.value.replace(/[^0-9.]/g, ''))}
+                  placeholder="e.g. 1500"
                 />
               </div>
 
@@ -798,11 +823,11 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                   ADVANCE DEPOSIT (₹)
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   className="input-field"
-                  value={advanceDeposit}
-                  onChange={(e) => setAdvanceDeposit(Number(e.target.value))}
-                  placeholder="0.00"
+                  value={advanceDepositStr}
+                  onChange={(e) => setAdvanceDepositStr(e.target.value.replace(/[^0-9.]/g, ''))}
+                  placeholder="e.g. 500"
                 />
               </div>
 
@@ -985,7 +1010,29 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
+              <button
+                type="button"
+                className="btn btn-whatsapp"
+                onClick={handleSendWhatsAppSlip}
+                style={{ padding: '8px 16px', fontSize: '12px', fontWeight: 700 }}
+              >
+                <MessageSquare size={15} />
+                <span>Send WhatsApp Intake Slip</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowPrintIntakeModal(true)}
+                style={{ padding: '8px 14px', fontSize: '12px' }}
+              >
+                <Printer size={15} />
+                <span>Print Job Card</span>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
               <button
                 className="btn btn-secondary"
                 onClick={() => {
@@ -995,6 +1042,8 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                   setReportedIssue('');
                   setPhotos([]);
                   setCreatedJob(null);
+                  setEstimatedCostStr('');
+                  setAdvanceDepositStr('');
                 }}
               >
                 Intake Another Device
@@ -1004,7 +1053,7 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                 onClick={() => onJobCreated(createdJob.id)}
                 style={{ padding: '8px 20px' }}
               >
-                Open Job Detail Screen →
+                Open Job Workstation →
               </button>
             </div>
           </div>
@@ -1040,6 +1089,122 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
             if (dev) handleSelectDevice(dev);
           }}
         />
+      )}
+
+      {/* Printable Job Intake Counter Slip Modal */}
+      {showPrintIntakeModal && createdJob && selectedCustomer && selectedDevice && (
+        <div className="modal-backdrop" onClick={() => setShowPrintIntakeModal(false)}>
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              color: '#0f172a',
+              borderRadius: '8px',
+              maxWidth: '650px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '24px',
+              boxShadow: 'var(--shadow-lg)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+              <span style={{ fontWeight: 700, fontSize: '14px' }}>Counter Intake Slip Preview</span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => window.print()}
+                  style={{ padding: '6px 14px', fontSize: '12px' }}
+                >
+                  <Printer size={14} /> Print Slip
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowPrintIntakeModal(false)}
+                  style={{ padding: '6px 10px', fontSize: '12px' }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Area */}
+            <div style={{ padding: '10px 0', fontFamily: 'var(--font-sans)', fontSize: '12px', lineHeight: 1.5 }}>
+              {/* Slip Header */}
+              <div style={{ textAlign: 'center', borderBottom: '2px solid #0f172a', paddingBottom: '10px', marginBottom: '12px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>KTECH COMPUTERS</h2>
+                <div style={{ fontSize: '11px', color: '#475569' }}>
+                  Cross-Cut Road, Gandhipuram, Coimbatore - 641012 • 📞 +91 98765 43210
+                </div>
+                <div style={{ fontSize: '12px', fontWeight: 700, marginTop: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  Equipment Service Admission Slip
+                </div>
+              </div>
+
+              {/* Job ID & Date Bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', backgroundColor: '#f1f5f9', borderRadius: '4px', marginBottom: '12px', fontWeight: 700 }}>
+                <span>JOB CARD #: {createdJob.jobNumber}</span>
+                <span>Date: {new Date().toLocaleDateString('en-IN')} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+
+              {/* Customer & Equipment 2-col info */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '12px' }}>
+                <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px' }}>
+                  <div style={{ fontWeight: 700, fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Customer Details</div>
+                  <div style={{ fontWeight: 700, fontSize: '13px' }}>{selectedCustomer.fullName}</div>
+                  <div>Phone: {formatPhoneDisplay(selectedCustomer.primaryPhone)}</div>
+                  <div style={{ fontSize: '11px', color: '#64748b' }}>Code: {selectedCustomer.customerCode}</div>
+                </div>
+
+                <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px' }}>
+                  <div style={{ fontWeight: 700, fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Device Information</div>
+                  <div style={{ fontWeight: 700, fontSize: '13px' }}>{selectedDevice.brand} {selectedDevice.modelName}</div>
+                  <div>Type: {selectedDevice.equipmentType}</div>
+                  <div>Serial #: {selectedDevice.serialNumber || 'N/A'}</div>
+                </div>
+              </div>
+
+              {/* Problem & Condition */}
+              <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px', marginBottom: '12px' }}>
+                <div style={{ fontWeight: 700, marginBottom: '2px' }}>Reported Problem:</div>
+                <div style={{ fontStyle: 'italic', marginBottom: '8px' }}>"{reportedIssue}"</div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', fontSize: '11px', borderTop: '1px dashed #cbd5e1', paddingTop: '6px' }}>
+                  <span><strong>Accessories:</strong> {selectedAccessories.length > 0 ? selectedAccessories.join(', ') : 'Unit Only'}</span>
+                  <span><strong>Initial Power:</strong> {powerStatus.replace(/_/g, ' ')}</span>
+                  <span><strong>Display:</strong> {displayStatus.replace(/_/g, ' ')}</span>
+                </div>
+              </div>
+
+              {/* Financials Strip */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px', marginBottom: '14px' }}>
+                <div>
+                  <span style={{ color: '#64748b' }}>Estimated Service Cost: </span>
+                  <strong>₹{estimatedCost.toFixed(2)}</strong>
+                </div>
+                <div>
+                  <span style={{ color: '#64748b' }}>Advance Deposit Paid: </span>
+                  <strong>₹{advanceDeposit.toFixed(2)}</strong>
+                </div>
+              </div>
+
+              {/* Terms & Conditions */}
+              <div style={{ fontSize: '9px', color: '#64748b', borderTop: '1px solid #e2e8f0', paddingTop: '8px', marginBottom: '24px' }}>
+                <strong>TERMS:</strong> 1. Customers must produce this original admission slip to collect the device. 2. KTech is not responsible for existing software/data loss; customer acknowledges prior data backup responsibility. 3. Devices unclaimed after 30 days of completion will be subject to nominal storage/disposal.
+              </div>
+
+              {/* Signatures */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '20px' }}>
+                <div style={{ textAlign: 'center', width: '180px', borderTop: '1px solid #0f172a', paddingTop: '4px', fontSize: '11px' }}>
+                  Customer Signature
+                </div>
+                <div style={{ textAlign: 'center', width: '180px', borderTop: '1px solid #0f172a', paddingTop: '4px', fontSize: '11px' }}>
+                  For KTech Computers
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar, type NavTabId } from './components/layout/Sidebar.tsx';
 import { Header } from './components/layout/Header.tsx';
-import { Phase1Dashboard } from './components/dashboard/Phase1Dashboard.tsx';
+import { ExecutiveDashboard } from './components/dashboard/ExecutiveDashboard.tsx';
 import { CustomerList } from './components/customers/CustomerList.tsx';
 import { CustomerProfile } from './components/customers/CustomerProfile.tsx';
 import { EquipmentProfile } from './components/equipment/EquipmentProfile.tsx';
@@ -17,6 +17,7 @@ import { ReportsDashboard } from './components/reports/ReportsDashboard.tsx';
 import { GlobalSearchModal } from './components/search/GlobalSearchModal.tsx';
 import { LoginModal } from './components/auth/LoginModal.tsx';
 import { PinModal } from './components/auth/PinModal.tsx';
+import { ShopSettingsModal } from './components/settings/ShopSettingsModal.tsx';
 import { useAuth } from './context/AuthContext.tsx';
 
 export const App: React.FC = () => {
@@ -35,6 +36,7 @@ export const App: React.FC = () => {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isPinOpen, setIsPinOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Global Keyboard Shortcuts
   useEffect(() => {
@@ -234,8 +236,23 @@ export const App: React.FC = () => {
       return <ReportsDashboard />;
     }
 
-    // 10. Dashboard & System Settings
-    return <Phase1Dashboard />;
+    // 10. Executive Dashboard & Overview
+    return (
+      <ExecutiveDashboard
+        onNewJob={() => handleOpenNewJob()}
+        onOpenJob={(jobId) => {
+          setSelectedJobId(jobId);
+          setActiveTab('jobs');
+        }}
+        onNavigateTab={(tab) => {
+          if (tab === 'settings') {
+            setIsSettingsOpen(true);
+          } else {
+            setActiveTab(tab);
+          }
+        }}
+      />
+    );
   };
 
   return (
@@ -244,6 +261,10 @@ export const App: React.FC = () => {
       <Sidebar
         activeTab={activeTab}
         onSelectTab={(tab) => {
+          if (tab === 'settings') {
+            setIsSettingsOpen(true);
+            return;
+          }
           setSelectedCustomerId(null);
           setSelectedDeviceId(null);
           setSelectedJobId(null);
@@ -257,8 +278,8 @@ export const App: React.FC = () => {
         <Header
           onOpenPinModal={() => setIsPinOpen(true)}
           onOpenLoginModal={() => setIsLoginOpen(true)}
-          onRefreshHealth={() => {}}
           onOpenSearch={() => setIsSearchOpen(true)}
+          onNewJob={() => handleOpenNewJob()}
         />
 
         <main style={{ flex: 1, overflow: 'hidden', backgroundColor: 'var(--bg-app)', position: 'relative' }}>
@@ -296,6 +317,9 @@ export const App: React.FC = () => {
       {/* Authentication Modals */}
       <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
       <PinModal isOpen={isPinOpen} onClose={() => setIsPinOpen(false)} />
+
+      {/* Shop Settings & Data Backup Modal */}
+      <ShopSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 };

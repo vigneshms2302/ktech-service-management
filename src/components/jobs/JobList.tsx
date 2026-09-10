@@ -52,10 +52,15 @@ export const JobList: React.FC<JobListProps> = ({ onSelectJob, onNewJob }) => {
   const getStatusBadge = (st: string) => {
     switch (st) {
       case 'RECEIVED': return 'badge-info';
-      case 'WAITING_FOR_INSPECTION': return 'badge-warning';
+      case 'WAITING_FOR_INSPECTION':
       case 'UNDER_INSPECTION': return 'badge-warning';
-      case 'DIAGNOSIS_COMPLETED': return 'badge-info';
+      case 'DIAGNOSIS_COMPLETED':
+      case 'WAITING_FOR_APPROVAL': return 'badge-warning';
+      case 'APPROVED_IN_PROGRESS':
+      case 'UNDER_REPAIR':
+      case 'WAITING_FOR_PARTS': return 'badge-info';
       case 'REPAIR_COMPLETED':
+      case 'READY_FOR_DELIVERY':
       case 'DELIVERED': return 'badge-success';
       case 'UNREPAIRABLE':
       case 'CANCELLED': return 'badge-danger';
@@ -140,23 +145,32 @@ export const JobList: React.FC<JobListProps> = ({ onSelectJob, onNewJob }) => {
         </div>
 
         {/* Status Filter Pills */}
-        <div style={{ display: 'flex', gap: '4px', backgroundColor: 'var(--bg-surface)', padding: '3px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-          {['ALL', 'RECEIVED', 'WAITING_FOR_INSPECTION', 'UNDER_INSPECTION'].map((st) => (
+        <div style={{ display: 'flex', gap: '4px', backgroundColor: 'var(--bg-surface)', padding: '3px', borderRadius: '6px', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
+          {[
+            { key: 'ALL', label: 'All Jobs' },
+            { key: 'RECEIVED', label: 'Intake' },
+            { key: 'UNDER_INSPECTION', label: 'Inspecting' },
+            { key: 'WAITING_FOR_APPROVAL', label: 'Awaiting Approval' },
+            { key: 'UNDER_REPAIR', label: 'In Repair' },
+            { key: 'READY_FOR_DELIVERY', label: 'Ready for Pickup' },
+            { key: 'DELIVERED', label: 'Delivered' },
+          ].map((st) => (
             <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
+              key={st.key}
+              onClick={() => setStatusFilter(st.key)}
               style={{
-                padding: '4px 8px',
+                padding: '4px 10px',
                 borderRadius: '4px',
                 border: 'none',
-                backgroundColor: statusFilter === st ? 'var(--brand-primary)' : 'transparent',
-                color: statusFilter === st ? '#ffffff' : 'var(--text-muted)',
+                backgroundColor: statusFilter === st.key ? 'var(--brand-primary)' : 'transparent',
+                color: statusFilter === st.key ? '#ffffff' : 'var(--text-muted)',
                 fontSize: '11px',
-                fontWeight: statusFilter === st ? 600 : 400,
+                fontWeight: statusFilter === st.key ? 700 : 500,
                 cursor: 'pointer',
+                transition: 'all 0.12s ease',
               }}
             >
-              {st.replace(/_/g, ' ')}
+              {st.label}
             </button>
           ))}
         </div>

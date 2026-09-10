@@ -207,7 +207,7 @@ export const SpecializedWorkspace: React.FC = () => {
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', height: '100%', overflowY: 'auto' }}>
       {/* Sub Tabs Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', gap: '10px', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: '4px' }}>
+        <div style={{ display: 'flex', gap: '6px' }}>
           {[
             { id: 'datarecovery', label: 'Data Recovery Studio', icon: HardDrive, badge: `${dataRecoveryJobs.length}` },
             { id: 'refurb', label: 'Refurbished Products & Sales', icon: Monitor, badge: `${refurbProducts.length}` },
@@ -221,17 +221,19 @@ export const SpecializedWorkspace: React.FC = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 style={{
-                  padding: '8px 14px',
+                  padding: '8px 16px',
                   border: 'none',
                   borderBottom: isActive ? '2px solid var(--brand-primary)' : '2px solid transparent',
-                  backgroundColor: 'transparent',
-                  color: isActive ? '#ffffff' : 'var(--text-muted)',
+                  backgroundColor: isActive ? 'rgba(2, 132, 199, 0.1)' : 'transparent',
+                  borderRadius: '6px 6px 0 0',
+                  color: isActive ? 'var(--brand-primary)' : 'var(--text-muted)',
                   fontWeight: isActive ? 700 : 500,
                   fontSize: '13px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
+                  transition: 'all 0.12s ease',
                 }}
               >
                 <Icon size={15} color={isActive ? 'var(--brand-primary)' : 'var(--text-dim)'} />
@@ -244,6 +246,7 @@ export const SpecializedWorkspace: React.FC = () => {
                     color: isActive ? 'var(--brand-primary)' : 'var(--text-dim)',
                     fontSize: '10px',
                     fontWeight: 700,
+                    border: isActive ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid var(--border-color)',
                   }}
                 >
                   {tab.badge}

@@ -312,7 +312,7 @@ export const InventoryWorkspace: React.FC = () => {
 
       {/* Sub Tabs Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', gap: '10px', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: '4px' }}>
+        <div style={{ display: 'flex', gap: '6px' }}>
           {[
             { id: 'items', label: 'Stock Master', icon: Boxes },
             { id: 'salvage', label: 'Salvage & Dismantling Pipeline', icon: Wrench, badge: `${salvageList.length}` },
@@ -325,23 +325,35 @@ export const InventoryWorkspace: React.FC = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 style={{
-                  padding: '8px 14px',
+                  padding: '8px 16px',
                   border: 'none',
                   borderBottom: isActive ? '2px solid var(--brand-primary)' : '2px solid transparent',
-                  backgroundColor: 'transparent',
-                  color: isActive ? '#ffffff' : 'var(--text-muted)',
+                  backgroundColor: isActive ? 'rgba(2, 132, 199, 0.1)' : 'transparent',
+                  borderRadius: '6px 6px 0 0',
+                  color: isActive ? 'var(--brand-primary)' : 'var(--text-muted)',
                   fontWeight: isActive ? 700 : 500,
                   fontSize: '13px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
+                  transition: 'all 0.12s ease',
                 }}
               >
                 <Icon size={14} color={isActive ? 'var(--brand-primary)' : 'var(--text-dim)'} />
-                {tab.label}
+                <span>{tab.label}</span>
                 {tab.badge && (
-                  <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '10px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-dim)' }}>
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      padding: '1px 6px',
+                      borderRadius: '10px',
+                      backgroundColor: isActive ? 'var(--brand-primary)' : 'var(--bg-surface)',
+                      color: isActive ? '#ffffff' : 'var(--text-dim)',
+                      border: isActive ? 'none' : '1px solid var(--border-color)',
+                    }}
+                  >
                     {tab.badge}
                   </span>
                 )}

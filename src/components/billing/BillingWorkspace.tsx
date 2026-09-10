@@ -25,7 +25,8 @@ export const BillingWorkspace: React.FC = () => {
   // Collect Payment Modal
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedInvoiceForPay, setSelectedInvoiceForPay] = useState<Record<string, unknown> | null>(null);
-  const [payAmount, setPayAmount] = useState<number>(0);
+  const [payAmountStr, setPayAmountStr] = useState('');
+  const payAmount = Number(payAmountStr) || 0;
   const [payMode, setPayMode] = useState<'CASH' | 'UPI_QR' | 'CARD' | 'NET_BANKING' | 'CHEQUE'>('UPI_QR');
   const [payRef, setPayRef] = useState('');
   const [markDelivered, setMarkDelivered] = useState(true);
@@ -34,7 +35,8 @@ export const BillingWorkspace: React.FC = () => {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [selectedQuotationForApproval, setSelectedQuotationForApproval] = useState<Record<string, unknown> | null>(null);
   const [approvalStatus, setApprovalStatus] = useState<'APPROVED' | 'PARTIAL_APPROVAL' | 'REJECTED'>('APPROVED');
-  const [approvedAmount, setApprovedAmount] = useState<number>(0);
+  const [approvedAmountStr, setApprovedAmountStr] = useState('');
+  const approvedAmount = Number(approvedAmountStr) || 0;
   const [approvalMethod, setApprovalMethod] = useState<'WHATSAPP' | 'PHONE_CALL' | 'IN_PERSON' | 'EMAIL'>('WHATSAPP');
   const [approvalContact, setApprovalContact] = useState('');
   const [approvalNotes, setApprovalNotes] = useState('');
@@ -91,10 +93,25 @@ export const BillingWorkspace: React.FC = () => {
       });
 
       if (res.success && res.data) {
-        alert(`Payment of ₹${res.data.amountPaid} recorded successfully! Receipt: ${res.data.receiptNumber}`);
+        const receiptNumber = res.data.receiptNumber;
+        const amt = res.data.amountPaid;
+        const custName = (selectedInvoiceForPay.customer_name as string) || 'Customer';
+        const custPhone = (selectedInvoiceForPay.customer_phone as string) || '';
+        const invNum = (selectedInvoiceForPay.invoice_number as string) || '';
+        const remaining = Math.max(0, Number(selectedInvoiceForPay.balance_due || 0) - amt);
+
         setShowPaymentModal(false);
         setSelectedInvoiceForPay(null);
         fetchBillingData();
+
+        if (window.confirm(`Payment of ₹${amt} recorded successfully! (Receipt: ${receiptNumber})\n\nWould you like to send a 1-click WhatsApp payment receipt to ${custName}?`)) {
+          const cleanPhone = custPhone.replace(/[^0-9]/g, '');
+          if (cleanPhone) {
+            const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+            const msg = `*KTECH COMPUTERS - PAYMENT RECEIPT* 🧾\n\nDear *${custName}*,\nWe have received your payment of *₹${Number(amt).toFixed(2)}* via ${payMode}.\n\n📋 *Receipt No:* ${receiptNumber}\n📄 *Invoice No:* ${invNum}\n💳 *Remaining Balance:* ₹${remaining.toFixed(2)}\n\nThank you for choosing KTech Computers!\nSupport: +91 98400 12345`;
+            window.open(`https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`, '_blank');
+          }
+        }
       } else {
         alert(res.error || 'Failed to record payment');
       }
@@ -171,21 +188,23 @@ export const BillingWorkspace: React.FC = () => {
 
       {/* Tabs Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', gap: '10px' }}>
-        <div style={{ display: 'flex', gap: '4px' }}>
+        <div style={{ display: 'flex', gap: '6px' }}>
           <button
             onClick={() => setActiveTab('invoices')}
             style={{
-              padding: '8px 14px',
+              padding: '8px 16px',
               border: 'none',
               borderBottom: activeTab === 'invoices' ? '2px solid var(--brand-primary)' : '2px solid transparent',
-              backgroundColor: 'transparent',
-              color: activeTab === 'invoices' ? '#ffffff' : 'var(--text-muted)',
+              backgroundColor: activeTab === 'invoices' ? 'rgba(2, 132, 199, 0.1)' : 'transparent',
+              borderRadius: '6px 6px 0 0',
+              color: activeTab === 'invoices' ? 'var(--brand-primary)' : 'var(--text-muted)',
               fontWeight: activeTab === 'invoices' ? 700 : 500,
               fontSize: '13px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
+              transition: 'all 0.12s ease',
             }}
           >
             <FileText size={14} color={activeTab === 'invoices' ? 'var(--brand-primary)' : 'var(--text-dim)'} />
@@ -195,17 +214,19 @@ export const BillingWorkspace: React.FC = () => {
           <button
             onClick={() => setActiveTab('quotations')}
             style={{
-              padding: '8px 14px',
+              padding: '8px 16px',
               border: 'none',
               borderBottom: activeTab === 'quotations' ? '2px solid var(--brand-primary)' : '2px solid transparent',
-              backgroundColor: 'transparent',
-              color: activeTab === 'quotations' ? '#ffffff' : 'var(--text-muted)',
+              backgroundColor: activeTab === 'quotations' ? 'rgba(2, 132, 199, 0.1)' : 'transparent',
+              borderRadius: '6px 6px 0 0',
+              color: activeTab === 'quotations' ? 'var(--brand-primary)' : 'var(--text-muted)',
               fontWeight: activeTab === 'quotations' ? 700 : 500,
               fontSize: '13px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
+              transition: 'all 0.12s ease',
             }}
           >
             <Send size={14} color={activeTab === 'quotations' ? 'var(--brand-primary)' : 'var(--text-dim)'} />
@@ -342,11 +363,39 @@ export const BillingWorkspace: React.FC = () => {
                             <Printer size={12} /> Print A4
                           </button>
 
+                          <button
+                            onClick={() => {
+                              const cleanPhone = String(inv.customer_phone || '').replace(/[^0-9]/g, '');
+                              if (!cleanPhone) {
+                                alert('No customer phone number found.');
+                                return;
+                              }
+                              const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+                              const msg = `*KTECH COMPUTERS - TAX INVOICE* 🧾\n\nDear *${inv.customer_name}*,\nYour invoice *${inv.invoice_number}* has been issued.\n\n💰 *Total Amount:* ₹${Number(inv.total_amount || 0).toFixed(2)}\n💵 *Paid:* ₹${Number(inv.amount_paid || 0).toFixed(2)}\n💳 *Balance Due:* ₹${Number(inv.balance_due || 0).toFixed(2)}\n\nThank you for choosing KTech Computers!\n📞 +91 98400 12345`;
+                              window.open(`https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`, '_blank');
+                            }}
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              border: '1px solid #22c55e',
+                              backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                              color: '#22c55e',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                          >
+                            📲 WhatsApp
+                          </button>
+
                           {Number(inv.balance_due || 0) > 0 && (
                             <button
                               onClick={() => {
                                 setSelectedInvoiceForPay(inv);
-                                setPayAmount(Number(inv.balance_due || 0));
+                                setPayAmountStr(String(inv.balance_due || ''));
                                 setShowPaymentModal(true);
                               }}
                               style={{
@@ -428,28 +477,58 @@ export const BillingWorkspace: React.FC = () => {
                       </span>
                     </td>
                     <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                      {q.status === 'PENDING' && (
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                         <button
                           onClick={() => {
-                            setSelectedQuotationForApproval(q);
-                            setApprovedAmount(Number(q.total_amount || 0));
-                            setApprovalContact((q.customer_phone as string) || '');
-                            setShowApprovalModal(true);
+                            const cleanPhone = String(q.customer_phone || '').replace(/[^0-9]/g, '');
+                            if (!cleanPhone) {
+                              alert('No customer phone number found.');
+                              return;
+                            }
+                            const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+                            const msg = `*KTECH COMPUTERS - SERVICE ESTIMATE* 📋\n\nDear *${q.customer_name}*,\nHere is the estimate for your service *${q.job_number || ''}*:\n\n📄 *Estimate No:* ${q.quotation_number}\n💰 *Estimated Total:* ₹${Number(q.total_amount || 0).toFixed(2)}\n\nPlease reply *APPROVE* to authorize repair work.\n📞 +91 98400 12345 | KTech Computers`;
+                            window.open(`https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`, '_blank');
                           }}
                           style={{
-                            padding: '4px 10px',
+                            padding: '4px 8px',
                             borderRadius: '4px',
-                            backgroundColor: 'var(--brand-primary)',
-                            color: '#ffffff',
-                            border: 'none',
+                            border: '1px solid #22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            color: '#22c55e',
                             fontSize: '11px',
                             fontWeight: 600,
                             cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
                           }}
                         >
-                          Record Approval
+                          📲 WhatsApp
                         </button>
-                      )}
+
+                        {q.status === 'PENDING' && (
+                          <button
+                            onClick={() => {
+                              setSelectedQuotationForApproval(q);
+                              setApprovedAmountStr(String(q.total_amount || ''));
+                              setApprovalContact((q.customer_phone as string) || '');
+                              setShowApprovalModal(true);
+                            }}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '4px',
+                              backgroundColor: 'var(--brand-primary)',
+                              color: '#ffffff',
+                              border: 'none',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Approve
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -474,10 +553,11 @@ export const BillingWorkspace: React.FC = () => {
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Payment Amount ₹ *</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
-                  value={payAmount}
-                  onChange={(e) => setPayAmount(Number(e.target.value))}
+                  value={payAmountStr}
+                  onChange={(e) => setPayAmountStr(e.target.value.replace(/[^0-9.]/g, ''))}
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '13px', fontWeight: 700 }}
                 />
               </div>
@@ -565,10 +645,11 @@ export const BillingWorkspace: React.FC = () => {
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Approved Amount ₹</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
-                  value={approvedAmount}
-                  onChange={(e) => setApprovedAmount(Number(e.target.value))}
+                  value={approvedAmountStr}
+                  onChange={(e) => setApprovedAmountStr(e.target.value.replace(/[^0-9.]/g, ''))}
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
               </div>

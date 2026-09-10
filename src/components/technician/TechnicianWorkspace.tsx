@@ -509,7 +509,7 @@ export const TechnicianWorkspace: React.FC<TechnicianWorkspaceProps> = ({ onOpen
                   {/* Top Row: Job ID, Badges, Dates, Quick Action */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '13px', color: '#f8fafc' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '13px', color: 'var(--text-main)' }}>
                         {job.jobNumber}
                       </span>
                       <span
