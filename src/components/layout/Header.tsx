@@ -31,15 +31,15 @@ export const Header: React.FC<HeaderProps> = ({
   const getRoleBadgeColor = (roleId?: string) => {
     switch (roleId) {
       case 'ROLE_OWNER':
-        return { bg: 'rgba(168, 85, 247, 0.15)', text: '#c084fc', border: '#a855f7' };
+        return { bg: 'var(--color-purple-bg)', text: 'var(--color-purple)', border: 'var(--color-purple-border)' };
       case 'ROLE_RECEPTION':
-        return { bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa', border: '#3b82f6' };
+        return { bg: 'var(--color-info-bg)', text: 'var(--color-info)', border: 'var(--color-info)' };
       case 'ROLE_TECHNICIAN':
-        return { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: '#f59e0b' };
+        return { bg: 'var(--color-warning-bg)', text: 'var(--color-warning)', border: 'var(--color-warning)' };
       case 'ROLE_ACCOUNTS':
-        return { bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399', border: '#10b981' };
+        return { bg: 'var(--color-success-bg)', text: 'var(--color-success)', border: 'var(--color-success)' };
       default:
-        return { bg: 'rgba(148, 163, 184, 0.15)', text: '#94a3b8', border: '#64748b' };
+        return { bg: 'var(--bg-surface-hover)', text: 'var(--text-muted)', border: 'var(--border-color)' };
     }
   };
 
@@ -136,22 +136,22 @@ export const Header: React.FC<HeaderProps> = ({
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         {/* System Online Badge */}
         <div
-          title="Local SQLite Engine: Active (WAL Mode)"
+          title="K-Connect SQLite Engine: Active (WAL Mode)"
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
             padding: '4px 8px',
             borderRadius: '6px',
-            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-            border: '1px solid rgba(34, 197, 94, 0.25)',
+            backgroundColor: 'var(--color-success-bg)',
+            border: '1px solid var(--border-color)',
             fontSize: '11px',
-            color: '#22c55e',
+            color: 'var(--color-success)',
             fontWeight: 600,
           }}
         >
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#22c55e' }} />
-          <span>KTech System Ready</span>
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-success)' }} />
+          <span>K-Connect Ready</span>
         </div>
 
         {/* Theme Toggle */}

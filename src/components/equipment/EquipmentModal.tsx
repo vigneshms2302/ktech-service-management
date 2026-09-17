@@ -1,27 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Laptop, X, AlertTriangle, Lock } from 'lucide-react';
-import type { EquipmentType, DeviceDuplicateCandidate } from '../../types/index.ts';
+import { Laptop, Monitor, Smartphone, Wrench, X, AlertTriangle, Lock } from 'lucide-react';
+import type { DeviceDuplicateCandidate } from '../../types/index.ts';
 
-const APPROVED_EQUIPMENT_TYPES: Array<{ value: EquipmentType; label: string }> = [
-  { value: 'LAPTOP', label: 'Laptop' },
-  { value: 'DESKTOP', label: 'Desktop PC' },
-  { value: 'CUSTOM_PC', label: 'Custom Gaming / Workstation PC' },
-  { value: 'MONITOR', label: 'Monitor / Display' },
-  { value: 'PRINTER', label: 'Printer' },
-  { value: 'PLAYSTATION', label: 'PlayStation (PS4 / PS5)' },
-  { value: 'XBOX', label: 'Xbox Console' },
-  { value: 'GAMING_CONSOLE', label: 'Other Gaming Console (Switch / Steam Deck)' },
-  { value: 'HDD', label: 'Hard Disk Drive (HDD)' },
-  { value: 'SSD', label: 'Solid State Drive (SSD SATA)' },
-  { value: 'M_2', label: 'M.2 NVMe SSD' },
-  { value: 'PEN_DRIVE', label: 'Pen Drive / USB Storage' },
-  { value: 'SMPS', label: 'SMPS / Power Unit' },
-  { value: 'POWER_SUPPLY', label: 'Industrial Power Supply' },
-  { value: 'EV_CHARGER', label: 'EV Charger / Control Box' },
-  { value: 'ADAPTER', label: 'Power Adapter / Charger' },
-  { value: 'MOTHERBOARD', label: 'Motherboard (Board-Level Service)' },
-  { value: 'OTHER', label: 'Other Electronic Equipment' },
+type SimpleCategory = 'LAPTOP' | 'COMPUTER' | 'MOBILE' | 'OTHER';
+
+const SIMPLE_CATEGORIES: Array<{ id: SimpleCategory; label: string; icon: React.ReactNode; desc: string }> = [
+  { id: 'LAPTOP', label: 'Laptop', icon: <Laptop size={20} />, desc: 'MacBook, Windows Laptop, Chromebook' },
+  { id: 'COMPUTER', label: 'Computer', icon: <Monitor size={20} />, desc: 'Desktop PC, Assembled, All-in-One' },
+  { id: 'MOBILE', label: 'Mobile', icon: <Smartphone size={20} />, desc: 'iPhone, Android Smartphone, Feature Phone' },
+  { id: 'OTHER', label: 'Other', icon: <Wrench size={20} />, desc: 'Printer, Tablet, TV, Gaming Console, etc.' },
 ];
+
+const BRAND_SUGGESTIONS: Record<SimpleCategory, string[]> = {
+  LAPTOP: ['Dell', 'HP', 'Lenovo', 'Asus', 'Acer', 'Apple', 'MSI'],
+  COMPUTER: ['Custom / Assembled', 'Dell', 'HP', 'Lenovo', 'Apple (iMac/Mini)', 'Asus'],
+  MOBILE: ['Apple iPhone', 'Samsung', 'OnePlus', 'Xiaomi / Redmi', 'Vivo', 'Oppo', 'Realme', 'Pixel'],
+  OTHER: ['Epson', 'Canon', 'HP', 'Sony', 'Apple iPad', 'Samsung Tablet', 'LG'],
+};
 
 interface EquipmentModalProps {
   isOpen: boolean;
@@ -40,7 +35,8 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
   onEquipmentCreated,
   onSelectExisting,
 }) => {
-  const [equipmentType, setEquipmentType] = useState<EquipmentType>('LAPTOP');
+  const [category, setCategory] = useState<SimpleCategory>('LAPTOP');
+  const [customDeviceType, setCustomDeviceType] = useState('');
   const [brand, setBrand] = useState('');
   const [modelName, setModelName] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
@@ -54,7 +50,8 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setEquipmentType('LAPTOP');
+      setCategory('LAPTOP');
+      setCustomDeviceType('');
       setBrand('');
       setModelName('');
       setSerialNumber('');
@@ -90,13 +87,23 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!brand.trim()) {
-      setError('Brand is required (e.g. Dell, Lenovo, HP, Sony)');
+      setError('Brand / Manufacturer is required (e.g. Dell, HP, Samsung, Apple)');
       return;
     }
     if (!modelName.trim()) {
-      setError('Model name is required (e.g. ThinkPad T14, PS5 Digital)');
+      setError('Model name / number is required (e.g. Inspiron 15, Galaxy S23, iPhone 14)');
       return;
     }
+    if (category === 'OTHER' && !customDeviceType.trim()) {
+      setError('Please specify the custom device type (e.g. Printer, Tablet, iPad, etc.)');
+      return;
+    }
+
+    const finalEquipmentType = category === 'OTHER'
+      ? customDeviceType.trim()
+      : category === 'LAPTOP' ? 'Laptop'
+      : category === 'COMPUTER' ? 'Computer'
+      : 'Mobile';
 
     setIsLoading(true);
     setError(null);
@@ -108,7 +115,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
 
       const res = await window.electronAPI.devices.create({
         customerId,
-        equipmentType,
+        equipmentType: finalEquipmentType,
         brand: brand.trim(),
         modelName: modelName.trim(),
         serialNumber: serialNumber.trim() || undefined,
@@ -149,29 +156,43 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
       <div
         className="card"
         style={{
-          width: '540px',
-          maxHeight: '90vh',
+          width: '560px',
+          maxHeight: '92vh',
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: 'var(--bg-surface)',
-          padding: '24px',
+          padding: '22px',
           boxShadow: 'var(--shadow-lg)',
           overflow: 'hidden',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexShrink: 0 }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Laptop size={18} color="var(--brand-primary)" />
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(2, 132, 199, 0.15)',
+                color: 'var(--brand-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Laptop size={18} />
+            </div>
             <div>
-              <span style={{ fontWeight: 700, fontSize: '15px' }}>Register Customer Equipment</span>
+              <span style={{ fontWeight: 700, fontSize: '15px' }}>Register Equipment</span>
               {customerName && (
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Owner: {customerName}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Customer: {customerName}</div>
               )}
             </div>
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '4px' }}
           >
             <X size={18} />
           </button>
@@ -187,7 +208,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
               border: '1px solid var(--color-warning)',
               color: 'var(--text-main)',
               fontSize: '12px',
-              marginBottom: '14px',
+              marginBottom: '12px',
               flexShrink: 0,
             }}
           >
@@ -196,7 +217,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
               <span>Customer already has similar equipment registered:</span>
             </div>
             {duplicates.map((dup) => (
-              <div key={dup.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-app)', padding: '4px 8px', borderRadius: '4px' }}>
+              <div key={dup.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-app)', padding: '4px 8px', borderRadius: '4px', marginTop: '4px' }}>
                 <span><strong>{dup.brand} {dup.modelName}</strong> ({dup.equipmentType}) {dup.serialNumber ? `SN: ${dup.serialNumber}` : ''}</span>
                 {onSelectExisting && (
                   <button
@@ -224,34 +245,82 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
               backgroundColor: 'var(--color-danger-bg)',
               color: 'var(--color-danger)',
               fontSize: '12px',
-              marginBottom: '14px',
+              marginBottom: '12px',
+              flexShrink: 0,
             }}
           >
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <form onSubmit={handleSubmit} style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '14px', paddingRight: '2px' }}>
+          {/* 1. Category Selection Chips */}
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', letterSpacing: '0.03em' }}>
               EQUIPMENT TYPE *
             </label>
-            <select
-              className="input-field"
-              value={equipmentType}
-              onChange={(e) => setEquipmentType(e.target.value as EquipmentType)}
-              required
-            >
-              {APPROVED_EQUIPMENT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+              {SIMPLE_CATEGORIES.map((cat) => {
+                const isSelected = category === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      setCategory(cat.id);
+                      if (cat.id !== 'OTHER') {
+                        setCustomDeviceType('');
+                      }
+                    }}
+                    style={{
+                      padding: '10px 6px',
+                      borderRadius: '8px',
+                      border: isSelected ? '2px solid var(--brand-primary)' : '1px solid var(--border-color)',
+                      backgroundColor: isSelected ? 'rgba(2, 132, 199, 0.12)' : 'var(--bg-app)',
+                      color: isSelected ? 'var(--brand-primary)' : 'var(--text-main)',
+                      fontWeight: isSelected ? 700 : 500,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.12s ease',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <div style={{ color: isSelected ? 'var(--brand-primary)' : 'var(--text-dim)' }}>
+                      {cat.icon}
+                    </div>
+                    <span style={{ fontSize: '12px' }}>{cat.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
+          {/* If OTHER is selected, show custom device type input */}
+          {category === 'OTHER' && (
+            <div style={{ backgroundColor: 'rgba(2, 132, 199, 0.06)', padding: '10px 12px', borderRadius: '6px', border: '1px solid rgba(2, 132, 199, 0.2)' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--brand-primary)', marginBottom: '4px' }}>
+                SPECIFY CUSTOM DEVICE TYPE *
+              </label>
+              <input
+                type="text"
+                className="input-field"
+                value={customDeviceType}
+                onChange={(e) => setCustomDeviceType(e.target.value)}
+                placeholder="e.g. Printer, Tablet, iPad, Smart TV, Audio Receiver, Gaming Console..."
+                required
+                autoFocus
+              />
+            </div>
+          )}
+
+          {/* 2. Brand & Model */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
-                BRAND / MANUFACTURER *
+                BRAND / MAKE *
               </label>
               <input
                 type="text"
@@ -261,9 +330,32 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
                   setBrand(e.target.value);
                   checkDuplicates(serialNumber, e.target.value, modelName);
                 }}
-                placeholder="e.g. Dell, Lenovo, HP, Sony, Asus"
+                placeholder={category === 'MOBILE' ? 'e.g. Apple, Samsung, OnePlus' : 'e.g. Dell, HP, Lenovo, Apple'}
                 required
               />
+              {/* Quick Brand Suggestions */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
+                {BRAND_SUGGESTIONS[category].slice(0, 4).map((b) => (
+                  <span
+                    key={b}
+                    onClick={() => {
+                      setBrand(b);
+                      checkDuplicates(serialNumber, b, modelName);
+                    }}
+                    style={{
+                      fontSize: '10px',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      backgroundColor: 'var(--bg-app)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-dim)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    +{b}
+                  </span>
+                ))}
+              </div>
             </div>
 
             <div>
@@ -278,16 +370,17 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
                   setModelName(e.target.value);
                   checkDuplicates(serialNumber, brand, e.target.value);
                 }}
-                placeholder="e.g. Inspiron 15 3501, PS5 Slim"
+                placeholder={category === 'MOBILE' ? 'e.g. iPhone 14, Galaxy S23' : category === 'LAPTOP' ? 'e.g. Inspiron 15 3520' : 'e.g. Pavilion Gaming, OptiPlex'}
                 required
               />
             </div>
           </div>
 
+          {/* 3. Serial / IMEI & Color */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
-                SERIAL NUMBER / SERVICE TAG
+                {category === 'MOBILE' ? 'IMEI / SERIAL NUMBER' : 'SERIAL NUMBER / SERVICE TAG'}
               </label>
               <input
                 type="text"
@@ -297,7 +390,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
                   setSerialNumber(e.target.value);
                   checkDuplicates(e.target.value, brand, modelName);
                 }}
-                placeholder="e.g. PF39AB12, 8CG1234XYZ"
+                placeholder={category === 'MOBILE' ? 'e.g. 356789012345678' : 'e.g. PF39AB12, 8CG1234XYZ'}
               />
             </div>
 
@@ -310,29 +403,31 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
                 className="input-field"
                 value={colorFinish}
                 onChange={(e) => setColorFinish(e.target.value)}
-                placeholder="e.g. Space Grey, Matte Black"
+                placeholder="e.g. Black, Silver, Space Grey, Blue"
               />
             </div>
           </div>
 
+          {/* 4. Specs Summary */}
           <div>
             <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
-              CAPACITY / HARDWARE SPECIFICATION (WHERE APPLICABLE)
+              HARDWARE / STORAGE SPECS (OPTIONAL)
             </label>
             <input
               type="text"
               className="input-field"
               value={specsSummary}
               onChange={(e) => setSpecsSummary(e.target.value)}
-              placeholder="e.g. Core i5 11th Gen, 16GB RAM, 512GB SSD or 1TB External HDD"
+              placeholder={category === 'MOBILE' ? 'e.g. 128GB, 8GB RAM' : 'e.g. Core i5, 16GB RAM, 512GB SSD'}
             />
           </div>
 
+          {/* 5. Device Lock Passcode / PIN */}
           <div>
             <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <Lock size={12} color="var(--color-warning)" />
-                DEVICE PIN / OS PASSCODE (STORED ENCRYPTED IN VAULT)
+                DEVICE PIN / SCREEN LOCK PASSCODE (OPTIONAL - ENCRYPTED IN VAULT)
               </span>
             </label>
             <input
@@ -340,11 +435,12 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
               className="input-field"
               value={securityPasscode}
               onChange={(e) => setSecurityPasscode(e.target.value)}
-              placeholder="e.g. 1234, user@2026 (Decryption requires credentials.view permission)"
+              placeholder="e.g. 1234, pattern: L-shape, user@2026"
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px', paddingTop: '12px', borderTop: '1px solid var(--border-color)', flexShrink: 0 }}>
+          {/* Form Actions */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px', paddingTop: '12px', borderTop: '1px solid var(--border-color)', flexShrink: 0 }}>
             <button
               type="button"
               className="btn btn-secondary"

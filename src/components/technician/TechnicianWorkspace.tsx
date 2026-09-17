@@ -143,7 +143,7 @@ export const TechnicianWorkspace: React.FC<TechnicianWorkspaceProps> = ({ onOpen
       case 'UNDER_INSPECTION':
         return { bg: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: 'rgba(56, 189, 248, 0.3)' };
       case 'DIAGNOSIS_COMPLETED':
-        return { bg: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: 'rgba(168, 85, 247, 0.3)' };
+        return { bg: 'var(--color-purple-bg)', color: 'var(--color-purple)', border: 'var(--color-purple-border)' };
       case 'UNDER_REPAIR':
         return { bg: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', border: 'rgba(34, 197, 94, 0.3)' };
       case 'WAITING_FOR_PARTS':
@@ -200,7 +200,7 @@ export const TechnicianWorkspace: React.FC<TechnicianWorkspaceProps> = ({ onOpen
       label: 'Diagnosis Done',
       count: metrics?.diagnosisCompleted || 0,
       icon: Cpu,
-      color: '#c084fc',
+      color: 'var(--color-purple)',
     },
     {
       id: 'UNDER_REPAIR',

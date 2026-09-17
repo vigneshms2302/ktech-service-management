@@ -243,19 +243,19 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
         <div
           className="card card-interactive"
           onClick={() => onNavigateTab('billing')}
-          style={{ cursor: 'pointer', borderLeft: '4px solid #a855f7' }}
+          style={{ cursor: 'pointer', borderLeft: '4px solid var(--color-purple-border)' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase' }}>
                 Revenue Collected
               </div>
-              <div style={{ fontSize: '24px', fontWeight: 800, color: '#c084fc', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-purple)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
                 ₹{(overview?.finances.totalCollected || 0).toLocaleString('en-IN')}
               </div>
             </div>
-            <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'rgba(168, 85, 247, 0.12)' }}>
-              <Receipt size={20} color="#c084fc" />
+            <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'var(--color-purple-bg)' }}>
+              <Receipt size={20} color="var(--color-purple)" />
             </div>
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>

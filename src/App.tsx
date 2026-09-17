@@ -122,28 +122,6 @@ export const App: React.FC = () => {
 
     // 2. Customers Workspace
     if (activeTab === 'customers') {
-      if (selectedCustomerId) {
-        return (
-          <CustomerProfile
-            customerId={selectedCustomerId}
-            onBack={() => setSelectedCustomerId(null)}
-            onSelectJob={(jobId) => {
-              setSelectedJobId(jobId);
-              setActiveTab('jobs');
-            }}
-            onSelectDevice={(deviceId) => {
-              setSelectedDeviceId(deviceId);
-            }}
-            onNewJobForCustomer={(custId, devId) => {
-              handleOpenNewJob(custId, devId);
-            }}
-            onAddEquipment={() => {
-              // Handled within CustomerProfile
-            }}
-          />
-        );
-      }
-
       if (selectedDeviceId) {
         return (
           <EquipmentProfile
@@ -164,9 +142,34 @@ export const App: React.FC = () => {
         );
       }
 
+      if (selectedCustomerId) {
+        return (
+          <CustomerProfile
+            customerId={selectedCustomerId}
+            onBack={() => {
+              setSelectedCustomerId(null);
+              setSelectedDeviceId(null);
+            }}
+            onSelectJob={(jobId) => {
+              setSelectedJobId(jobId);
+              setActiveTab('jobs');
+            }}
+            onSelectDevice={(deviceId) => {
+              setSelectedDeviceId(deviceId);
+            }}
+            onNewJobForCustomer={(custId, devId) => {
+              handleOpenNewJob(custId, devId);
+            }}
+          />
+        );
+      }
+
       return (
         <CustomerList
-          onSelectCustomer={(custId) => setSelectedCustomerId(custId)}
+          onSelectCustomer={(custId) => {
+            setSelectedCustomerId(custId);
+            setSelectedDeviceId(null);
+          }}
           onNewJobForCustomer={(custId) => handleOpenNewJob(custId)}
         />
       );
@@ -181,10 +184,12 @@ export const App: React.FC = () => {
             onBack={() => setSelectedJobId(null)}
             onSelectCustomer={(custId) => {
               setSelectedCustomerId(custId);
+              setSelectedDeviceId(null);
               setActiveTab('customers');
             }}
             onSelectDevice={(devId) => {
               setSelectedDeviceId(devId);
+              setSelectedCustomerId(null);
               setActiveTab('customers');
             }}
           />

@@ -50,24 +50,28 @@
   --color-info: #3b82f6;
   --color-info-bg: rgba(59, 130, 246, 0.15);
 
+  --color-purple: #c084fc;
+  --color-purple-bg: rgba(168, 85, 247, 0.15);
+  --color-purple-border: #a855f7;
+
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 10px -1px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 12px 25px -4px rgba(0, 0, 0, 0.6);
 }
 
 [data-theme='light'] {
-  --bg-app: #f1f5f9;
-  --bg-sidebar: #0f172a; /* Keep dark sidebar for solid contrast */
+  --bg-app: #f8fafc;
+  --bg-sidebar: #ffffff;
   --bg-header: #ffffff;
   --bg-surface: #ffffff;
-  --bg-surface-hover: #f8fafc;
+  --bg-surface-hover: #f1f5f9;
   --bg-surface-active: #e2e8f0;
   --bg-card: #ffffff;
   --bg-card-hover: #f8fafc;
   --bg-input: #ffffff;
 
-  --border-color: #cbd5e1;
-  --border-color-light: #94a3b8;
+  --border-color: #e2e8f0;
+  --border-color-light: #cbd5e1;
   --border-color-focus: #0284c7;
 
   --text-main: #0f172a;
@@ -90,6 +94,9 @@
   --color-danger-bg: #fef2f2;
   --color-info: #2563eb;
   --color-info-bg: #eff6ff;
+  --color-purple: #7c3aed;
+  --color-purple-bg: #f5f3ff;
+  --color-purple-border: #8b5cf6;
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 10px -1px rgba(0, 0, 0, 0.08);
@@ -257,6 +264,43 @@ html, body, #root {
 .badge-danger { background-color: var(--color-danger-bg); color: var(--color-danger); border: 1px solid rgba(239, 68, 68, 0.3); }
 .badge-info { background-color: var(--color-info-bg); color: var(--brand-accent); border: 1px solid rgba(56, 189, 248, 0.3); }
 .badge-neutral { background-color: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-color); }
+
+/* Sidebar Navigation */
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  background-color: transparent;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+  user-select: none;
+}
+
+.sidebar-nav-item:hover:not(:disabled):not(.active) {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-main);
+}
+
+.sidebar-nav-item.active {
+  background-color: var(--brand-primary);
+  color: #ffffff !important;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+}
+
+.sidebar-nav-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  color: var(--text-dim);
+}
 
 /* Form Inputs */
 .input-field {

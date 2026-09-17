@@ -21,10 +21,43 @@ import {
   MessageSquare,
   Printer,
   Receipt,
+  Check,
+  Tag,
 } from 'lucide-react';
 import type { JobDetailData } from '../../types/index.ts';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
+
+export const FAULT_CATEGORY_PRESETS = [
+  'Motherboard / Chip-Level',
+  'Power Rail / MOSFET Short',
+  'Display / Backlight / EDP',
+  'RAM / Memory Module',
+  'Storage / SSD / Bad Sectors',
+  'BIOS / EC Firmware Corrupt',
+  'Liquid Ingress / Corrosion',
+  'Charging / DC Jack / Type-C',
+  'Keyboard / Trackpad Defect',
+  'Thermal Overheating / Fan Stalled',
+  'Audio / Speaker / Mic IC',
+  'Wi-Fi / Bluetooth Module',
+  'OS / Driver / Blue Screen',
+  'SMPS / High-Voltage Circuit',
+  'Physical Casing / Hinge Damage',
+];
+
+export const DIAGNOSTIC_OUTCOME_PRESETS = [
+  'Primary Fault Identified & Repairable',
+  'Secondary Short Circuit Found',
+  'Component Replacement Required',
+  'Board Track / Pad Rework Required',
+  'BIOS / Firmware Re-flash Needed',
+  'Thermal Pad / Paste Renewal Needed',
+  'Needs Extended Stress Testing',
+  'Intermittent / Hard-to-Reproduce Fault',
+  'Beyond Economic Repair (BER / Unrepairable)',
+  'Testing Passed / No Fault Found',
+];
 
 interface JobDetailProps {
   jobId: string;
@@ -70,14 +103,21 @@ export const JobDetail: React.FC<JobDetailProps> = ({
     { rail: 'VCore / CPU', expected: '0.9V - 1.2V', measured: '', status: 'NORMAL' },
   ]);
 
-  // Diagnosis form states
+  // Diagnosis form states (Multi-Select Supported)
   const [diagRootCause, setDiagRootCause] = useState('');
-  const [diagFaultCategory, setDiagFaultCategory] = useState('CHIP_LEVEL');
+  const [diagFaultCategories, setDiagFaultCategories] = useState<string[]>(['Motherboard / Chip-Level']);
+  const [customFaultCategory, setCustomFaultCategory] = useState('');
   const [diagFaultyComponents, setDiagFaultyComponents] = useState('');
   const [diagVoltageRailsChecked, setDiagVoltageRailsChecked] = useState('');
   const [diagRecommendedAction, setDiagRecommendedAction] = useState('');
-  const [diagOutcome, setDiagOutcome] = useState('FAULT_IDENTIFIED');
+  const [diagOutcomes, setDiagOutcomes] = useState<string[]>(['Primary Fault Identified & Repairable']);
+  const [customOutcome, setCustomOutcome] = useState('');
   const [isSavingDiag, setIsSavingDiag] = useState(false);
+
+  // Discovered fault / sub-issue logger state (post-inspection discovery)
+  const [newDiscoveredFault, setNewDiscoveredFault] = useState('');
+  const [newDiscoveredSeverity, setNewDiscoveredSeverity] = useState<'CRITICAL' | 'MODERATE' | 'COSMETIC' | 'ADVISORY'>('MODERATE');
+  const [isLoggingDiscoveredFault, setIsLoggingDiscoveredFault] = useState(false);
 
   // Repair Plan form states
   const [planServiceName, setPlanServiceName] = useState('');
@@ -219,6 +259,62 @@ export const JobDetail: React.FC<JobDetailProps> = ({
     }
   };
 
+  const toggleFaultCategory = (cat: string) => {
+    setDiagFaultCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
+  };
+
+  const handleAddCustomFaultCategory = () => {
+    const trimmed = customFaultCategory.trim();
+    if (trimmed && !diagFaultCategories.includes(trimmed)) {
+      setDiagFaultCategories((prev) => [...prev, trimmed]);
+      setCustomFaultCategory('');
+    }
+  };
+
+  const toggleDiagnosticOutcome = (outcome: string) => {
+    setDiagOutcomes((prev) =>
+      prev.includes(outcome) ? prev.filter((o) => o !== outcome) : [...prev, outcome]
+    );
+  };
+
+  const handleAddCustomOutcome = () => {
+    const trimmed = customOutcome.trim();
+    if (trimmed && !diagOutcomes.includes(trimmed)) {
+      setDiagOutcomes((prev) => [...prev, trimmed]);
+      setCustomOutcome('');
+    }
+  };
+
+  const handleLogDiscoveredFault = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDiscoveredFault.trim()) return;
+
+    try {
+      setIsLoggingDiscoveredFault(true);
+      if (!window.electronAPI?.jobs?.addNote) return;
+
+      const faultContent = `[DISCOVERED FAULT - ${newDiscoveredSeverity}]: ${newDiscoveredFault.trim()}`;
+      const res = await window.electronAPI.jobs.addNote({
+        jobId,
+        content: faultContent,
+        noteType: 'INTERNAL',
+      });
+
+      if (res.success) {
+        setNewDiscoveredFault('');
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to log discovered fault');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    } finally {
+      setIsLoggingDiscoveredFault(false);
+    }
+  };
+
   const handleSaveDiagnosis = async () => {
     if (!diagRootCause.trim()) {
       alert('Root Cause Analysis is required.');
@@ -229,14 +325,20 @@ export const JobDetail: React.FC<JobDetailProps> = ({
       setIsSavingDiag(true);
       if (!window.electronAPI?.jobs?.saveDiagnosis) return;
 
+      const isUnrepairable = diagOutcomes.some(
+        (o) => o.toLowerCase().includes('unrepairable') || o.includes('BER')
+      );
+      const combinedOutcome = diagOutcomes.length > 0 ? diagOutcomes.join(', ') : 'Primary Fault Identified & Repairable';
+      const combinedCategories = diagFaultCategories.length > 0 ? diagFaultCategories.join(', ') : 'Motherboard / Chip-Level';
+
       const res = await window.electronAPI.jobs.saveDiagnosis({
         jobId,
         rootCauseAnalysis: diagRootCause.trim(),
-        faultCategory: diagFaultCategory,
+        faultCategory: combinedCategories,
         faultyComponentsIdentified: diagFaultyComponents.trim() || undefined,
         voltageRailsChecked: diagVoltageRailsChecked.trim() || undefined,
         recommendedAction: diagRecommendedAction.trim() || undefined,
-        diagnosticOutcome: diagOutcome,
+        diagnosticOutcome: isUnrepairable ? 'UNREPAIRABLE' : combinedOutcome,
         transitionStatus: true,
       });
 
@@ -251,6 +353,142 @@ export const JobDetail: React.FC<JobDetailProps> = ({
     } finally {
       setIsSavingDiag(false);
     }
+  };
+
+  const renderDiscoveredFaultsSection = () => {
+    const discoveredFaultNotes = (data?.notes || []).filter(
+      (n) => n.content.startsWith('[DISCOVERED FAULT') || n.content.includes('[DISCOVERED FAULT')
+    );
+
+    return (
+      <div
+        style={{
+          marginTop: '10px',
+          padding: '12px 14px',
+          borderRadius: '8px',
+          backgroundColor: 'var(--bg-surface)',
+          border: '1px dashed var(--border-color)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AlertTriangle size={15} color="#eab308" />
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-main)' }}>
+              Post-Inspection Discovered Faults & Sub-Issues
+            </span>
+            <span style={{ fontSize: '11px', color: 'var(--text-dim)', marginLeft: '4px' }}>
+              ({discoveredFaultNotes.length} logged)
+            </span>
+          </div>
+        </div>
+
+        {discoveredFaultNotes.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+            {discoveredFaultNotes.map((n) => {
+              const isCritical = n.content.includes('CRITICAL');
+              const isCosmetic = n.content.includes('COSMETIC');
+              const isAdvisory = n.content.includes('ADVISORY');
+              const badgeBg = isCritical ? 'var(--color-danger-bg)' : isCosmetic ? 'var(--color-info-bg)' : isAdvisory ? 'var(--color-purple-bg)' : 'var(--color-warning-bg)';
+              const badgeColor = isCritical ? 'var(--color-danger)' : isCosmetic ? 'var(--color-info)' : isAdvisory ? 'var(--color-purple)' : 'var(--color-warning)';
+
+              return (
+                <div
+                  key={n.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
+                    fontSize: '12px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        backgroundColor: badgeBg,
+                        color: badgeColor,
+                      }}
+                    >
+                      {isCritical ? 'CRITICAL' : isCosmetic ? 'COSMETIC' : isAdvisory ? 'ADVISORY' : 'MODERATE'}
+                    </span>
+                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>
+                      {n.content.replace(/^\[DISCOVERED FAULT\s*-\s*[A-Z]+\]:\s*/i, '')}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>
+                    by {n.authorName || 'Technician'} • {new Date(n.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <form onSubmit={handleLogDiscoveredFault} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <input
+            type="text"
+            value={newDiscoveredFault}
+            onChange={(e) => setNewDiscoveredFault(e.target.value)}
+            placeholder="e.g. Found damaged trace near PU401 / Broken hinge mount during teardown..."
+            style={{
+              flex: 1,
+              minWidth: '220px',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-main)',
+              fontSize: '12px',
+            }}
+          />
+          <select
+            value={newDiscoveredSeverity}
+            onChange={(e) => setNewDiscoveredSeverity(e.target.value as any)}
+            style={{
+              padding: '6px 8px',
+              borderRadius: '6px',
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-main)',
+              fontSize: '11px',
+              fontWeight: 600,
+            }}
+          >
+            <option value="CRITICAL">🔴 Critical (Blocks Repair)</option>
+            <option value="MODERATE">🟡 Moderate (Secondary Fault)</option>
+            <option value="COSMETIC">🔵 Cosmetic / Body Damage</option>
+            <option value="ADVISORY">🟣 Advisory (Customer Note)</option>
+          </select>
+          <button
+            type="submit"
+            disabled={isLoggingDiscoveredFault || !newDiscoveredFault.trim()}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              backgroundColor: 'var(--brand-primary)',
+              color: '#ffffff',
+              border: 'none',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              opacity: !newDiscoveredFault.trim() ? 0.6 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <Plus size={13} /> {isLoggingDiscoveredFault ? 'Logging...' : 'Log Discovered Fault'}
+          </button>
+        </form>
+      </div>
+    );
   };
 
   const handleAddRepairPlanAction = async (e: React.FormEvent) => {
@@ -1601,6 +1839,9 @@ export const JobDetail: React.FC<JobDetailProps> = ({
               style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px', outline: 'none' }}
             />
           </div>
+
+          {/* Post-Inspection Discovered Faults Card in Inspection Tab */}
+          {renderDiscoveredFaultsSection()}
         </div>
       )}
 
@@ -1635,39 +1876,213 @@ export const JobDetail: React.FC<JobDetailProps> = ({
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Fault Category</label>
-              <select
-                value={diagFaultCategory}
-                onChange={(e) => setDiagFaultCategory(e.target.value)}
-                style={{ width: '100%', marginTop: '4px', padding: '7px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
-              >
-                <option value="CHIP_LEVEL">Motherboard / Chip-Level Rework</option>
-                <option value="HARDWARE_REPLACEMENT">Hardware Component Swap</option>
-                <option value="OS_SOFTWARE">OS / Software / Firmware</option>
-                <option value="POWER_ELECTRONICS">SMPS / EV Charger / Power Circuit</option>
-                <option value="CONSOLE_REPAIR">Console HDMI / Power Rework</option>
-                <option value="PRINTER_SERVICE">Printer Mechanism / Head</option>
-                <option value="DATA_RECOVERY">Data Recovery / Storage Media</option>
-                <option value="GENERAL_SERVICE">Cleaning & Thermal Service</option>
-                <option value="OTHER">Other Electronic Equipment</option>
-              </select>
+          {/* Fault Categories (Multi-select) */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Tag size={13} color="var(--brand-primary)" />
+                Fault Categories ({diagFaultCategories.length} selected)
+              </label>
+              <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>Click tags to toggle multiple faults</span>
             </div>
-
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Diagnostic Outcome</label>
-              <select
-                value={diagOutcome}
-                onChange={(e) => setDiagOutcome(e.target.value)}
-                style={{ width: '100%', marginTop: '4px', padding: '7px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: diagOutcome === 'UNREPAIRABLE' ? '#f87171' : 'var(--text-main)', fontWeight: 600, fontSize: '12px' }}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+              {FAULT_CATEGORY_PRESETS.map((cat) => {
+                const isSelected = diagFaultCategories.includes(cat);
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => toggleFaultCategory(cat)}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: '16px',
+                      border: isSelected ? '1px solid var(--brand-primary)' : '1px solid var(--border-color)',
+                      backgroundColor: isSelected ? 'var(--brand-primary)' : 'var(--bg-surface)',
+                      color: isSelected ? '#ffffff' : 'var(--text-dim)',
+                      fontSize: '11px',
+                      fontWeight: isSelected ? 700 : 500,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {isSelected && <Check size={12} />}
+                    {cat}
+                  </button>
+                );
+              })}
+              {diagFaultCategories.filter(c => !FAULT_CATEGORY_PRESETS.includes(c)).map((customCat) => (
+                <button
+                  key={customCat}
+                  type="button"
+                  onClick={() => toggleFaultCategory(customCat)}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '16px',
+                    border: '1px solid var(--brand-primary)',
+                    backgroundColor: 'var(--brand-primary)',
+                    color: '#ffffff',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <Check size={12} />
+                  {customCat}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '6px', maxWidth: '360px' }}>
+              <input
+                type="text"
+                placeholder="+ Add custom fault tag..."
+                value={customFaultCategory}
+                onChange={(e) => setCustomFaultCategory(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddCustomFaultCategory();
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-surface)',
+                  color: 'var(--text-main)',
+                  fontSize: '11px',
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleAddCustomFaultCategory}
+                disabled={!customFaultCategory.trim()}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  backgroundColor: 'var(--bg-surface)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-main)',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
               >
-                <option value="FAULT_IDENTIFIED">Fault Identified & Repair Feasible</option>
-                <option value="NEEDS_FURTHER_INSPECTION">Needs Further In-Depth Inspection</option>
-                <option value="INTERMITTENT_FAULT">Intermittent / Hard-to-Reproduce Fault</option>
-                <option value="NO_FAULT_FOUND">No Fault Found (Testing Passed)</option>
-                <option value="UNREPAIRABLE">UNREPAIRABLE (Fatal Damage / Board Cracking)</option>
-              </select>
+                + Add
+              </button>
+            </div>
+          </div>
+
+          {/* Diagnostic Outcomes (Multi-select) */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <CheckCircle2 size={13} color="var(--brand-primary)" />
+                Diagnostic Findings & Outcomes ({diagOutcomes.length} selected)
+              </label>
+              <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>Select all applicable findings</span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+              {DIAGNOSTIC_OUTCOME_PRESETS.map((outcome) => {
+                const isSelected = diagOutcomes.includes(outcome);
+                const isUnrepairable = outcome.includes('BER') || outcome.includes('Unrepairable');
+                const activeBg = isUnrepairable ? '#dc2626' : 'var(--brand-primary)';
+                const activeBorder = isUnrepairable ? '#ef4444' : 'var(--brand-primary)';
+
+                return (
+                  <button
+                    key={outcome}
+                    type="button"
+                    onClick={() => toggleDiagnosticOutcome(outcome)}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: '16px',
+                      border: isSelected ? `1px solid ${activeBorder}` : '1px solid var(--border-color)',
+                      backgroundColor: isSelected ? activeBg : 'var(--bg-surface)',
+                      color: isSelected ? '#ffffff' : isUnrepairable ? '#f87171' : 'var(--text-dim)',
+                      fontSize: '11px',
+                      fontWeight: isSelected ? 700 : 500,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {isSelected && <Check size={12} />}
+                    {outcome}
+                  </button>
+                );
+              })}
+              {diagOutcomes.filter(o => !DIAGNOSTIC_OUTCOME_PRESETS.includes(o)).map((customOut) => (
+                <button
+                  key={customOut}
+                  type="button"
+                  onClick={() => toggleDiagnosticOutcome(customOut)}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '16px',
+                    border: '1px solid var(--brand-primary)',
+                    backgroundColor: 'var(--brand-primary)',
+                    color: '#ffffff',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <Check size={12} />
+                  {customOut}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '6px', maxWidth: '360px' }}>
+              <input
+                type="text"
+                placeholder="+ Add custom outcome tag..."
+                value={customOutcome}
+                onChange={(e) => setCustomOutcome(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddCustomOutcome();
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-surface)',
+                  color: 'var(--text-main)',
+                  fontSize: '11px',
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleAddCustomOutcome}
+                disabled={!customOutcome.trim()}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  backgroundColor: 'var(--bg-surface)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-main)',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                + Add
+              </button>
             </div>
           </div>
 
@@ -1707,6 +2122,9 @@ export const JobDetail: React.FC<JobDetailProps> = ({
               />
             </div>
           </div>
+
+          {/* Post-Inspection Discovered Faults Card in Diagnosis Tab */}
+          {renderDiscoveredFaultsSection()}
         </div>
       )}
 

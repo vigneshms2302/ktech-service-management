@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Phone,
   Mail,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { CustomerProfileData } from '../../types/index.ts';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
+import { EquipmentModal } from '../equipment/EquipmentModal.tsx';
 
 interface CustomerProfileProps {
   customerId: string;
@@ -19,7 +20,7 @@ interface CustomerProfileProps {
   onSelectJob: (jobId: string) => void;
   onSelectDevice: (deviceId: string) => void;
   onNewJobForCustomer: (customerId: string, deviceId?: string) => void;
-  onAddEquipment: (customerId: string) => void;
+  onAddEquipment?: (customerId: string) => void;
 }
 
 export const CustomerProfile: React.FC<CustomerProfileProps> = ({
@@ -34,30 +35,31 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
   const [customerInvoices, setCustomerInvoices] = useState<Array<Record<string, unknown>>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'devices' | 'jobs' | 'invoices'>('devices');
+  const [isEquipmentModalOpen, setIsEquipmentModalOpen] = useState(false);
+
+  const fetchProfile = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      if (window.electronAPI?.customers?.getById) {
+        const res = await window.electronAPI.customers.getById({ customerId });
+        if (res.success && res.data) {
+          setProfile(res.data);
+        }
+      }
+      if (window.electronAPI?.billing?.listInvoices) {
+        const invRes = await window.electronAPI.billing.listInvoices({ customerId });
+        if (invRes.success && invRes.data) {
+          setCustomerInvoices(invRes.data);
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [customerId]);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      setIsLoading(true);
-      try {
-        if (window.electronAPI?.customers?.getById) {
-          const res = await window.electronAPI.customers.getById({ customerId });
-          if (res.success && res.data) {
-            setProfile(res.data);
-          }
-        }
-        if (window.electronAPI?.billing?.listInvoices) {
-          const invRes = await window.electronAPI.billing.listInvoices({ customerId });
-          if (invRes.success && invRes.data) {
-            setCustomerInvoices(invRes.data);
-          }
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchProfile();
-  }, [customerId]);
+  }, [fetchProfile]);
 
   if (isLoading) {
     return (
@@ -244,7 +246,10 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
             </button>
             <button
               className="btn btn-secondary"
-              onClick={() => onAddEquipment(customer.id)}
+              onClick={() => {
+                setIsEquipmentModalOpen(true);
+                onAddEquipment?.(customer.id);
+              }}
               style={{ width: '100%' }}
             >
               <Plus size={14} />
@@ -312,61 +317,86 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
             <div className="card" style={{ textAlign: 'center', padding: '30px' }}>
               <Laptop size={32} color="var(--text-dim)" style={{ margin: '0 auto 10px' }} />
               <p style={{ color: 'var(--text-muted)', marginBottom: '12px' }}>No equipment registered under this customer yet.</p>
-              <button className="btn btn-primary" onClick={() => onAddEquipment(customer.id)}>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  setIsEquipmentModalOpen(true);
+                  onAddEquipment?.(customer.id);
+                }}
+              >
                 <Plus size={14} />
                 <span>Add Equipment</span>
               </button>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
-              {devices.map((device) => (
-                <div key={device.id} className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span className="badge badge-info" style={{ fontSize: '10px' }}>
-                        {device.equipmentType}
-                      </span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-                        {device.jobCount} {device.jobCount === 1 ? 'Job' : 'Jobs'}
-                      </span>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                  {devices.length} {devices.length === 1 ? 'device' : 'devices'} registered
+                </span>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setIsEquipmentModalOpen(true);
+                    onAddEquipment?.(customer.id);
+                  }}
+                  style={{ padding: '5px 12px', fontSize: '12px' }}
+                >
+                  <Plus size={13} />
+                  <span>Register New Equipment</span>
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+                {devices.map((device) => (
+                  <div key={device.id} className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span className="badge badge-info" style={{ fontSize: '10px' }}>
+                          {device.equipmentType}
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                          {device.jobCount} {device.jobCount === 1 ? 'Job' : 'Jobs'}
+                        </span>
+                      </div>
+
+                      <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-main)' }}>
+                        {device.brand} {device.modelName}
+                      </h3>
+
+                      {device.serialNumber && (
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
+                          SN: {device.serialNumber}
+                        </div>
+                      )}
+
+                      {device.specsSummary && (
+                        <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '6px' }}>
+                          {device.specsSummary}
+                        </div>
+                      )}
                     </div>
 
-                    <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-main)' }}>
-                      {device.brand} {device.modelName}
-                    </h3>
-
-                    {device.serialNumber && (
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
-                        SN: {device.serialNumber}
-                      </div>
-                    )}
-
-                    {device.specsSummary && (
-                      <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '6px' }}>
-                        {device.specsSummary}
-                      </div>
-                    )}
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '14px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => onSelectDevice(device.id)}
+                        style={{ flex: 1, fontSize: '11px' }}
+                      >
+                        View Details
+                      </button>
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => onNewJobForCustomer(customer.id, device.id)}
+                        style={{ flex: 1, fontSize: '11px' }}
+                      >
+                        <Plus size={12} />
+                        <span>Intake Job</span>
+                      </button>
+                    </div>
                   </div>
-
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '14px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => onSelectDevice(device.id)}
-                      style={{ flex: 1, fontSize: '11px' }}
-                    >
-                      View Details
-                    </button>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => onNewJobForCustomer(customer.id, device.id)}
-                      style={{ flex: 1, fontSize: '11px' }}
-                    >
-                      <Plus size={12} />
-                      <span>Intake Job</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -523,6 +553,20 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           )}
         </div>
       )}
+
+      {/* Register Equipment Modal */}
+      <EquipmentModal
+        isOpen={isEquipmentModalOpen}
+        onClose={() => setIsEquipmentModalOpen(false)}
+        customerId={customer.id}
+        customerName={customer.fullName}
+        onEquipmentCreated={(_device) => {
+          fetchProfile();
+        }}
+        onSelectExisting={(deviceId) => {
+          onSelectDevice(deviceId);
+        }}
+      />
     </div>
   );
 };

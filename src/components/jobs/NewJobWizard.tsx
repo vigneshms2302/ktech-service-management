@@ -18,16 +18,33 @@ import { CustomerModal } from '../customers/CustomerModal.tsx';
 import { EquipmentModal } from '../equipment/EquipmentModal.tsx';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
 
-const SERVICE_CATEGORIES = [
-  { value: 'CHIP_LEVEL', label: 'Chip-Level / Motherboard Repair' },
-  { value: 'HARDWARE_REPLACEMENT', label: 'Hardware Replacement (Screen/Keyboard/SSD)' },
-  { value: 'OS_SOFTWARE', label: 'OS Installation & Software Tuning' },
-  { value: 'GENERAL_SERVICE', label: 'General Service / Thermal Cleaning' },
-  { value: 'DATA_RECOVERY', label: 'Data Recovery Service' },
-  { value: 'POWER_ELECTRONICS', label: 'Power Supply / SMPS / EV Charger Repair' },
-  { value: 'CONSOLE_REPAIR', label: 'Gaming Console Repair (PS4/PS5/Xbox)' },
-  { value: 'PRINTER_SERVICE', label: 'Printer Service & Cartridge' },
-  { value: 'CUSTOM_BUILD', label: 'Custom PC Assembly / Upgrade' },
+const FAULT_CATEGORY_OPTIONS = [
+  'Motherboard / Chip-Level',
+  'No Power / Dead',
+  'No Display / Black Screen',
+  'Screen / Glass Broken',
+  'Liquid / Water Spill',
+  'Auto Restart / BSOD',
+  'Overheating / Fan Noise',
+  'Keyboard / Touchpad',
+  'Battery / Charging Port',
+  'SSD / Data Recovery',
+  'OS / Software / BIOS',
+  'Hinge / Body Damage',
+  'Sound / Mic / Camera',
+];
+
+const QUICK_COMPLAINT_TAGS = [
+  'Dead / 0A current draw',
+  'Water spilled on unit',
+  'No display with power LED ON',
+  'Screen flickering / lines',
+  'Keyboard keys not working',
+  'Battery not charging / 0%',
+  'Hinge broken from corner',
+  'Overheating & auto shutdown',
+  'Blue screen crash (BSOD)',
+  'SSD not detected / slow boot',
 ];
 
 const COMMON_ACCESSORIES = [
@@ -84,7 +101,8 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
   const [isDeviceModalOpen, setIsDeviceModalOpen] = useState(false);
 
   // Intake Form State
-  const [serviceCategory, setServiceCategory] = useState('CHIP_LEVEL');
+  const [selectedFaults, setSelectedFaults] = useState<string[]>(['Motherboard / Chip-Level']);
+  const [customFault, setCustomFault] = useState('');
   const [priority, setPriority] = useState<'LOW' | 'NORMAL' | 'URGENT' | 'CRITICAL'>('NORMAL');
   const [reportedIssue, setReportedIssue] = useState('');
   const [powerStatus, setPowerStatus] = useState('NO_POWER');
@@ -233,7 +251,7 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
       const res = await window.electronAPI.jobs.create({
         customerId: selectedCustomer.id,
         deviceId: selectedDevice.id,
-        serviceCategory,
+        serviceCategory: selectedFaults.length > 0 ? selectedFaults.join(', ') : 'Motherboard / Chip-Level',
         priority,
         reportedIssue: reportedIssue.trim(),
         accessoriesReceived: selectedAccessories,
@@ -560,38 +578,103 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
           <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <h2 style={{ fontSize: '15px', fontWeight: 700 }}>Step 3: Initial Admission & Problem Intake</h2>
 
-            {/* Category & Priority */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
-                  SERVICE CATEGORY *
+            {/* Multi-Select Fault Categories */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>
+                  FAULT CATEGORIES (MULTI-SELECT) *
                 </label>
-                <select
-                  className="input-field"
-                  value={serviceCategory}
-                  onChange={(e) => setServiceCategory(e.target.value)}
-                >
-                  {SERVICE_CATEGORIES.map((c) => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
-                  ))}
-                </select>
+                <span style={{ fontSize: '11px', color: 'var(--brand-primary)', fontWeight: 600 }}>
+                  {selectedFaults.length} selected
+                </span>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
-                  PRIORITY
-                </label>
-                <select
-                  className="input-field"
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value as 'LOW' | 'NORMAL' | 'URGENT' | 'CRITICAL')}
-                >
-                  <option value="NORMAL">Normal</option>
-                  <option value="URGENT">Urgent (Express)</option>
-                  <option value="CRITICAL">Critical (Immediate)</option>
-                  <option value="LOW">Low</option>
-                </select>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                {FAULT_CATEGORY_OPTIONS.map((cat) => {
+                  const isChecked = selectedFaults.includes(cat);
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        if (isChecked) {
+                          setSelectedFaults(selectedFaults.filter((f) => f !== cat));
+                        } else {
+                          setSelectedFaults([...selectedFaults, cat]);
+                        }
+                      }}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        border: isChecked ? '1px solid var(--brand-primary)' : '1px solid var(--border-color)',
+                        backgroundColor: isChecked ? 'rgba(2, 132, 199, 0.15)' : 'var(--bg-app)',
+                        color: isChecked ? 'var(--brand-primary)' : 'var(--text-main)',
+                        fontWeight: isChecked ? 700 : 400,
+                        fontSize: '11px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        transition: 'all 0.1s ease',
+                      }}
+                    >
+                      <span>{isChecked ? '✓' : '+'}</span>
+                      <span>{cat}</span>
+                    </button>
+                  );
+                })}
               </div>
+
+              {/* Add Custom Fault Tag */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="+ Type custom fault / issue and press Add..."
+                  value={customFault}
+                  onChange={(e) => setCustomFault(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (customFault.trim() && !selectedFaults.includes(customFault.trim())) {
+                        setSelectedFaults([...selectedFaults, customFault.trim()]);
+                        setCustomFault('');
+                      }
+                    }
+                  }}
+                  style={{ flex: 1, padding: '5px 10px', fontSize: '11px' }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    if (customFault.trim() && !selectedFaults.includes(customFault.trim())) {
+                      setSelectedFaults([...selectedFaults, customFault.trim()]);
+                      setCustomFault('');
+                    }
+                  }}
+                  style={{ padding: '5px 12px', fontSize: '11px' }}
+                >
+                  + Add Fault Tag
+                </button>
+              </div>
+            </div>
+
+            {/* Priority Select */}
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                PRIORITY
+              </label>
+              <select
+                className="input-field"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as 'LOW' | 'NORMAL' | 'URGENT' | 'CRITICAL')}
+              >
+                <option value="NORMAL">Normal (Standard Turnaround)</option>
+                <option value="URGENT">Urgent (Express Service)</option>
+                <option value="CRITICAL">Critical (Immediate Lab Bench Assignment)</option>
+                <option value="LOW">Low</option>
+              </select>
             </div>
 
             {/* Customer Complaint / Reported Issue */}
@@ -607,6 +690,31 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                 placeholder="e.g. Device does not turn on. Power light blinks orange. Customer states it happened after a lightning surge."
                 required
               />
+
+              {/* Quick Complaint Insert Chips */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
+                <span style={{ fontSize: '10px', color: 'var(--text-dim)', alignSelf: 'center', marginRight: '4px' }}>Quick Add:</span>
+                {QUICK_COMPLAINT_TAGS.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => {
+                      setReportedIssue((prev) => (prev ? `${prev}. ${tag}` : tag));
+                    }}
+                    style={{
+                      fontSize: '10px',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      backgroundColor: 'var(--bg-app)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    +{tag}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Initial Condition Checks */}

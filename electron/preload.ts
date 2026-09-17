@@ -19,6 +19,12 @@ const electronAPI = {
       ipcRenderer.invoke('auth:logout'),
     listUsers: (): Promise<IPCResponse> =>
       ipcRenderer.invoke('auth:listUsers'),
+    createUser: (payload: { username: string; fullName: string; roleId: string; password?: string; pinCode?: string; phone?: string }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('auth:createUser', payload),
+    updateUser: (payload: { id: string; fullName?: string; roleId?: string; pinCode?: string; password?: string; phone?: string }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('auth:updateUser', payload),
+    toggleUserStatus: (params: { id: string; isActive: boolean }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('auth:toggleUserStatus', params),
   },
 
   // System & Health

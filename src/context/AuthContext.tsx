@@ -11,6 +11,7 @@ interface AuthContextType {
   hasPermission: (permCode: string) => boolean;
   hasAnyPermission: (permCodes: string[]) => boolean;
   refreshUserList: () => Promise<void>;
+  refreshUsers: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -64,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUser(res.data);
       return { success: true };
     }
-    return { success: false, error: res.error || 'Login failed' };
+    return { success: false, error: res.error || 'Invalid credentials' };
   };
 
   const pinLogin = async (pinCode: string) => {
@@ -95,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hasAnyPermission = (permCodes: string[]): boolean => {
     if (!currentUser) return false;
     if (currentUser.roleId === 'ROLE_OWNER') return true;
-    return permCodes.some((p) => currentUser.permissions.includes(p));
+    return permCodes.some((code) => currentUser.permissions.includes(code));
   };
 
   return (
@@ -110,6 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         hasPermission,
         hasAnyPermission,
         refreshUserList,
+        refreshUsers: refreshUserList,
       }}
     >
       {children}

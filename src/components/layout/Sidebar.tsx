@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
+import { useShop } from '../../context/ShopContext.tsx';
 
 export type NavTabId =
   | 'dashboard'
@@ -42,6 +43,7 @@ interface SidebarNavItem {
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
   const { hasPermission } = useAuth();
+  const { shopSettings } = useShop();
 
   const navItems: SidebarNavItem[] = [
     {
@@ -98,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
       {/* Brand Header */}
       <div
         style={{
-          padding: '16px 16px 12px',
+          padding: '16px 16px 14px',
           borderBottom: '1px solid var(--border-color)',
           display: 'flex',
           alignItems: 'center',
@@ -107,27 +109,48 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
       >
         <div
           style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '6px',
-            backgroundColor: 'var(--brand-primary)',
+            width: '36px',
+            height: '36px',
+            borderRadius: '8px',
+            background: 'linear-gradient(135deg, var(--brand-primary), #0284c7)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: '#ffffff',
             fontWeight: 800,
-            fontSize: '16px',
+            fontSize: '18px',
             letterSpacing: '-0.5px',
+            boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)',
+            flexShrink: 0,
           }}
         >
           K
         </div>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: '14px', color: '#f8fafc', lineHeight: 1.2 }}>
-            KTech Computers
+        <div style={{ overflow: 'hidden', flex: 1 }}>
+          <div
+            style={{
+              fontWeight: 800,
+              fontSize: '15px',
+              color: 'var(--text-main)',
+              lineHeight: 1.2,
+              letterSpacing: '-0.3px',
+            }}
+          >
+            K-Connect
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-            Service Management v1.0
+          <div
+            style={{
+              fontSize: '11px',
+              color: 'var(--brand-primary)',
+              fontWeight: 600,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              marginTop: '1px',
+            }}
+            title={shopSettings.shopName}
+          >
+            {shopSettings.shopName || 'Service Hub'}
           </div>
         </div>
       </div>
@@ -140,7 +163,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
           padding: '10px 8px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '2px',
+          gap: '3px',
         }}
       >
         {navItems.map((item) => {
@@ -155,39 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
                 if (isAllowed) onSelectTab(item.id);
               }}
               disabled={!isAllowed}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                width: '100%',
-                padding: '7px 10px',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: isActive ? 'var(--brand-primary)' : 'transparent',
-                color: !isAllowed
-                  ? 'var(--text-dim)'
-                  : isActive
-                  ? '#ffffff'
-                  : 'var(--text-muted)',
-                fontWeight: isActive ? 600 : 500,
-                fontSize: '12px',
-                textAlign: 'left',
-                cursor: isAllowed ? 'pointer' : 'not-allowed',
-                transition: 'background-color 0.12s ease, color 0.12s ease',
-                opacity: isAllowed ? 1 : 0.45,
-              }}
-              onMouseEnter={(e) => {
-                if (isAllowed && !isActive) {
-                  e.currentTarget.style.backgroundColor = 'var(--bg-surface)';
-                  e.currentTarget.style.color = 'var(--text-main)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (isAllowed && !isActive) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-muted)';
-                }
-              }}
+              className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
             >
               <Icon size={16} />
               <span style={{ flex: 1 }}>{item.label}</span>
@@ -199,7 +190,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
                     fontSize: '9px',
                     padding: '1px 5px',
                     borderRadius: '4px',
-                    backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : 'var(--bg-surface)',
+                    backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : 'var(--bg-surface-hover)',
                     color: isActive ? '#ffffff' : 'var(--text-muted)',
                   }}
                 >

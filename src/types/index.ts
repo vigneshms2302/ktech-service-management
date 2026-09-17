@@ -49,26 +49,14 @@ export interface AuditLogEntry {
   createdAt: string;
 }
 
-// 18 Approved Equipment Types
+// Simplified Equipment Types: Laptop, Computer, Mobile, and Custom Other
 export type EquipmentType =
   | 'LAPTOP'
+  | 'COMPUTER'
+  | 'MOBILE'
   | 'DESKTOP'
-  | 'CUSTOM_PC'
-  | 'MONITOR'
-  | 'PRINTER'
-  | 'PLAYSTATION'
-  | 'XBOX'
-  | 'GAMING_CONSOLE'
-  | 'HDD'
-  | 'SSD'
-  | 'M_2'
-  | 'PEN_DRIVE'
-  | 'SMPS'
-  | 'POWER_SUPPLY'
-  | 'EV_CHARGER'
-  | 'ADAPTER'
-  | 'MOTHERBOARD'
-  | 'OTHER';
+  | 'OTHER'
+  | string;
 
 export interface CustomerSummary {
   id: string;
@@ -416,6 +404,9 @@ export interface ElectronAPI {
     getCurrentUser: () => Promise<IPCResponse<UserSession | null>>;
     logout: () => Promise<IPCResponse<void>>;
     listUsers: () => Promise<IPCResponse<UserProfile[]>>;
+    createUser: (payload: { username: string; fullName: string; roleId: string; password?: string; pinCode?: string; phone?: string }) => Promise<IPCResponse<{ userId: string }>>;
+    updateUser: (payload: { id: string; fullName?: string; roleId?: string; password?: string; pinCode?: string; phone?: string }) => Promise<IPCResponse<void>>;
+    toggleUserStatus: (params: { id: string; isActive: boolean }) => Promise<IPCResponse<void>>;
   };
   system: {
     getHealth: () => Promise<IPCResponse<SystemHealth>>;
