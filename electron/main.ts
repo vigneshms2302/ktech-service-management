@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
 import { setDatabasePath, initializeSchema } from './db/database.ts';
 import { seedDatabase } from './db/seed.ts';
 import { registerAuthIpc } from './ipc/authIpc.ts';
@@ -24,10 +25,31 @@ process.env.VITE_PUBLIC = app.isPackaged
 let mainWindow: BrowserWindow | null = null;
 
 async function bootstrap(): Promise<void> {
-  // Set DB path to OS application data folder in production
+  // Set DB and storage path to D: drive in production if available, else OS application data folder
   if (app.isPackaged || !process.env.KTECH_DEV_LOCAL_DB) {
     const userDataPath = app.getPath('userData');
-    const prodDbPath = path.join(userDataPath, 'database', 'ktech.sqlite');
+    let dataBasePath = userDataPath;
+
+    // Prioritize D:\ drive if present on Windows
+    if (process.platform === 'win32' && fs.existsSync('D:\\')) {
+      dataBasePath = path.join('D:\\', 'KTech Computers', 'Data');
+
+      // If legacy AppData database exists and D: drive database does not, copy it over safely
+      const legacyDbPath = path.join(userDataPath, 'database', 'ktech.sqlite');
+      const targetDbPath = path.join(dataBasePath, 'database', 'ktech.sqlite');
+
+      if (fs.existsSync(legacyDbPath) && !fs.existsSync(targetDbPath)) {
+        try {
+          fs.mkdirSync(path.dirname(targetDbPath), { recursive: true });
+          fs.copyFileSync(legacyDbPath, targetDbPath);
+          console.log('[KTech DB] Migrated legacy database from AppData to D:\\ drive successfully.');
+        } catch (copyErr) {
+          console.warn('[KTech DB] Could not migrate legacy database:', copyErr);
+        }
+      }
+    }
+
+    const prodDbPath = path.join(dataBasePath, 'database', 'ktech.sqlite');
     setDatabasePath(prodDbPath);
   }
 
