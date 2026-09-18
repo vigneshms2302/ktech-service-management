@@ -32,7 +32,7 @@ async function bootstrap(): Promise<void> {
 
     // Prioritize D:\ drive if present on Windows
     if (process.platform === 'win32' && fs.existsSync('D:\\')) {
-      dataBasePath = path.join('D:\\', 'KTech Computers', 'Data');
+      dataBasePath = path.join('D:\\', 'K-Connect', 'Data');
 
       // If legacy AppData database exists and D: drive database does not, copy it over safely
       const legacyDbPath = path.join(userDataPath, 'database', 'ktech.sqlite');
@@ -84,7 +84,7 @@ function createWindow(): void {
     height: 850,
     minWidth: 1100,
     minHeight: 700,
-    title: 'KTech Computers - Service & Business Management',
+    title: 'K-Connect - Service & Business Management',
     backgroundColor: '#0f172a', // Slate 900
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

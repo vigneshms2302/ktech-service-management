@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "com.ktech.servicemanagement",
-  "productName": "KTech Computers",
+  "productName": "K-Connect",
   "publish": {
     "provider": "github",
     "owner": "vigneshms2302",
@@ -32,9 +32,9 @@
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": "always",
     "createStartMenuShortcut": true,
-    "shortcutName": "KTech Computers"
+    "shortcutName": "K-Connect"
   },
   "portable": {
-    "artifactName": "KTech-Computers-Portable.exe"
+    "artifactName": "K-Connect-Portable.exe"
   }
 }
