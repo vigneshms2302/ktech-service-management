@@ -8,9 +8,17 @@ import {
   Store,
   Users,
   UserPlus,
+  RefreshCw,
+  Sparkles,
+  ArrowUpCircle,
+  AlertCircle,
+  Info,
+  ShieldCheck,
+  RotateCw,
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext.tsx';
 import { useAuth } from '../../context/AuthContext.tsx';
+import type { UpdateStatusPayload } from '../../types/index.ts';
 
 interface ShopSettingsModalProps {
   isOpen: boolean;
@@ -39,7 +47,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
   const { shopSettings, updateShopSettings } = useShop();
   const { refreshUsers } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'shop' | 'staff' | 'backup'>('shop');
+  const [activeTab, setActiveTab] = useState<'shop' | 'staff' | 'backup' | 'updates'>('shop');
 
   // Shop details form state
   const [shopName, setShopName] = useState(shopSettings.shopName);
@@ -74,6 +82,15 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [backupResult, setBackupResult] = useState<{ path: string; size: string } | null>(null);
 
+  // Desktop Auto-Updater state
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatusPayload>({
+    status: 'IDLE',
+    currentVersion: '1.0.0',
+  });
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [isDownloadingUpdate, setIsDownloadingUpdate] = useState(false);
+  const [updateActionError, setUpdateActionError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!isOpen) return;
     setShopName(shopSettings.shopName);
@@ -85,7 +102,39 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
 
     fetchStaffList();
     fetchHealth();
+    fetchUpdaterStatus();
+
+    // Subscribe to real-time updater events
+    let unsubscribe: (() => void) | undefined;
+    if (window.electronAPI?.updater?.onStatusChange) {
+      unsubscribe = window.electronAPI.updater.onStatusChange((status) => {
+        setUpdateStatus(status);
+        if (status.status !== 'CHECKING') {
+          setIsCheckingUpdate(false);
+        }
+        if (status.status === 'DOWNLOADED' || status.status === 'ERROR') {
+          setIsDownloadingUpdate(false);
+        }
+      });
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [isOpen, shopSettings]);
+
+  const fetchUpdaterStatus = async () => {
+    try {
+      if (window.electronAPI?.updater?.getStatus) {
+        const res = await window.electronAPI.updater.getStatus();
+        if (res.success && res.data) {
+          setUpdateStatus(res.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to get updater status:', err);
+    }
+  };
 
   const fetchStaffList = async () => {
     setIsLoadingStaff(true);
@@ -207,6 +256,52 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
       alert((err as Error).message);
     } finally {
       setIsBackingUp(false);
+    }
+  };
+
+  const handleCheckForUpdates = async () => {
+    setIsCheckingUpdate(true);
+    setUpdateActionError(null);
+    try {
+      if (window.electronAPI?.updater?.checkForUpdates) {
+        const res = await window.electronAPI.updater.checkForUpdates();
+        if (res.success && res.data) {
+          setUpdateStatus(res.data);
+        } else {
+          setUpdateActionError(res.error || 'Failed to check for updates');
+        }
+      }
+    } catch (err: unknown) {
+      setUpdateActionError((err as Error).message);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
+
+  const handleDownloadUpdate = async () => {
+    setIsDownloadingUpdate(true);
+    setUpdateActionError(null);
+    try {
+      if (window.electronAPI?.updater?.downloadUpdate) {
+        const res = await window.electronAPI.updater.downloadUpdate();
+        if (!res.success) {
+          setUpdateActionError(res.error || 'Failed to start downloading update');
+          setIsDownloadingUpdate(false);
+        }
+      }
+    } catch (err: unknown) {
+      setUpdateActionError((err as Error).message);
+      setIsDownloadingUpdate(false);
+    }
+  };
+
+  const handleQuitAndInstall = async () => {
+    try {
+      if (window.electronAPI?.updater?.quitAndInstall) {
+        await window.electronAPI.updater.quitAndInstall();
+      }
+    } catch (err: unknown) {
+      alert('Failed to restart application: ' + (err as Error).message);
     }
   };
 
@@ -343,6 +438,38 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
           >
             <Database size={14} />
             <span>Database & Backups</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('updates')}
+            style={{
+              padding: '8px 14px',
+              border: 'none',
+              borderBottom: activeTab === 'updates' ? '2px solid var(--brand-primary)' : '2px solid transparent',
+              background: 'transparent',
+              color: activeTab === 'updates' ? 'var(--brand-primary)' : 'var(--text-muted)',
+              fontWeight: activeTab === 'updates' ? 700 : 500,
+              fontSize: '12px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              position: 'relative',
+            }}
+          >
+            <RefreshCw size={14} />
+            <span>App Updates</span>
+            {(updateStatus.status === 'AVAILABLE' || updateStatus.status === 'DOWNLOADED') && (
+              <span
+                style={{
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  backgroundColor: '#38bdf8',
+                  boxShadow: '0 0 8px #38bdf8',
+                }}
+              />
+            )}
           </button>
         </div>
 
@@ -718,6 +845,253 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: APP UPDATES & VERSION */}
+          {activeTab === 'updates' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* Version & Environment Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', fontSize: '11px' }}>
+                <div style={{ padding: '10px 12px', backgroundColor: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ color: 'var(--text-dim)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>App Version</div>
+                  <div style={{ fontWeight: 800, color: 'var(--brand-primary)', fontSize: '14px', marginTop: '3px' }}>
+                    v{updateStatus.currentVersion || '1.0.0'}
+                  </div>
+                </div>
+                <div style={{ padding: '10px 12px', backgroundColor: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ color: 'var(--text-dim)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Update Channel</div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '12px', marginTop: '3px' }}>
+                    GitHub Releases
+                  </div>
+                </div>
+                <div style={{ padding: '10px 12px', backgroundColor: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ color: 'var(--text-dim)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Target Architecture</div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '12px', marginTop: '3px' }}>
+                    Windows x64 (NSIS)
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Display Card */}
+              <div
+                style={{
+                  padding: '16px',
+                  backgroundColor: 'var(--bg-surface)',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-color)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <RefreshCw size={15} color="var(--brand-primary)" />
+                    Auto-Update System
+                  </div>
+
+                  <button
+                    onClick={handleCheckForUpdates}
+                    disabled={isCheckingUpdate || updateStatus.status === 'DOWNLOADING'}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '6px',
+                      backgroundColor: 'var(--brand-primary)',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: isCheckingUpdate || updateStatus.status === 'DOWNLOADING' ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      opacity: isCheckingUpdate ? 0.7 : 1,
+                    }}
+                  >
+                    <RefreshCw size={13} style={{ animation: isCheckingUpdate ? 'spin 1s linear infinite' : 'none' }} />
+                    {isCheckingUpdate ? 'Checking Releases...' : 'Check for Updates'}
+                  </button>
+                </div>
+
+                {/* State: CHECKING */}
+                {updateStatus.status === 'CHECKING' && (
+                  <div style={{ padding: '12px', borderRadius: '6px', backgroundColor: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.2)', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', color: 'var(--text-main)' }}>
+                    <RefreshCw size={16} color="var(--brand-primary)" style={{ animation: 'spin 1s linear infinite' }} />
+                    <span>Connecting to GitHub Releases and comparing installed build version...</span>
+                  </div>
+                )}
+
+                {/* State: NOT_AVAILABLE / IDLE */}
+                {(updateStatus.status === 'IDLE' || updateStatus.status === 'NOT_AVAILABLE') && (
+                  <div style={{ padding: '12px', borderRadius: '6px', backgroundColor: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', color: 'var(--text-main)' }}>
+                    <CheckCircle2 size={16} color="var(--color-success)" />
+                    <div>
+                      <span style={{ fontWeight: 600, color: 'var(--color-success)' }}>Your software is up to date!</span>
+                      <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>
+                        Version {updateStatus.currentVersion} is the latest available release.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* State: AVAILABLE */}
+                {updateStatus.status === 'AVAILABLE' && (
+                  <div style={{ padding: '14px', borderRadius: '8px', backgroundColor: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Sparkles size={18} color="#38bdf8" />
+                        <div>
+                          <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '13px' }}>
+                            New Update Available: v{updateStatus.updateVersion}
+                          </div>
+                          {updateStatus.releaseDate && (
+                            <div style={{ fontSize: '10px', color: 'var(--text-dim)' }}>
+                              Released: {new Date(updateStatus.releaseDate).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={handleDownloadUpdate}
+                        disabled={isDownloadingUpdate}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: '6px',
+                          backgroundColor: '#0284c7',
+                          color: '#ffffff',
+                          border: 'none',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: isDownloadingUpdate ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        <Download size={13} />
+                        {isDownloadingUpdate ? 'Downloading...' : 'Download Update'}
+                      </button>
+                    </div>
+
+                    {updateStatus.releaseNotes && (
+                      <div style={{ marginTop: '4px', padding: '8px 10px', backgroundColor: 'var(--bg-card)', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '11px', color: 'var(--text-main)', maxHeight: '100px', overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
+                        <strong>Release Notes:</strong>
+                        <div style={{ marginTop: '3px', color: 'var(--text-dim)' }}>{updateStatus.releaseNotes}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* State: DOWNLOADING */}
+                {updateStatus.status === 'DOWNLOADING' && (
+                  <div style={{ padding: '14px', borderRadius: '8px', backgroundColor: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.25)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600, color: 'var(--text-main)' }}>
+                      <span>Downloading Update v{updateStatus.updateVersion}...</span>
+                      <span style={{ color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>{updateStatus.progressPercent || 0}%</span>
+                    </div>
+
+                    {/* Progress Track */}
+                    <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg-card)', borderRadius: '999px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                      <div
+                        style={{
+                          width: `${updateStatus.progressPercent || 0}%`,
+                          height: '100%',
+                          backgroundColor: 'var(--brand-primary)',
+                          transition: 'width 0.2s ease',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
+                      <span>
+                        {updateStatus.bytesPerSecond ? `${(updateStatus.bytesPerSecond / 1024 / 1024).toFixed(2)} MB/s` : 'Calculating speed...'}
+                      </span>
+                      {updateStatus.transferredBytes && updateStatus.totalBytes && (
+                        <span>
+                          {(updateStatus.transferredBytes / 1024 / 1024).toFixed(1)} MB / {(updateStatus.totalBytes / 1024 / 1024).toFixed(1)} MB
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* State: DOWNLOADED */}
+                {updateStatus.status === 'DOWNLOADED' && (
+                  <div style={{ padding: '14px', borderRadius: '8px', backgroundColor: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <ArrowUpCircle size={22} color="var(--color-success)" />
+                      <div>
+                        <div style={{ fontWeight: 800, color: 'var(--color-success)', fontSize: '13px' }}>
+                          Update Ready to Install!
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '1px' }}>
+                          Version {updateStatus.updateVersion} has been downloaded and verified.
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleQuitAndInstall}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        backgroundColor: 'var(--color-success)',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 2px 8px rgba(34, 197, 94, 0.3)',
+                      }}
+                    >
+                      <RotateCw size={14} />
+                      Restart & Apply Now
+                    </button>
+                  </div>
+                )}
+
+                {/* State: DEV_MODE */}
+                {updateStatus.status === 'DEV_MODE' && (
+                  <div style={{ padding: '12px', borderRadius: '6px', backgroundColor: 'rgba(234, 179, 8, 0.08)', border: '1px solid rgba(234, 179, 8, 0.25)', display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '11px', color: 'var(--text-main)' }}>
+                    <Info size={16} color="#eab308" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <div>
+                      <strong style={{ color: '#eab308' }}>Development Mode Active:</strong>
+                      <div style={{ marginTop: '2px', color: 'var(--text-dim)' }}>
+                        Live auto-updater differential binary patching operates when running packaged releases (NSIS Setup `.exe`). You are currently in the local Vite development environment.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* State: ERROR / updateActionError */}
+                {(updateStatus.status === 'ERROR' || updateActionError) && (
+                  <div style={{ padding: '12px', borderRadius: '6px', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '11px', color: 'var(--text-main)' }}>
+                    <AlertCircle size={16} color="#ef4444" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <div>
+                      <strong style={{ color: '#ef4444' }}>Update Check Status:</strong>
+                      <div style={{ marginTop: '2px', color: 'var(--text-dim)', wordBreak: 'break-all' }}>
+                        {updateActionError || updateStatus.error}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Data & Database Safety Badge */}
+              <div style={{ padding: '12px 14px', backgroundColor: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '11px' }}>
+                <ShieldCheck size={18} color="var(--brand-primary)" style={{ flexShrink: 0, marginTop: '1px' }} />
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>Zero-Data-Loss Architecture</div>
+                  <div style={{ color: 'var(--text-dim)', marginTop: '2px' }}>
+                    When updating to new versions, your local SQLite database (customers, tickets, inventory, GST invoices, and backups) stored in AppData is preserved safely and automatically migrated.
+                  </div>
+                </div>
               </div>
             </div>
           )}

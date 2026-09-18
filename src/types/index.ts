@@ -915,6 +915,36 @@ export interface ElectronAPI {
     getTechnicianPerformance: () => Promise<IPCResponse<Array<Record<string, unknown>>>>;
     getEquipmentFailureBreakdown: () => Promise<IPCResponse<Array<{ equipment_type: string; job_count: number }>>>;
   };
+  updater: {
+    getStatus: () => Promise<IPCResponse<UpdateStatusPayload>>;
+    checkForUpdates: () => Promise<IPCResponse<UpdateStatusPayload>>;
+    downloadUpdate: () => Promise<IPCResponse<void>>;
+    quitAndInstall: () => Promise<IPCResponse<void>>;
+    onStatusChange: (callback: (status: UpdateStatusPayload) => void) => () => void;
+  };
+}
+
+export type UpdateStatus =
+  | 'IDLE'
+  | 'CHECKING'
+  | 'AVAILABLE'
+  | 'NOT_AVAILABLE'
+  | 'DOWNLOADING'
+  | 'DOWNLOADED'
+  | 'ERROR'
+  | 'DEV_MODE';
+
+export interface UpdateStatusPayload {
+  status: UpdateStatus;
+  currentVersion: string;
+  updateVersion?: string;
+  releaseDate?: string;
+  releaseNotes?: string | null;
+  progressPercent?: number;
+  bytesPerSecond?: number;
+  transferredBytes?: number;
+  totalBytes?: number;
+  error?: string;
 }
 
 declare global {

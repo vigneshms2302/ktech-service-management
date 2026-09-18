@@ -533,6 +533,27 @@ const electronAPI = {
     getEquipmentFailureBreakdown: (): Promise<IPCResponse> =>
       ipcRenderer.invoke('reports:getEquipmentFailureBreakdown'),
   },
+
+  // Desktop Auto-Updates
+  updater: {
+    getStatus: (): Promise<IPCResponse<any>> =>
+      ipcRenderer.invoke('updater:getStatus'),
+    checkForUpdates: (): Promise<IPCResponse<any>> =>
+      ipcRenderer.invoke('updater:checkForUpdates'),
+    downloadUpdate: (): Promise<IPCResponse> =>
+      ipcRenderer.invoke('updater:downloadUpdate'),
+    quitAndInstall: (): Promise<IPCResponse> =>
+      ipcRenderer.invoke('updater:quitAndInstall'),
+    onStatusChange: (callback: (status: any) => void): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, status: any) => {
+        callback(status);
+      };
+      ipcRenderer.on('updater:status-changed', listener);
+      return () => {
+        ipcRenderer.removeListener('updater:status-changed', listener);
+      };
+    },
+  },
 };
 
 export type ElectronAPI = typeof electronAPI;

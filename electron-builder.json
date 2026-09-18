@@ -2,6 +2,12 @@
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "com.ktech.servicemanagement",
   "productName": "KTech Computers",
+  "publish": {
+    "provider": "github",
+    "owner": "vigneshms2302",
+    "repo": "ktech-service-management",
+    "releaseType": "release"
+  },
   "directories": {
     "output": "release"
   },

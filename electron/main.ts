@@ -14,6 +14,7 @@ import { registerBillingIpc } from './ipc/billingIpc.ts';
 import { registerSpecializedIpc } from './ipc/specializedIpc.ts';
 import { registerCommunicationIpc } from './ipc/communicationIpc.ts';
 import { registerReportsIpc } from './ipc/reportsIpc.ts';
+import { registerUpdaterIpc, checkForUpdatesOnStartup } from './ipc/updaterIpc.ts';
 
 process.env.DIST = path.join(__dirname, '../dist');
 process.env.VITE_PUBLIC = app.isPackaged
@@ -52,6 +53,7 @@ async function bootstrap(): Promise<void> {
   registerSpecializedIpc();
   registerCommunicationIpc();
   registerReportsIpc();
+  registerUpdaterIpc();
 }
 
 function createWindow(): void {
@@ -88,6 +90,7 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   await bootstrap();
   createWindow();
+  checkForUpdatesOnStartup();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
