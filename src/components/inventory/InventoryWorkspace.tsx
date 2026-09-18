@@ -68,7 +68,9 @@ export const InventoryWorkspace: React.FC = () => {
   // New Item Form State
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('');
+  const [customCategoryName, setCustomCategoryName] = useState('');
   const [newItemType, setNewItemType] = useState('NEW_SPARE_PART');
+  const [customItemType, setCustomItemType] = useState('');
   const [newItemSerial, setNewItemSerial] = useState('');
   const [newItemCost, setNewItemCost] = useState<number>(0);
   const [newItemPrice, setNewItemPrice] = useState<number>(0);
@@ -82,8 +84,10 @@ export const InventoryWorkspace: React.FC = () => {
   const [salvBrand, setSalvBrand] = useState('');
   const [salvModel, setSalvModel] = useState('');
   const [salvEqType, setSalvEqType] = useState('LAPTOP');
+  const [customSalvEqType, setCustomSalvEqType] = useState('');
   const [salvSerial, setSalvSerial] = useState('');
   const [salvAcqType, setSalvAcqType] = useState('CUSTOMER_SCRAP_DONATION');
+  const [customSalvAcqType, setCustomSalvAcqType] = useState('');
   const [salvCost, setSalvCost] = useState<number>(0);
   const [salvNotes, setSalvNotes] = useState('');
 
@@ -91,6 +95,7 @@ export const InventoryWorkspace: React.FC = () => {
   const [harvestPartName, setHarvestPartName] = useState('');
   const [harvestCatId, setHarvestCatId] = useState('');
   const [harvestCondition, setHarvestCondition] = useState('GRADE_A_WORKING');
+  const [customHarvestCondition, setCustomHarvestCondition] = useState('');
   const [harvestValue, setHarvestValue] = useState<number>(500);
 
   const fetchInventory = useCallback(async () => {
@@ -147,12 +152,20 @@ export const InventoryWorkspace: React.FC = () => {
       return;
     }
 
+    const catId = newItemCategory === 'OTHER_CUSTOM' ? (categories[0]?.id || 'CAT_RAM') : newItemCategory;
+    const finalName = newItemCategory === 'OTHER_CUSTOM' && customCategoryName.trim() 
+      ? `[${customCategoryName.trim()}] ${newItemName.trim()}` 
+      : newItemName.trim();
+    const finalType = newItemType === 'OTHER' && customItemType.trim() 
+      ? customItemType.trim() 
+      : newItemType;
+
     try {
       if (!window.electronAPI?.inventory?.create) return;
       const res = await window.electronAPI.inventory.create({
-        name: newItemName.trim(),
-        categoryId: newItemCategory,
-        itemType: newItemType,
+        name: finalName,
+        categoryId: catId,
+        itemType: finalType,
         serialNumber: newItemSerial.trim() || undefined,
         costPrice: newItemCost,
         sellingPrice: newItemPrice,
@@ -166,6 +179,8 @@ export const InventoryWorkspace: React.FC = () => {
       if (res.success) {
         setShowAddModal(false);
         setNewItemName('');
+        setCustomCategoryName('');
+        setCustomItemType('');
         setNewItemCost(0);
         setNewItemPrice(0);
         setNewItemQty(1);
@@ -208,14 +223,17 @@ export const InventoryWorkspace: React.FC = () => {
     e.preventDefault();
     if (!salvBrand.trim() || !salvModel.trim()) return;
 
+    const finalEqType = salvEqType === 'OTHER' && customSalvEqType.trim() ? customSalvEqType.trim() : salvEqType;
+    const finalAcqType = salvAcqType === 'OTHER' && customSalvAcqType.trim() ? customSalvAcqType.trim() : salvAcqType;
+
     try {
       if (!window.electronAPI?.salvage?.intake) return;
       const res = await window.electronAPI.salvage.intake({
         brand: salvBrand.trim(),
         modelName: salvModel.trim(),
-        equipmentType: salvEqType,
+        equipmentType: finalEqType,
         serialNumber: salvSerial.trim() || undefined,
-        acquisitionType: salvAcqType,
+        acquisitionType: finalAcqType,
         acquisitionCost: salvCost,
         notes: salvNotes.trim() || undefined,
       });
@@ -224,6 +242,8 @@ export const InventoryWorkspace: React.FC = () => {
         setShowSalvageIntakeModal(false);
         setSalvBrand('');
         setSalvModel('');
+        setCustomSalvEqType('');
+        setCustomSalvAcqType('');
         fetchInventory();
       } else {
         alert(res.error || 'Failed to intake salvage unit');
@@ -239,13 +259,17 @@ export const InventoryWorkspace: React.FC = () => {
 
     try {
       if (!window.electronAPI?.salvage?.harvestComponents) return;
+      const finalCondition = (harvestCondition === 'OTHER' && customHarvestCondition.trim())
+        ? customHarvestCondition.trim()
+        : harvestCondition;
+
       const res = await window.electronAPI.salvage.harvestComponents({
         salvageDeviceId: selectedSalvageDevice.id as string,
         harvestedParts: [
           {
             partName: harvestPartName.trim(),
             categoryId: harvestCatId,
-            testedCondition: harvestCondition,
+            testedCondition: finalCondition,
             estimatedValue: harvestValue,
             sellingPrice: harvestValue * 1.5,
           },
@@ -255,6 +279,7 @@ export const InventoryWorkspace: React.FC = () => {
       if (res.success) {
         setShowHarvestModal(false);
         setHarvestPartName('');
+        setCustomHarvestCondition('');
         setSelectedSalvageDevice(null);
         alert('Harvested component successfully logged and added to active inventory!');
         fetchInventory();
@@ -708,7 +733,18 @@ export const InventoryWorkspace: React.FC = () => {
                         {c.name} ({c.code})
                       </option>
                     ))}
+                    <option value="OTHER_CUSTOM">+ Other / Custom Category...</option>
                   </select>
+                  {newItemCategory === 'OTHER_CUSTOM' && (
+                    <input
+                      type="text"
+                      placeholder="e.g. Graphic Cards, Thermal Pads"
+                      value={customCategoryName}
+                      onChange={(e) => setCustomCategoryName(e.target.value)}
+                      style={{ width: '100%', marginTop: '4px', padding: '6px 8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '11px' }}
+                      autoFocus
+                    />
+                  )}
                 </div>
 
                 <div>
@@ -723,7 +759,18 @@ export const InventoryWorkspace: React.FC = () => {
                     <option value="SALVAGED_PART">Salvaged Part</option>
                     <option value="FINISHED_PRODUCT">Finished Product</option>
                     <option value="CONSUMABLE">Consumable</option>
+                    <option value="OTHER">Other (Type Custom Type...)</option>
                   </select>
+                  {newItemType === 'OTHER' && (
+                    <input
+                      type="text"
+                      placeholder="e.g. Diagnostic Dongle, Tester"
+                      value={customItemType}
+                      onChange={(e) => setCustomItemType(e.target.value)}
+                      style={{ width: '100%', marginTop: '4px', padding: '6px 8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '11px' }}
+                      autoFocus
+                    />
+                  )}
                 </div>
               </div>
 
@@ -975,7 +1022,18 @@ export const InventoryWorkspace: React.FC = () => {
                     <option value="GAMING_CONSOLE">Gaming Console</option>
                     <option value="MOTHERBOARD_INDIVIDUAL">Motherboard Individual</option>
                     <option value="SMPS_POWER_SUPPLY">SMPS Power Supply</option>
+                    <option value="OTHER">Other (Type Custom Equipment...)</option>
                   </select>
+                  {salvEqType === 'OTHER' && (
+                    <input
+                      type="text"
+                      placeholder="e.g. Printer, Server Blade, Mining Rig"
+                      value={customSalvEqType}
+                      onChange={(e) => setCustomSalvEqType(e.target.value)}
+                      style={{ width: '100%', marginTop: '4px', padding: '6px 8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '11px' }}
+                      autoFocus
+                    />
+                  )}
                 </div>
 
                 <div>
@@ -1000,7 +1058,18 @@ export const InventoryWorkspace: React.FC = () => {
                   <option value="CUSTOMER_SCRAP_DONATION">Customer Scrap Donation</option>
                   <option value="PURCHASED_FOR_PARTS">Purchased for Parts (Scrap Buy)</option>
                   <option value="UNREPAIRABLE_RETENTION">Unrepairable Job Retention</option>
+                  <option value="OTHER">Other (Type Custom Source...)</option>
                 </select>
+                {salvAcqType === 'OTHER' && (
+                  <input
+                    type="text"
+                    placeholder="e.g. E-Waste Lot Purchase, Corporate Auction"
+                    value={customSalvAcqType}
+                    onChange={(e) => setCustomSalvAcqType(e.target.value)}
+                    style={{ width: '100%', marginTop: '4px', padding: '6px 8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '11px' }}
+                    autoFocus
+                  />
+                )}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -1098,7 +1167,19 @@ export const InventoryWorkspace: React.FC = () => {
                     <option value="GRADE_A_WORKING">Grade A (100% Tested Working)</option>
                     <option value="GRADE_B_MINOR_WEAR">Grade B (Working, Minor Wear)</option>
                     <option value="UNTESTED_AS_IS">Untested / As-Is</option>
+                    <option value="OTHER">Other (Type Custom...)</option>
                   </select>
+                  {harvestCondition === 'OTHER' && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Specify condition..."
+                      value={customHarvestCondition}
+                      onChange={(e) => setCustomHarvestCondition(e.target.value)}
+                      style={{ width: '100%', marginTop: '6px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--brand-primary)', color: 'var(--text-main)', fontSize: '12px' }}
+                      autoFocus
+                    />
+                  )}
                 </div>
               </div>
 

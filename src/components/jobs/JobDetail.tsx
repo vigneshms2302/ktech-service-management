@@ -89,8 +89,11 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
   // Inspection form states
   const [inspPowerStatus, setInspPowerStatus] = useState('NORMAL_POWER');
+  const [inspCustomPowerStatus, setInspCustomPowerStatus] = useState('');
   const [inspDisplayStatus, setInspDisplayStatus] = useState('NORMAL');
+  const [inspCustomDisplayStatus, setInspCustomDisplayStatus] = useState('');
   const [inspMotherboardStatus, setInspMotherboardStatus] = useState('NORMAL');
+  const [inspCustomMotherboardStatus, setInspCustomMotherboardStatus] = useState('');
   const [inspBodyCondition, setInspBodyCondition] = useState('GOOD');
   const [inspWaterDamage, setInspWaterDamage] = useState(false);
   const [inspShortCircuit, setInspShortCircuit] = useState(false);
@@ -236,11 +239,21 @@ export const JobDetail: React.FC<JobDetailProps> = ({
         .map((r) => `${r.rail}: ${r.measured} (${r.status})`)
         .join('; ');
 
+      const finalPowerStatus = (inspPowerStatus === 'OTHER' && inspCustomPowerStatus.trim())
+        ? inspCustomPowerStatus.trim()
+        : inspPowerStatus;
+      const finalDisplayStatus = (inspDisplayStatus === 'OTHER' && inspCustomDisplayStatus.trim())
+        ? inspCustomDisplayStatus.trim()
+        : inspDisplayStatus;
+      const finalMotherboardStatus = (inspMotherboardStatus === 'OTHER' && inspCustomMotherboardStatus.trim())
+        ? inspCustomMotherboardStatus.trim()
+        : inspMotherboardStatus;
+
       const res = await window.electronAPI.jobs.saveTechnicalInspection({
         jobId,
-        powerStatus: inspPowerStatus,
-        displayStatus: inspDisplayStatus,
-        motherboardStatus: inspMotherboardStatus,
+        powerStatus: finalPowerStatus,
+        displayStatus: finalDisplayStatus,
+        motherboardStatus: finalMotherboardStatus,
         bodyCondition: inspBodyCondition,
         waterDamageDetected: inspWaterDamage,
         shortCircuitDetected: inspShortCircuit,
@@ -1718,7 +1731,18 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                 <option value="AUTO_SHUTDOWN">Powers on then auto shutdowns</option>
                 <option value="INTERMITTENT_POWER">Intermittent Power</option>
                 <option value="CHARGING_ONLY">Charges battery but won't boot</option>
+                <option value="OTHER">Other (Type Custom...)</option>
               </select>
+              {inspPowerStatus === 'OTHER' && (
+                <input
+                  type="text"
+                  placeholder="Specify power behavior..."
+                  value={inspCustomPowerStatus}
+                  onChange={(e) => setInspCustomPowerStatus(e.target.value)}
+                  style={{ width: '100%', marginTop: '6px', padding: '6px 8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--brand-primary)', color: 'var(--text-main)', fontSize: '12px' }}
+                  autoFocus
+                />
+              )}
             </div>
 
             <div>
@@ -1733,7 +1757,18 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                 <option value="EXTERNAL_ONLY">External Display OK, Internal Panel Dead</option>
                 <option value="LINES_FLICKER">Lines / Artifacts / Flickering</option>
                 <option value="DIM_NO_BACKLIGHT">Dim Display / No Backlight</option>
+                <option value="OTHER">Other (Type Custom...)</option>
               </select>
+              {inspDisplayStatus === 'OTHER' && (
+                <input
+                  type="text"
+                  placeholder="Specify display behavior..."
+                  value={inspCustomDisplayStatus}
+                  onChange={(e) => setInspCustomDisplayStatus(e.target.value)}
+                  style={{ width: '100%', marginTop: '6px', padding: '6px 8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--brand-primary)', color: 'var(--text-main)', fontSize: '12px' }}
+                  autoFocus
+                />
+              )}
             </div>
 
             <div>
@@ -1745,9 +1780,20 @@ export const JobDetail: React.FC<JobDetailProps> = ({
               >
                 <option value="NORMAL">Clean / Untouched Board</option>
                 <option value="CORRODED">Corrosion / Rust Detected</option>
-                <option value="BURNT_COMPONENT">BurNT IC / Exploded Component</option>
+                <option value="BURNT_COMPONENT">Burnt IC / Exploded Component</option>
                 <option value="PREVIOUSLY_WORKED">Previous Repair Attempt / Tampered</option>
+                <option value="OTHER">Other (Type Custom...)</option>
               </select>
+              {inspMotherboardStatus === 'OTHER' && (
+                <input
+                  type="text"
+                  placeholder="Specify motherboard condition..."
+                  value={inspCustomMotherboardStatus}
+                  onChange={(e) => setInspCustomMotherboardStatus(e.target.value)}
+                  style={{ width: '100%', marginTop: '6px', padding: '6px 8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--brand-primary)', color: 'var(--text-main)', fontSize: '12px' }}
+                  autoFocus
+                />
+              )}
             </div>
           </div>
 

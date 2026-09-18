@@ -127,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({
               whiteSpace: 'nowrap',
             }}
           >
-            <Plus size={14} /> + New Job Card
+            <Plus size={14} /> New Job Card
           </button>
         )}
       </div>

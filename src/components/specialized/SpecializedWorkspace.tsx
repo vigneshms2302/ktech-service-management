@@ -26,6 +26,7 @@ export const SpecializedWorkspace: React.FC = () => {
 
   // Refurb Form
   const [refurbType, setRefurbType] = useState('LAPTOP');
+  const [customRefurbType, setCustomRefurbType] = useState('');
   const [refurbBrand, setRefurbBrand] = useState('');
   const [refurbModel, setRefurbModel] = useState('');
   const [refurbSerial, setRefurbSerial] = useState('');
@@ -39,7 +40,8 @@ export const SpecializedWorkspace: React.FC = () => {
   // Sell Form
   const [buyerCustomerId, setBuyerCustomerId] = useState('');
   const [sellPrice, setSellPrice] = useState<number>(0);
-  const [sellMode, setSellMode] = useState<'CASH' | 'UPI_QR' | 'CARD' | 'NET_BANKING'>('UPI_QR');
+  const [sellMode, setSellMode] = useState<string>('UPI_QR');
+  const [customSellMode, setCustomSellMode] = useState('');
 
   // PC Builder Form
   const [pcCustomerId, setPcCustomerId] = useState('');
@@ -98,8 +100,12 @@ export const SpecializedWorkspace: React.FC = () => {
 
     try {
       if (!window.electronAPI?.refurb?.create) return;
+      const finalProductType = (refurbType === 'OTHER' && customRefurbType.trim())
+        ? customRefurbType.trim()
+        : refurbType;
+
       const res = await window.electronAPI.refurb.create({
-        productType: refurbType,
+        productType: finalProductType,
         brand: refurbBrand.trim(),
         modelName: refurbModel.trim(),
         serialNumber: refurbSerial.trim() || undefined,
@@ -115,6 +121,7 @@ export const SpecializedWorkspace: React.FC = () => {
         setShowAddRefurbModal(false);
         setRefurbBrand('');
         setRefurbModel('');
+        setCustomRefurbType('');
         fetchSpecializedData();
       } else {
         alert(res.error || 'Failed to add refurbished product');
@@ -130,11 +137,15 @@ export const SpecializedWorkspace: React.FC = () => {
 
     try {
       if (!window.electronAPI?.refurb?.sell) return;
+      const finalSellMode = (sellMode === 'OTHER' && customSellMode.trim())
+        ? customSellMode.trim()
+        : sellMode;
+
       const res = await window.electronAPI.refurb.sell({
         productId: selectedProductForSale.id as string,
         customerId: buyerCustomerId || 'CUST-001',
         sellingPrice: sellPrice,
-        paymentMode: sellMode,
+        paymentMode: finalSellMode as any,
         warrantyMonths: Number(selectedProductForSale.warranty_months || 3),
       });
 
@@ -142,6 +153,7 @@ export const SpecializedWorkspace: React.FC = () => {
         alert(`Product sold successfully! Sale #: ${res.data.saleNumber}. Hardware Warranty created.`);
         setShowSellRefurbModal(false);
         setSelectedProductForSale(null);
+        setCustomSellMode('');
         fetchSpecializedData();
       } else {
         alert(res.error || 'Failed to complete sale');
@@ -557,7 +569,19 @@ export const SpecializedWorkspace: React.FC = () => {
                     <option value="DESKTOP_PC">Desktop PC</option>
                     <option value="ALL_IN_ONE_PC">All-in-One PC</option>
                     <option value="MONITOR">Monitor / Screen</option>
+                    <option value="OTHER">Other (Type Custom...)</option>
                   </select>
+                  {refurbType === 'OTHER' && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Specify custom equipment type (e.g. Server, Gaming Console, Mac Mini)"
+                      value={customRefurbType}
+                      onChange={(e) => setCustomRefurbType(e.target.value)}
+                      style={{ width: '100%', marginTop: '6px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--brand-primary)', color: 'var(--text-main)', fontSize: '12px' }}
+                      autoFocus
+                    />
+                  )}
                 </div>
 
                 <div>
@@ -726,14 +750,26 @@ export const SpecializedWorkspace: React.FC = () => {
                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Payment Mode</label>
                 <select
                   value={sellMode}
-                  onChange={(e) => setSellMode(e.target.value as typeof sellMode)}
+                  onChange={(e) => setSellMode(e.target.value)}
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                 >
                   <option value="UPI_QR">UPI QR</option>
                   <option value="CASH">Cash</option>
                   <option value="CARD">Card POS</option>
                   <option value="NET_BANKING">Net Banking</option>
+                  <option value="OTHER">Other (Type Custom...)</option>
                 </select>
+                {sellMode === 'OTHER' && (
+                  <input
+                    type="text"
+                    required
+                    placeholder="Specify payment mode / details (e.g. Cheque, Split, Credit Note)"
+                    value={customSellMode}
+                    onChange={(e) => setCustomSellMode(e.target.value)}
+                    style={{ width: '100%', marginTop: '6px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--brand-primary)', color: 'var(--text-main)', fontSize: '12px' }}
+                    autoFocus
+                  />
+                )}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '10px' }}>

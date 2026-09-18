@@ -106,8 +106,11 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
   const [priority, setPriority] = useState<'LOW' | 'NORMAL' | 'URGENT' | 'CRITICAL'>('NORMAL');
   const [reportedIssue, setReportedIssue] = useState('');
   const [powerStatus, setPowerStatus] = useState('NO_POWER');
+  const [customPowerStatus, setCustomPowerStatus] = useState('');
   const [displayStatus, setDisplayStatus] = useState('NO_DISPLAY');
+  const [customDisplayStatus, setCustomDisplayStatus] = useState('');
   const [bodyCondition, setBodyCondition] = useState('NORMAL_WEAR');
+  const [customBodyCondition, setCustomBodyCondition] = useState('');
   const [waterDamageDetected, setWaterDamageDetected] = useState(false);
   const [shortCircuitDetected, setShortCircuitDetected] = useState(false);
   const [physicalConditionNotes, setPhysicalConditionNotes] = useState('');
@@ -256,9 +259,9 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
         reportedIssue: reportedIssue.trim(),
         accessoriesReceived: selectedAccessories,
         physicalConditionNotes: physicalConditionNotes.trim() || undefined,
-        powerStatus,
-        displayStatus,
-        bodyCondition,
+        powerStatus: powerStatus === 'OTHER' && customPowerStatus.trim() ? customPowerStatus.trim() : powerStatus,
+        displayStatus: displayStatus === 'OTHER' && customDisplayStatus.trim() ? customDisplayStatus.trim() : displayStatus,
+        bodyCondition: bodyCondition === 'OTHER' && customBodyCondition.trim() ? customBodyCondition.trim() : bodyCondition,
         waterDamageDetected,
         shortCircuitDetected,
         estimatedCost: Number(estimatedCost) || 0,
@@ -735,7 +738,19 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                     <option value="NORMAL_POWER">Turns On Normally</option>
                     <option value="INTERMITTENT_POWER">Turns on and off / Restarts</option>
                     <option value="CHARGER_ONLY">Works on Charger Only</option>
+                    <option value="OTHER">Other (Type Custom...)</option>
                   </select>
+                  {powerStatus === 'OTHER' && (
+                    <input
+                      type="text"
+                      className="input-field"
+                      style={{ marginTop: '4px', fontSize: '11px' }}
+                      placeholder="e.g. Blinks 3 times then dies"
+                      value={customPowerStatus}
+                      onChange={(e) => setCustomPowerStatus(e.target.value)}
+                      autoFocus
+                    />
+                  )}
                 </div>
 
                 <div>
@@ -750,7 +765,19 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                     <option value="LINES_ON_SCREEN">Lines on Screen</option>
                     <option value="CRACKED_PANEL">Cracked Screen</option>
                     <option value="NOT_APPLICABLE">N/A (Non-display gear)</option>
+                    <option value="OTHER">Other (Type Custom...)</option>
                   </select>
+                  {displayStatus === 'OTHER' && (
+                    <input
+                      type="text"
+                      className="input-field"
+                      style={{ marginTop: '4px', fontSize: '11px' }}
+                      placeholder="e.g. Dim backlight / White screen"
+                      value={customDisplayStatus}
+                      onChange={(e) => setCustomDisplayStatus(e.target.value)}
+                      autoFocus
+                    />
+                  )}
                 </div>
 
                 <div>
@@ -764,7 +791,19 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                     <option value="HEAVY_SCRATCHES">Heavy Scratches / Dents</option>
                     <option value="BROKEN_HINGE">Broken Hinge / Casing</option>
                     <option value="PRISTINE">Like New / Pristine</option>
+                    <option value="OTHER">Other (Type Custom...)</option>
                   </select>
+                  {bodyCondition === 'OTHER' && (
+                    <input
+                      type="text"
+                      className="input-field"
+                      style={{ marginTop: '4px', fontSize: '11px' }}
+                      placeholder="e.g. Missing rubber feet, loose bezel"
+                      value={customBodyCondition}
+                      onChange={(e) => setCustomBodyCondition(e.target.value)}
+                      autoFocus
+                    />
+                  )}
                 </div>
               </div>
 

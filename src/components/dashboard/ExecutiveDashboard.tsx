@@ -160,7 +160,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
             }}
           >
             <Plus size={16} />
-            <span>+ New Job Card</span>
+            <span>New Job Card</span>
           </button>
         </div>
       </div>

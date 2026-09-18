@@ -25,6 +25,8 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const [email, setEmail] = useState('');
   const [gstin, setGstin] = useState('');
   const [customerType, setCustomerType] = useState<'INDIVIDUAL' | 'COMMERCIAL'>('INDIVIDUAL');
+  const [selectedTypeOption, setSelectedTypeOption] = useState('INDIVIDUAL');
+  const [customCustomerType, setCustomCustomerType] = useState('');
   const [notes, setNotes] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
   const [city, setCity] = useState('Coimbatore');
@@ -103,6 +105,13 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
         return;
       }
 
+      let finalNotes = notes.trim();
+      if (selectedTypeOption === 'OTHER' && customCustomerType.trim()) {
+        finalNotes = finalNotes ? `[Category: ${customCustomerType.trim()}] ${finalNotes}` : `[Category: ${customCustomerType.trim()}]`;
+      } else if (selectedTypeOption === 'STUDENT' || selectedTypeOption === 'DEALER') {
+        finalNotes = finalNotes ? `[Category: ${selectedTypeOption}] ${finalNotes}` : `[Category: ${selectedTypeOption}]`;
+      }
+
       const res = await window.electronAPI.customers.create({
         fullName: fullName.trim(),
         primaryPhone: primaryPhone.trim(),
@@ -110,7 +119,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
         email: email.trim() || undefined,
         gstin: gstin.trim() || undefined,
         customerType,
-        notes: notes.trim() || undefined,
+        notes: finalNotes || undefined,
         addressLine1: addressLine1.trim() || undefined,
         city: city.trim() || undefined,
         state: state.trim() || undefined,
@@ -315,12 +324,35 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               </label>
               <select
                 className="input-field"
-                value={customerType}
-                onChange={(e) => setCustomerType(e.target.value as 'INDIVIDUAL' | 'COMMERCIAL')}
+                value={selectedTypeOption}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedTypeOption(val);
+                  if (val === 'COMMERCIAL') {
+                    setCustomerType('COMMERCIAL');
+                  } else {
+                    setCustomerType('INDIVIDUAL');
+                  }
+                }}
               >
                 <option value="INDIVIDUAL">Individual / Retail</option>
                 <option value="COMMERCIAL">Corporate / Business Client</option>
+                <option value="STUDENT">Student / Academic</option>
+                <option value="DEALER">Dealer / Reseller</option>
+                <option value="OTHER">Other (Type Custom Category...)</option>
               </select>
+
+              {selectedTypeOption === 'OTHER' && (
+                <input
+                  type="text"
+                  className="input-field"
+                  style={{ marginTop: '6px' }}
+                  placeholder="e.g. Government, VIP Client, AMC Partner"
+                  value={customCustomerType}
+                  onChange={(e) => setCustomCustomerType(e.target.value)}
+                  autoFocus
+                />
+              )}
             </div>
 
             <div>

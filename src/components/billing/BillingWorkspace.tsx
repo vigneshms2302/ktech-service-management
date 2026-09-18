@@ -27,7 +27,8 @@ export const BillingWorkspace: React.FC = () => {
   const [selectedInvoiceForPay, setSelectedInvoiceForPay] = useState<Record<string, unknown> | null>(null);
   const [payAmountStr, setPayAmountStr] = useState('');
   const payAmount = Number(payAmountStr) || 0;
-  const [payMode, setPayMode] = useState<'CASH' | 'UPI_QR' | 'CARD' | 'NET_BANKING' | 'CHEQUE'>('UPI_QR');
+  const [payMode, setPayMode] = useState<string>('UPI_QR');
+  const [customPayMode, setCustomPayMode] = useState('');
   const [payRef, setPayRef] = useState('');
   const [markDelivered, setMarkDelivered] = useState(true);
 
@@ -37,7 +38,8 @@ export const BillingWorkspace: React.FC = () => {
   const [approvalStatus, setApprovalStatus] = useState<'APPROVED' | 'PARTIAL_APPROVAL' | 'REJECTED'>('APPROVED');
   const [approvedAmountStr, setApprovedAmountStr] = useState('');
   const approvedAmount = Number(approvedAmountStr) || 0;
-  const [approvalMethod, setApprovalMethod] = useState<'WHATSAPP' | 'PHONE_CALL' | 'IN_PERSON' | 'EMAIL'>('WHATSAPP');
+  const [approvalMethod, setApprovalMethod] = useState<string>('WHATSAPP');
+  const [customApprovalMethod, setCustomApprovalMethod] = useState('');
   const [approvalContact, setApprovalContact] = useState('');
   const [approvalNotes, setApprovalNotes] = useState('');
 
@@ -82,12 +84,14 @@ export const BillingWorkspace: React.FC = () => {
     e.preventDefault();
     if (!selectedInvoiceForPay || payAmount <= 0) return;
 
+    const finalPayMode = payMode === 'OTHER' && customPayMode.trim() ? customPayMode.trim() : payMode;
+
     try {
       if (!window.electronAPI?.billing?.recordPayment) return;
       const res = await window.electronAPI.billing.recordPayment({
         invoiceId: selectedInvoiceForPay.id as string,
         amount: payAmount,
-        paymentMode: payMode,
+        paymentMode: finalPayMode as any,
         transactionReference: payRef.trim() || undefined,
         markJobDelivered: markDelivered,
       });
@@ -102,13 +106,14 @@ export const BillingWorkspace: React.FC = () => {
 
         setShowPaymentModal(false);
         setSelectedInvoiceForPay(null);
+        setCustomPayMode('');
         fetchBillingData();
 
         if (window.confirm(`Payment of ₹${amt} recorded successfully! (Receipt: ${receiptNumber})\n\nWould you like to send a 1-click WhatsApp payment receipt to ${custName}?`)) {
           const cleanPhone = custPhone.replace(/[^0-9]/g, '');
           if (cleanPhone) {
             const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
-            const msg = `*KTECH COMPUTERS - PAYMENT RECEIPT* 🧾\n\nDear *${custName}*,\nWe have received your payment of *₹${Number(amt).toFixed(2)}* via ${payMode}.\n\n📋 *Receipt No:* ${receiptNumber}\n📄 *Invoice No:* ${invNum}\n💳 *Remaining Balance:* ₹${remaining.toFixed(2)}\n\nThank you for choosing KTech Computers!\nSupport: +91 98400 12345`;
+            const msg = `*KTECH COMPUTERS - PAYMENT RECEIPT* 🧾\n\nDear *${custName}*,\nWe have received your payment of *₹${Number(amt).toFixed(2)}* via ${finalPayMode}.\n\n📋 *Receipt No:* ${receiptNumber}\n📄 *Invoice No:* ${invNum}\n💳 *Remaining Balance:* ₹${remaining.toFixed(2)}\n\nThank you for choosing KTech Computers!\nSupport: +91 98400 12345`;
             window.open(`https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`, '_blank');
           }
         }
@@ -124,13 +129,15 @@ export const BillingWorkspace: React.FC = () => {
     e.preventDefault();
     if (!selectedQuotationForApproval || !approvalContact.trim()) return;
 
+    const finalApprovalMethod = approvalMethod === 'OTHER' && customApprovalMethod.trim() ? customApprovalMethod.trim() : approvalMethod;
+
     try {
       if (!window.electronAPI?.billing?.recordApproval) return;
       const res = await window.electronAPI.billing.recordApproval({
         quotationId: selectedQuotationForApproval.id as string,
         approvalStatus,
         approvedAmount,
-        approvalMethod,
+        approvalMethod: finalApprovalMethod as any,
         customerContactUsed: approvalContact.trim(),
         notes: approvalNotes.trim() || undefined,
       });
@@ -139,6 +146,7 @@ export const BillingWorkspace: React.FC = () => {
         alert(`Customer approval status updated to ${approvalStatus}! Service ticket transitioned.`);
         setShowApprovalModal(false);
         setSelectedQuotationForApproval(null);
+        setCustomApprovalMethod('');
         fetchBillingData();
       } else {
         alert(res.error || 'Failed to record approval');
@@ -566,7 +574,7 @@ export const BillingWorkspace: React.FC = () => {
                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Payment Mode</label>
                 <select
                   value={payMode}
-                  onChange={(e) => setPayMode(e.target.value as typeof payMode)}
+                  onChange={(e) => setPayMode(e.target.value)}
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                 >
                   <option value="UPI_QR">UPI QR (GPay / PhonePe / Paytm)</option>
@@ -574,7 +582,18 @@ export const BillingWorkspace: React.FC = () => {
                   <option value="CARD">Credit / Debit Card POS</option>
                   <option value="NET_BANKING">Net Banking / IMPS / NEFT</option>
                   <option value="CHEQUE">Cheque</option>
+                  <option value="OTHER">Other (Type Custom Mode...)</option>
                 </select>
+                {payMode === 'OTHER' && (
+                  <input
+                    type="text"
+                    placeholder="e.g. Sodexo, Gift Card, Crypto, Store Credit"
+                    value={customPayMode}
+                    onChange={(e) => setCustomPayMode(e.target.value)}
+                    style={{ width: '100%', marginTop: '4px', padding: '6px 8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '11px' }}
+                    autoFocus
+                  />
+                )}
               </div>
 
               <div>
@@ -658,14 +677,25 @@ export const BillingWorkspace: React.FC = () => {
                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Communication Method</label>
                 <select
                   value={approvalMethod}
-                  onChange={(e) => setApprovalMethod(e.target.value as typeof approvalMethod)}
+                  onChange={(e) => setApprovalMethod(e.target.value)}
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                 >
                   <option value="WHATSAPP">WhatsApp Message</option>
                   <option value="PHONE_CALL">Phone Call Confirmation</option>
                   <option value="IN_PERSON">In-Person Counter Agreement</option>
                   <option value="EMAIL">Email</option>
+                  <option value="OTHER">Other (Type Custom Method...)</option>
                 </select>
+                {approvalMethod === 'OTHER' && (
+                  <input
+                    type="text"
+                    placeholder="e.g. SMS, Telegram, Purchase Order (PO)"
+                    value={customApprovalMethod}
+                    onChange={(e) => setCustomApprovalMethod(e.target.value)}
+                    style={{ width: '100%', marginTop: '4px', padding: '6px 8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '11px' }}
+                    autoFocus
+                  />
+                )}
               </div>
 
               <div>
