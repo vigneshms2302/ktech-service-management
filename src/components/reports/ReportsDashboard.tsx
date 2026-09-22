@@ -4,8 +4,10 @@ import {
   Wrench,
   Layers,
 } from 'lucide-react';
+import { useShop } from '../../context/ShopContext.tsx';
 
 export const ReportsDashboard: React.FC = () => {
+  const { shopSettings } = useShop();
   const [data, setData] = useState<{
     jobs: { total: number; active: number; intakePending: number; inRepair: number; readyForDelivery: number; delivered: number; unrepairable: number };
     finances: { totalInvoices: number; totalBilled: number; totalCollected: number; totalOutstanding: number; totalGstCollected: number };
@@ -54,7 +56,7 @@ export const ReportsDashboard: React.FC = () => {
       {/* Header */}
       <div>
         <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <BarChart3 size={20} color="var(--brand-primary)" /> KTech Business Analytics & Intelligence
+          <BarChart3 size={20} color="var(--brand-primary)" /> {shopSettings.shopName || 'KTech'} Business Analytics & Intelligence
         </h2>
         <div style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '2px' }}>
           Live operational overview, revenue collections, technician productivity, and equipment failure metrics

@@ -23,6 +23,7 @@ import {
   autoCorrectGeneralText,
   handleAutoCorrectKeyDown,
 } from '../../utils/autoCorrect.ts';
+import { useShop } from '../../context/ShopContext.tsx';
 
 const FAULT_CATEGORY_OPTIONS = [
   'Motherboard / Chip-Level',
@@ -78,6 +79,7 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
   initialDeviceId,
   onJobCreated,
 }) => {
+  const { shopSettings } = useShop();
   // Wizard Step: 1 = Customer, 2 = Equipment, 3 = Admission & Issue, 4 = Review & Create, 5 = Success
   const [step, setStep] = useState<number>(initialCustomerId && initialDeviceId ? 3 : initialCustomerId ? 2 : 1);
 
@@ -296,7 +298,7 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
     if (!selectedCustomer || !createdJob || !selectedDevice) return;
     const cleanPhone = selectedCustomer.primaryPhone.replace(/[^0-9]/g, '');
     const waPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone.slice(-10)}`;
-    const text = `🔧 *KTech Computers - Service Admission Receipt*\n\n` +
+    const text = `🔧 *${shopSettings.shopName} - Service Admission Receipt*\n\n` +
       `Hello *${selectedCustomer.fullName}*,\n` +
       `We have admitted your *${selectedDevice.brand} ${selectedDevice.modelName}* for service.\n\n` +
       `📋 *Job Card No:* ${createdJob.jobNumber}\n` +
@@ -305,7 +307,7 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
       `💰 *Estimated Cost:* ₹${estimatedCost.toFixed(2)}\n` +
       `💵 *Advance Received:* ₹${advanceDeposit.toFixed(2)}\n` +
       (promisedDeliveryDate ? `📅 *Promised Delivery:* ${promisedDeliveryDate}\n` : '') +
-      `\n📍 *KTech Computers* | 📞 Helpline: +91 98765 43210\n` +
+      `\n📍 *${shopSettings.shopName}* | 📞 Helpline: ${shopSettings.phone}\n` +
       `We will notify you once diagnostic inspection is complete!`;
     window.open(`https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(text)}`, '_blank');
   };
@@ -1304,9 +1306,9 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
             <div style={{ padding: '10px 0', fontFamily: 'var(--font-sans)', fontSize: '12px', lineHeight: 1.5 }}>
               {/* Slip Header */}
               <div style={{ textAlign: 'center', borderBottom: '2px solid #0f172a', paddingBottom: '10px', marginBottom: '12px' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>KTECH COMPUTERS</h2>
+                <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>{shopSettings.shopName.toUpperCase()}</h2>
                 <div style={{ fontSize: '11px', color: '#475569' }}>
-                  Cross-Cut Road, Gandhipuram, Coimbatore - 641012 • 📞 +91 98765 43210
+                  {shopSettings.address} • 📞 {shopSettings.phone} {shopSettings.gstin ? `• GSTIN: ${shopSettings.gstin}` : ''}
                 </div>
                 <div style={{ fontSize: '12px', fontWeight: 700, marginTop: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                   Equipment Service Admission Slip
@@ -1362,7 +1364,7 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
 
               {/* Terms & Conditions */}
               <div style={{ fontSize: '9px', color: '#64748b', borderTop: '1px solid #e2e8f0', paddingTop: '8px', marginBottom: '24px' }}>
-                <strong>TERMS:</strong> 1. Customers must produce this original admission slip to collect the device. 2. KTech is not responsible for existing software/data loss; customer acknowledges prior data backup responsibility. 3. Devices unclaimed after 30 days of completion will be subject to nominal storage/disposal.
+                <strong>TERMS:</strong> 1. Customers must produce this original admission slip to collect the device. 2. {shopSettings.shopName} is not responsible for existing software/data loss; customer acknowledges prior data backup responsibility. 3. Devices unclaimed after 30 days of completion will be subject to nominal storage/disposal.
               </div>
 
               {/* Signatures */}
@@ -1371,7 +1373,7 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                   Customer Signature
                 </div>
                 <div style={{ textAlign: 'center', width: '180px', borderTop: '1px solid #0f172a', paddingTop: '4px', fontSize: '11px' }}>
-                  For KTech Computers
+                  For {shopSettings.shopName}
                 </div>
               </div>
             </div>

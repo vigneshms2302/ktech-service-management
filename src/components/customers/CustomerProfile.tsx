@@ -13,6 +13,7 @@ import {
 import type { CustomerProfileData } from '../../types/index.ts';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
 import { EquipmentModal } from '../equipment/EquipmentModal.tsx';
+import { useShop } from '../../context/ShopContext.tsx';
 
 interface CustomerProfileProps {
   customerId: string;
@@ -31,6 +32,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
   onNewJobForCustomer,
   onAddEquipment,
 }) => {
+  const { shopSettings } = useShop();
   const [profile, setProfile] = useState<CustomerProfileData | null>(null);
   const [customerInvoices, setCustomerInvoices] = useState<Array<Record<string, unknown>>>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -214,7 +216,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
                   return;
                 }
                 const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
-                const msg = `Hello ${customer.fullName}, greetings from KTech Computers!`;
+                const msg = `Hello ${customer.fullName}, greetings from ${shopSettings.shopName || 'KTech Computers'}!`;
                 window.open(`https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`, '_blank');
               }}
               style={{
@@ -525,7 +527,10 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
                           const cleanPhone = (customer.primaryPhone || '').replace(/[^0-9]/g, '');
                           if (cleanPhone) {
                             const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
-                            const msg = `*KTECH COMPUTERS - TAX INVOICE* 🧾\n\nDear *${customer.fullName}*,\nYour invoice *${inv.invoice_number}* is ready.\n\n💰 *Total:* ₹${Number(inv.total_amount || 0).toFixed(2)}\n💵 *Paid:* ₹${Number(inv.amount_paid || 0).toFixed(2)}\n💳 *Balance:* ₹${Number(inv.balance_due || 0).toFixed(2)}\n\nThank you for choosing KTech Computers!\nSupport: +91 98400 12345`;
+                            const shopUpper = (shopSettings.shopName || 'KTech Computers').toUpperCase();
+                            const shopName = shopSettings.shopName || 'KTech Computers';
+                            const shopPhone = shopSettings.phone || '+91 98400 12345';
+                            const msg = `*${shopUpper} - TAX INVOICE* 🧾\n\nDear *${customer.fullName}*,\nYour invoice *${inv.invoice_number}* is ready.\n\n💰 *Total:* ₹${Number(inv.total_amount || 0).toFixed(2)}\n💵 *Paid:* ₹${Number(inv.amount_paid || 0).toFixed(2)}\n💳 *Balance:* ₹${Number(inv.balance_due || 0).toFixed(2)}\n\nThank you for choosing ${shopName}!\nSupport: ${shopPhone}`;
                             window.open(`https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`, '_blank');
                           }
                         }}

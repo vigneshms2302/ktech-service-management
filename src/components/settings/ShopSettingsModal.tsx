@@ -118,10 +118,18 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
       });
     }
 
+    const handleModalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleModalKeyDown);
+
     return () => {
       if (unsubscribe) unsubscribe();
+      window.removeEventListener('keydown', handleModalKeyDown);
     };
-  }, [isOpen, shopSettings]);
+  }, [isOpen, shopSettings, onClose]);
 
   const fetchUpdaterStatus = async () => {
     try {
@@ -168,15 +176,15 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     updateShopSettings({
-      shopName,
-      tagline,
-      phone,
-      address,
-      gstin,
-      upiId,
+      shopName: shopName.trim(),
+      tagline: tagline.trim(),
+      phone: phone.trim(),
+      address: address.trim(),
+      gstin: gstin.trim(),
+      upiId: upiId.trim(),
     });
     setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2500);
+    setTimeout(() => setIsSaved(false), 3000);
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -307,6 +315,11 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
 
   return (
     <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -316,7 +329,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
-        padding: '20px',
+        padding: '12px',
       }}
     >
       <div
@@ -325,7 +338,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
           borderRadius: '12px',
           border: '1px solid var(--border-color)',
           maxWidth: '680px',
-          width: '100%',
+          width: 'min(680px, 96vw)',
           maxHeight: '92vh',
           boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
           display: 'flex',
@@ -336,7 +349,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
         {/* Modal Header */}
         <div
           style={{
-            padding: '16px 20px',
+            padding: '14px 18px',
             borderBottom: '1px solid var(--border-color)',
             display: 'flex',
             justifyContent: 'space-between',
@@ -357,6 +370,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                 color: '#ffffff',
                 fontWeight: 800,
                 fontSize: '16px',
+                flexShrink: 0,
               }}
             >
               K
@@ -372,18 +386,30 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '4px' }}
+            aria-label="Close modal"
+            style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '6px', borderRadius: '4px' }}
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div style={{ display: 'flex', gap: '6px', padding: '10px 20px 0', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '4px',
+            padding: '8px 16px 0',
+            borderBottom: '1px solid var(--border-color)',
+            backgroundColor: 'var(--bg-surface)',
+            overflowX: 'auto',
+            whiteSpace: 'nowrap',
+            scrollbarWidth: 'thin',
+          }}
+        >
           <button
             onClick={() => setActiveTab('shop')}
             style={{
-              padding: '8px 14px',
+              padding: '8px 12px',
               border: 'none',
               borderBottom: activeTab === 'shop' ? '2px solid var(--brand-primary)' : '2px solid transparent',
               background: 'transparent',
@@ -394,6 +420,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
+              flexShrink: 0,
             }}
           >
             <Store size={14} />
@@ -403,7 +430,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
           <button
             onClick={() => setActiveTab('staff')}
             style={{
-              padding: '8px 14px',
+              padding: '8px 12px',
               border: 'none',
               borderBottom: activeTab === 'staff' ? '2px solid var(--brand-primary)' : '2px solid transparent',
               background: 'transparent',
@@ -414,6 +441,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
+              flexShrink: 0,
             }}
           >
             <Users size={14} />
@@ -423,7 +451,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
           <button
             onClick={() => setActiveTab('backup')}
             style={{
-              padding: '8px 14px',
+              padding: '8px 12px',
               border: 'none',
               borderBottom: activeTab === 'backup' ? '2px solid var(--brand-primary)' : '2px solid transparent',
               background: 'transparent',
@@ -434,6 +462,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
+              flexShrink: 0,
             }}
           >
             <Database size={14} />
@@ -443,7 +472,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
           <button
             onClick={() => setActiveTab('updates')}
             style={{
-              padding: '8px 14px',
+              padding: '8px 12px',
               border: 'none',
               borderBottom: activeTab === 'updates' ? '2px solid var(--brand-primary)' : '2px solid transparent',
               background: 'transparent',
@@ -454,6 +483,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
+              flexShrink: 0,
               position: 'relative',
             }}
           >
@@ -474,15 +504,15 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
         </div>
 
         {/* Tab Contents */}
-        <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ padding: '16px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* TAB 1: SHOP DETAILS */}
           {activeTab === 'shop' && (
             <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ padding: '10px 12px', backgroundColor: 'rgba(2, 132, 199, 0.08)', borderRadius: '6px', border: '1px solid rgba(2, 132, 199, 0.2)', fontSize: '11px', color: 'var(--text-main)' }}>
+              <div style={{ padding: '10px 12px', backgroundColor: 'rgba(2, 132, 199, 0.08)', borderRadius: '6px', border: '1px solid rgba(2, 132, 199, 0.2)', fontSize: '11px', color: 'var(--text-main)', lineHeight: 1.5 }}>
                 <strong>Client Shop Setup:</strong> Enter the business name and details of the shop using K-Connect. These details will be automatically branded across the Sidebar, Header, WhatsApp updates, Counter Admission Slips, and GST Invoices.
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Shop / Business Name *</label>
                   <input
@@ -491,7 +521,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                     onChange={(e) => setShopName(e.target.value)}
                     placeholder="e.g. KTech Computers, Apex Laptop Lab"
                     required
-                    style={{ width: '100%', marginTop: '4px', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '13px', fontWeight: 600 }}
+                    style={{ width: '100%', marginTop: '4px', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '13px', fontWeight: 600, boxSizing: 'border-box' }}
                   />
                 </div>
 
@@ -503,7 +533,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="e.g. +91 98400 12345"
                     required
-                    style={{ width: '100%', marginTop: '4px', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '13px' }}
+                    style={{ width: '100%', marginTop: '4px', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '13px', boxSizing: 'border-box' }}
                   />
                 </div>
               </div>
@@ -515,7 +545,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                   value={tagline}
                   onChange={(e) => setTagline(e.target.value)}
                   placeholder="e.g. Chip-Level Laptop, Desktop & Mobile Repair Lab"
-                  style={{ width: '100%', marginTop: '4px', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
+                  style={{ width: '100%', marginTop: '4px', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px', boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -526,11 +556,11 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="e.g. 1st Floor, Gandhi Road, Main Market, Coimbatore - 641012"
-                  style={{ width: '100%', marginTop: '4px', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
+                  style={{ width: '100%', marginTop: '4px', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px', boxSizing: 'border-box' }}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)' }}>Shop GSTIN (Optional)</label>
                   <input
@@ -538,7 +568,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                     value={gstin}
                     onChange={(e) => setGstin(e.target.value)}
                     placeholder="e.g. 33AAAAA0000A1Z5"
-                    style={{ width: '100%', marginTop: '4px', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px', fontFamily: 'var(--font-mono)' }}
+                    style={{ width: '100%', marginTop: '4px', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
                   />
                 </div>
 
@@ -549,7 +579,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                     value={upiId}
                     onChange={(e) => setUpiId(e.target.value)}
                     placeholder="e.g. yourshop@upi"
-                    style={{ width: '100%', marginTop: '4px', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px', fontFamily: 'var(--font-mono)' }}
+                    style={{ width: '100%', marginTop: '4px', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px', fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
                   />
                 </div>
               </div>

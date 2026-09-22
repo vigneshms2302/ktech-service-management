@@ -13,6 +13,7 @@ import {
   BarChart2,
 } from 'lucide-react';
 import type { ServiceJobSummary } from '../../types/index.ts';
+import { useShop } from '../../context/ShopContext.tsx';
 
 interface ExecutiveDashboardProps {
   onNewJob: () => void;
@@ -25,6 +26,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
   onOpenJob,
   onNavigateTab,
 }) => {
+  const { shopSettings } = useShop();
   const [overview, setOverview] = useState<{
     jobs: { total: number; active: number; intakePending: number; inRepair: number; readyForDelivery: number; delivered: number; unrepairable: number };
     finances: { totalInvoices: number; totalBilled: number; totalCollected: number; totalOutstanding: number; totalGstCollected: number };
@@ -130,7 +132,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.3px', margin: 0 }}>
-            KTech Operations Center
+            {shopSettings.shopName ? `${shopSettings.shopName} Operations Center` : 'KTech Operations Center'}
           </h1>
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '3px' }}>
             Live daily register • Repair pitstops • Financial collections • WhatsApp ready

@@ -27,6 +27,7 @@ import {
 import type { JobDetailData } from '../../types/index.ts';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
+import { useShop } from '../../context/ShopContext.tsx';
 import {
   autoCorrectFaultText,
   autoCorrectHardwareText,
@@ -80,6 +81,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
   onSelectDevice,
 }) => {
   const { userList, currentUser, hasPermission } = useAuth();
+  const { shopSettings } = useShop();
   const [data, setData] = useState<JobDetailData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -741,17 +743,22 @@ export const JobDetail: React.FC<JobDetailProps> = ({
     }
     const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
 
+    const shopUpper = (shopSettings.shopName || 'KTech Computers').toUpperCase();
+    const shopName = shopSettings.shopName || 'KTech Computers';
+    const shopPhone = shopSettings.phone || '+91 98400 12345';
+    const shopAddress = shopSettings.address || '1st Floor, Gandhi Road';
+
     let msg = '';
     if (type === 'intake') {
-      msg = `*KTECH COMPUTERS - SERVICE INTAKE RECEIPT* 🛠️\n\nDear *${j.customerName}*,\nWe have received your device for repair service.\n\n📋 *Job Number:* ${j.jobNumber}\n💻 *Device:* ${j.deviceBrand} ${j.deviceModel}\n🔍 *Reported Issue:* ${j.reportedIssue}\n💰 *Est. Cost:* ₹${j.estimatedCost.toFixed(2)}\n💵 *Advance Paid:* ₹${j.advanceDeposit.toFixed(2)}\n\nOur certified technician is inspecting your device. You will receive diagnosis updates shortly!\n\n📍 *KTech Computers*, 1st Floor, Gandhi Road\n📞 Support: +91 98400 12345`;
+      msg = `*${shopUpper} - SERVICE INTAKE RECEIPT* 🛠️\n\nDear *${j.customerName}*,\nWe have received your device for repair service.\n\n📋 *Job Number:* ${j.jobNumber}\n💻 *Device:* ${j.deviceBrand} ${j.deviceModel}\n🔍 *Reported Issue:* ${j.reportedIssue}\n💰 *Est. Cost:* ₹${j.estimatedCost.toFixed(2)}\n💵 *Advance Paid:* ₹${j.advanceDeposit.toFixed(2)}\n\nOur certified technician is inspecting your device. You will receive diagnosis updates shortly!\n\n📍 *${shopName}*, ${shopAddress}\n📞 Support: ${shopPhone}`;
     } else if (type === 'estimate') {
       const diagText = data.diagnoses?.[0]?.rootCauseAnalysis || 'Inspection and circuit test completed';
-      msg = `*KTECH COMPUTERS - ESTIMATE APPROVAL REQUIRED* 📋\n\nDear *${j.customerName}*,\nDiagnosis is complete for your *${j.deviceBrand} ${j.deviceModel}* (Job: ${j.jobNumber}).\n\n🔍 *Diagnosis:* ${diagText}\n💰 *Total Estimate:* ₹${j.estimatedCost.toFixed(2)}\n\nPlease reply *APPROVE* to authorize repair work or call us if you have any questions.\n\n📞 +91 98400 12345 | KTech Computers`;
+      msg = `*${shopUpper} - ESTIMATE APPROVAL REQUIRED* 📋\n\nDear *${j.customerName}*,\nDiagnosis is complete for your *${j.deviceBrand} ${j.deviceModel}* (Job: ${j.jobNumber}).\n\n🔍 *Diagnosis:* ${diagText}\n💰 *Total Estimate:* ₹${j.estimatedCost.toFixed(2)}\n\nPlease reply *APPROVE* to authorize repair work or call us if you have any questions.\n\n📞 ${shopPhone} | ${shopName}`;
     } else if (type === 'ready') {
       const balance = Math.max(0, j.estimatedCost - j.advanceDeposit);
-      msg = `*KTECH COMPUTERS - DEVICE READY FOR PICKUP* ✅\n\nDear *${j.customerName}*,\nGreat news! Your *${j.deviceBrand} ${j.deviceModel}* (Job: ${j.jobNumber}) is fully repaired and bench-tested.\n\n💰 *Total Bill:* ₹${j.estimatedCost.toFixed(2)}\n💵 *Advance Deducted:* ₹${j.advanceDeposit.toFixed(2)}\n💳 *Balance Payable:* ₹${balance.toFixed(2)}\n\n⏰ Pickup Hours: 10:00 AM - 9:00 PM\n📍 KTech Computers, 1st Floor, Gandhi Road\nSee you soon!`;
+      msg = `*${shopUpper} - DEVICE READY FOR PICKUP* ✅\n\nDear *${j.customerName}*,\nGreat news! Your *${j.deviceBrand} ${j.deviceModel}* (Job: ${j.jobNumber}) is fully repaired and bench-tested.\n\n💰 *Total Bill:* ₹${j.estimatedCost.toFixed(2)}\n💵 *Advance Deducted:* ₹${j.advanceDeposit.toFixed(2)}\n💳 *Balance Payable:* ₹${balance.toFixed(2)}\n\n⏰ Pickup Hours: 10:00 AM - 9:00 PM\n📍 ${shopName}, ${shopAddress}\nSee you soon!`;
     } else if (type === 'delivery') {
-      msg = `*KTECH COMPUTERS - THANK YOU & WARRANTY* 🤝\n\nDear *${j.customerName}*,\nThank you for collecting your *${j.deviceBrand} ${j.deviceModel}* (Job: ${j.jobNumber}).\n\nWe appreciate your business! All repairs are backed by our service warranty.\nNeed any assistance in future? Contact us anytime at +91 98400 12345.`;
+      msg = `*${shopUpper} - THANK YOU & WARRANTY* 🤝\n\nDear *${j.customerName}*,\nThank you for collecting your *${j.deviceBrand} ${j.deviceModel}* (Job: ${j.jobNumber}).\n\nWe appreciate your business! All repairs are backed by our service warranty.\nNeed any assistance in future? Contact us anytime at ${shopPhone}.`;
     }
 
     const url = `https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`;
@@ -2671,13 +2678,13 @@ export const JobDetail: React.FC<JobDetailProps> = ({
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #0f172a', paddingBottom: '12px' }}>
                 <div>
                   <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 900, letterSpacing: '-0.5px', color: '#0f172a' }}>
-                    KTECH COMPUTERS
+                    {(shopSettings.shopName || 'KTech Computers').toUpperCase()}
                   </h1>
                   <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>
-                    Chip-Level Laptop, Desktop & Electronic Repair Lab
+                    {shopSettings.tagline}
                   </div>
                   <div style={{ fontSize: '10px', color: '#64748b' }}>
-                    1st Floor, Gandhi Road, Main Market | Phone: +91 98400 12345
+                    {shopSettings.address} | Phone: {shopSettings.phone} {shopSettings.gstin ? `| GSTIN: ${shopSettings.gstin}` : ''}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -2760,7 +2767,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
               {/* Terms & Conditions */}
               <div style={{ marginTop: '16px', padding: '8px 12px', borderLeft: '3px solid #cbd5e1', fontSize: '10px', color: '#64748b', lineHeight: 1.4 }}>
                 1. Devices unclaimed within 30 days of completion notification may be disposed to recover repair costs.<br />
-                2. Customers are advised to maintain backup of data. KTech is not responsible for data loss during hardware repair.<br />
+                2. Customers are advised to maintain backup of data. {shopSettings.shopName} is not responsible for data loss during hardware repair.<br />
                 3. Physical damages during unboxing or pre-existing liquid corrosion are customer risks.<br />
                 4. Production of this original intake slip is compulsory for device collection.
               </div>
@@ -2771,7 +2778,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                   Customer Signature
                 </div>
                 <div style={{ textAlign: 'center', width: '200px', borderTop: '1px dashed #94a3b8', paddingTop: '6px', fontSize: '11px', color: '#475569' }}>
-                  Authorized Signatory (KTech)
+                  Authorized Signatory ({shopSettings.shopName})
                 </div>
               </div>
             </div>

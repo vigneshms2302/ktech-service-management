@@ -11,10 +11,12 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
+import { useShop } from '../../context/ShopContext.tsx';
 import type { SystemHealth, AuditLogEntry } from '../../types/index.ts';
 
 export const Phase1Dashboard: React.FC = () => {
   const { currentUser, hasPermission } = useAuth();
+  const { shopSettings } = useShop();
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [unlockedPasscode, setUnlockedPasscode] = useState<string | null>(null);
@@ -93,7 +95,7 @@ export const Phase1Dashboard: React.FC = () => {
       >
         <div>
           <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>KTech Computers</span>
+            <span>{shopSettings.shopName || 'KTech Computers'}</span>
             <span className="badge badge-success" style={{ fontSize: '11px' }}>Phase 1 Foundation Active</span>
           </h1>
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>

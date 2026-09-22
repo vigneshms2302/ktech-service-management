@@ -5,8 +5,10 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
+import { useShop } from '../../context/ShopContext.tsx';
 
 export const WhatsAppCenter: React.FC = () => {
+  const { shopSettings } = useShop();
   const [messages, setMessages] = useState<Array<Record<string, unknown>>>([]);
   const [templates, setTemplates] = useState<Array<Record<string, unknown>>>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -224,7 +226,14 @@ export const WhatsAppCenter: React.FC = () => {
                     setSelectedTemplate(tKey);
                     const tmpl = templates.find((t) => t.template_key === tKey);
                     if (tmpl) {
-                      setMessageBody(tmpl.template_body as string);
+                      let body = String(tmpl.template_body || '');
+                      body = body
+                        .replace(/\{\{shop_name\}\}/g, shopSettings.shopName || 'KTech Computers')
+                        .replace(/\{\{shop_phone\}\}/g, shopSettings.phone || '+91 98400 12345')
+                        .replace(/\{\{shop_address\}\}/g, shopSettings.address || '1st Floor, Gandhi Road')
+                        .replace(/KTech Computers/g, shopSettings.shopName || 'KTech Computers')
+                        .replace(/\+91 98765 43210/g, shopSettings.phone || '+91 98400 12345');
+                      setMessageBody(body);
                     }
                   }}
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 export interface ShopSettings {
   shopName: string;
@@ -37,6 +37,44 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   });
 
+  // Sync with DB settings if available
+  useEffect(() => {
+    const fetchDbSettings = async () => {
+      try {
+        if (window.electronAPI?.system?.getSettings) {
+          const res = await window.electronAPI.system.getSettings();
+          if (res.success && res.data) {
+            const dbSettings = res.data;
+            setShopSettings((prev) => {
+              const updated: ShopSettings = {
+                shopName: dbSettings['shop.name'] || localStorage.getItem('ktech_shop_name') || prev.shopName,
+                tagline: dbSettings['shop.tagline'] || localStorage.getItem('ktech_shop_tagline') || prev.tagline,
+                phone: dbSettings['shop.phone'] || localStorage.getItem('ktech_shop_phone') || prev.phone,
+                address: dbSettings['shop.address'] || localStorage.getItem('ktech_shop_address') || prev.address,
+                gstin: dbSettings['shop.gstin'] || localStorage.getItem('ktech_shop_gstin') || prev.gstin,
+                upiId: dbSettings['shop.upi_id'] || localStorage.getItem('ktech_shop_upi') || prev.upiId,
+              };
+
+              // Keep localStorage updated with DB
+              if (updated.shopName) localStorage.setItem('ktech_shop_name', updated.shopName);
+              if (updated.tagline) localStorage.setItem('ktech_shop_tagline', updated.tagline);
+              if (updated.phone) localStorage.setItem('ktech_shop_phone', updated.phone);
+              if (updated.address) localStorage.setItem('ktech_shop_address', updated.address);
+              if (updated.gstin) localStorage.setItem('ktech_shop_gstin', updated.gstin);
+              if (updated.upiId) localStorage.setItem('ktech_shop_upi', updated.upiId);
+
+              return updated;
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load shop settings from DB:', err);
+      }
+    };
+
+    fetchDbSettings();
+  }, []);
+
   const updateShopSettings = useCallback((newSettings: Partial<ShopSettings>) => {
     setShopSettings((prev) => {
       const updated = { ...prev, ...newSettings };
@@ -46,6 +84,34 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (newSettings.address !== undefined) localStorage.setItem('ktech_shop_address', newSettings.address);
       if (newSettings.gstin !== undefined) localStorage.setItem('ktech_shop_gstin', newSettings.gstin);
       if (newSettings.upiId !== undefined) localStorage.setItem('ktech_shop_upi', newSettings.upiId);
+
+      // Async persist to SQLite backend
+      if (window.electronAPI?.system?.updateSetting) {
+        const promises: Promise<unknown>[] = [];
+        if (newSettings.shopName !== undefined) {
+          promises.push(window.electronAPI.system.updateSetting({ key: 'shop.name', value: newSettings.shopName }));
+        }
+        if (newSettings.tagline !== undefined) {
+          promises.push(window.electronAPI.system.updateSetting({ key: 'shop.tagline', value: newSettings.tagline }));
+        }
+        if (newSettings.phone !== undefined) {
+          promises.push(window.electronAPI.system.updateSetting({ key: 'shop.phone', value: newSettings.phone }));
+        }
+        if (newSettings.address !== undefined) {
+          promises.push(window.electronAPI.system.updateSetting({ key: 'shop.address', value: newSettings.address }));
+        }
+        if (newSettings.gstin !== undefined) {
+          promises.push(window.electronAPI.system.updateSetting({ key: 'shop.gstin', value: newSettings.gstin }));
+        }
+        if (newSettings.upiId !== undefined) {
+          promises.push(window.electronAPI.system.updateSetting({ key: 'shop.upi_id', value: newSettings.upiId }));
+        }
+        Promise.all(promises).catch((err) => console.warn('Could not persist shop settings to DB:', err));
+      }
+
+      // Notify any listeners
+      window.dispatchEvent(new CustomEvent('ktech:shop-settings-updated', { detail: updated }));
+
       return updated;
     });
   }, []);

@@ -69,12 +69,13 @@ export const App: React.FC = () => {
         if (isSearchOpen) setIsSearchOpen(false);
         else if (isLoginOpen) setIsLoginOpen(false);
         else if (isPinOpen) setIsPinOpen(false);
+        else if (isSettingsOpen) setIsSettingsOpen(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSearchOpen, isLoginOpen, isPinOpen]);
+  }, [isSearchOpen, isLoginOpen, isPinOpen, isSettingsOpen]);
 
   const handleOpenNewJob = (customerId?: string, deviceId?: string) => {
     setWizardCustomerId(customerId);

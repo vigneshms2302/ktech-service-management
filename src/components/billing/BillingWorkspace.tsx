@@ -12,8 +12,10 @@ import {
   autoCorrectGeneralText,
   handleAutoCorrectKeyDown,
 } from '../../utils/autoCorrect.ts';
+import { useShop } from '../../context/ShopContext.tsx';
 
 export const BillingWorkspace: React.FC = () => {
+  const { shopSettings } = useShop();
   const [activeTab, setActiveTab] = useState<'invoices' | 'quotations'>('invoices');
   const [invoices, setInvoices] = useState<Array<Record<string, unknown>>>([]);
   const [quotations, setQuotations] = useState<Array<Record<string, unknown>>>([]);
@@ -119,7 +121,10 @@ export const BillingWorkspace: React.FC = () => {
           const cleanPhone = custPhone.replace(/[^0-9]/g, '');
           if (cleanPhone) {
             const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
-            const msg = `*KTECH COMPUTERS - PAYMENT RECEIPT* 🧾\n\nDear *${custName}*,\nWe have received your payment of *₹${Number(amt).toFixed(2)}* via ${finalPayMode}.\n\n📋 *Receipt No:* ${receiptNumber}\n📄 *Invoice No:* ${invNum}\n💳 *Remaining Balance:* ₹${remaining.toFixed(2)}\n\nThank you for choosing KTech Computers!\nSupport: +91 98400 12345`;
+            const shopUpper = (shopSettings.shopName || 'KTech Computers').toUpperCase();
+            const shopName = shopSettings.shopName || 'KTech Computers';
+            const shopPhone = shopSettings.phone || '+91 98400 12345';
+            const msg = `*${shopUpper} - PAYMENT RECEIPT* 🧾\n\nDear *${custName}*,\nWe have received your payment of *₹${Number(amt).toFixed(2)}* via ${finalPayMode}.\n\n📋 *Receipt No:* ${receiptNumber}\n📄 *Invoice No:* ${invNum}\n💳 *Remaining Balance:* ₹${remaining.toFixed(2)}\n\nThank you for choosing ${shopName}!\nSupport: ${shopPhone}`;
             window.open(`https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`, '_blank');
           }
         }
@@ -385,7 +390,10 @@ export const BillingWorkspace: React.FC = () => {
                                 return;
                               }
                               const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
-                              const msg = `*KTECH COMPUTERS - TAX INVOICE* 🧾\n\nDear *${inv.customer_name}*,\nYour invoice *${inv.invoice_number}* has been issued.\n\n💰 *Total Amount:* ₹${Number(inv.total_amount || 0).toFixed(2)}\n💵 *Paid:* ₹${Number(inv.amount_paid || 0).toFixed(2)}\n💳 *Balance Due:* ₹${Number(inv.balance_due || 0).toFixed(2)}\n\nThank you for choosing KTech Computers!\n📞 +91 98400 12345`;
+                              const shopUpper = (shopSettings.shopName || 'KTech Computers').toUpperCase();
+                              const shopName = shopSettings.shopName || 'KTech Computers';
+                              const shopPhone = shopSettings.phone || '+91 98400 12345';
+                              const msg = `*${shopUpper} - TAX INVOICE* 🧾\n\nDear *${inv.customer_name}*,\nYour invoice *${inv.invoice_number}* has been issued.\n\n💰 *Total Amount:* ₹${Number(inv.total_amount || 0).toFixed(2)}\n💵 *Paid:* ₹${Number(inv.amount_paid || 0).toFixed(2)}\n💳 *Balance Due:* ₹${Number(inv.balance_due || 0).toFixed(2)}\n\nThank you for choosing ${shopName}!\n📞 ${shopPhone}`;
                               window.open(`https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`, '_blank');
                             }}
                             style={{
@@ -500,7 +508,10 @@ export const BillingWorkspace: React.FC = () => {
                               return;
                             }
                             const fullPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
-                            const msg = `*KTECH COMPUTERS - SERVICE ESTIMATE* 📋\n\nDear *${q.customer_name}*,\nHere is the estimate for your service *${q.job_number || ''}*:\n\n📄 *Estimate No:* ${q.quotation_number}\n💰 *Estimated Total:* ₹${Number(q.total_amount || 0).toFixed(2)}\n\nPlease reply *APPROVE* to authorize repair work.\n📞 +91 98400 12345 | KTech Computers`;
+                            const shopUpper = (shopSettings.shopName || 'KTech Computers').toUpperCase();
+                            const shopName = shopSettings.shopName || 'KTech Computers';
+                            const shopPhone = shopSettings.phone || '+91 98400 12345';
+                            const msg = `*${shopUpper} - SERVICE ESTIMATE* 📋\n\nDear *${q.customer_name}*,\nHere is the estimate for your service *${q.job_number || ''}*:\n\n📄 *Estimate No:* ${q.quotation_number}\n💰 *Estimated Total:* ₹${Number(q.total_amount || 0).toFixed(2)}\n\nPlease reply *APPROVE* to authorize repair work.\n📞 ${shopPhone} | ${shopName}`;
                             window.open(`https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`, '_blank');
                           }}
                           style={{
@@ -768,16 +779,16 @@ export const BillingWorkspace: React.FC = () => {
       {selectedInvoiceForPrint && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ backgroundColor: '#ffffff', color: '#0f172a', borderRadius: '8px', maxWidth: '750px', width: '100%', padding: '24px', maxHeight: '92vh', overflowY: 'auto', fontFamily: 'sans-serif' }}>
-            {/* Header with KTech Computers details */}
+            {/* Header with Shop details */}
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #0f172a', paddingBottom: '12px' }}>
               <div>
                 <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 900, color: '#1e3a8a', letterSpacing: '0.5px' }}>
-                  KTECH COMPUTERS
+                  {(shopSettings.shopName || 'KTech Computers').toUpperCase()}
                 </h1>
                 <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>
-                  Specialized Chip-Level Service & IT Solutions<br />
-                  124/A Cross-Cut Road, Gandhipuram, Coimbatore - 641012<br />
-                  Phone: +91 98430 11223 | GSTIN: 33AAAAK1234F1Z5
+                  {shopSettings.tagline}<br />
+                  {shopSettings.address}<br />
+                  Phone: {shopSettings.phone} {shopSettings.gstin ? `| GSTIN: ${shopSettings.gstin}` : ''} {shopSettings.upiId ? `| UPI: ${shopSettings.upiId}` : ''}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
