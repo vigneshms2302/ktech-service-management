@@ -7,6 +7,15 @@ import {
   Plus,
 } from 'lucide-react';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
+import {
+  autoCorrectBrand,
+  autoCorrectModel,
+  autoCorrectSpecs,
+  autoCorrectTitle,
+  autoCorrectCode,
+  autoCorrectGeneralText,
+  handleAutoCorrectKeyDown,
+} from '../../utils/autoCorrect.ts';
 
 export const SpecializedWorkspace: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'datarecovery' | 'refurb' | 'pcbuilder' | 'warranty'>('datarecovery');
@@ -578,6 +587,10 @@ export const SpecializedWorkspace: React.FC = () => {
                       placeholder="Specify custom equipment type (e.g. Server, Gaming Console, Mac Mini)"
                       value={customRefurbType}
                       onChange={(e) => setCustomRefurbType(e.target.value)}
+                      onKeyDown={(e) => handleAutoCorrectKeyDown(e, customRefurbType, setCustomRefurbType)}
+                      onBlur={(e) => setCustomRefurbType(autoCorrectTitle(e.target.value))}
+                      spellCheck={true}
+                      autoCorrect="on"
                       style={{ width: '100%', marginTop: '6px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--brand-primary)', color: 'var(--text-main)', fontSize: '12px' }}
                       autoFocus
                     />
@@ -607,6 +620,10 @@ export const SpecializedWorkspace: React.FC = () => {
                     placeholder="e.g. Lenovo / Dell"
                     value={refurbBrand}
                     onChange={(e) => setRefurbBrand(e.target.value)}
+                    onKeyDown={(e) => handleAutoCorrectKeyDown(e, refurbBrand, (v) => setRefurbBrand(autoCorrectBrand(v)))}
+                    onBlur={(e) => setRefurbBrand(autoCorrectBrand(e.target.value))}
+                    spellCheck={true}
+                    autoCorrect="on"
                     style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                   />
                 </div>
@@ -619,6 +636,10 @@ export const SpecializedWorkspace: React.FC = () => {
                     placeholder="e.g. ThinkPad L490"
                     value={refurbModel}
                     onChange={(e) => setRefurbModel(e.target.value)}
+                    onKeyDown={(e) => handleAutoCorrectKeyDown(e, refurbModel, (v) => setRefurbModel(autoCorrectModel(v)))}
+                    onBlur={(e) => setRefurbModel(autoCorrectModel(e.target.value))}
+                    spellCheck={true}
+                    autoCorrect="on"
                     style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                   />
                 </div>
@@ -632,6 +653,9 @@ export const SpecializedWorkspace: React.FC = () => {
                     placeholder="e.g. SN-88231"
                     value={refurbSerial}
                     onChange={(e) => setRefurbSerial(e.target.value)}
+                    onBlur={(e) => setRefurbSerial(autoCorrectCode(e.target.value))}
+                    spellCheck={false}
+                    autoCorrect="off"
                     style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                   />
                 </div>
@@ -654,6 +678,10 @@ export const SpecializedWorkspace: React.FC = () => {
                   placeholder="e.g. Intel Core i5-8th Gen, 16GB RAM, 512GB NVMe, 14 FHD IPS"
                   value={refurbSpecs}
                   onChange={(e) => setRefurbSpecs(e.target.value)}
+                  onKeyDown={(e) => handleAutoCorrectKeyDown(e, refurbSpecs, (v) => setRefurbSpecs(autoCorrectSpecs(v)))}
+                  onBlur={(e) => setRefurbSpecs(autoCorrectSpecs(e.target.value))}
+                  spellCheck={true}
+                  autoCorrect="on"
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
               </div>
@@ -742,6 +770,9 @@ export const SpecializedWorkspace: React.FC = () => {
                   placeholder="e.g. CUST-001"
                   value={buyerCustomerId}
                   onChange={(e) => setBuyerCustomerId(e.target.value)}
+                  onBlur={(e) => setBuyerCustomerId(autoCorrectCode(e.target.value))}
+                  spellCheck={false}
+                  autoCorrect="off"
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
               </div>
@@ -766,6 +797,10 @@ export const SpecializedWorkspace: React.FC = () => {
                     placeholder="Specify payment mode / details (e.g. Cheque, Split, Credit Note)"
                     value={customSellMode}
                     onChange={(e) => setCustomSellMode(e.target.value)}
+                    onKeyDown={(e) => handleAutoCorrectKeyDown(e, customSellMode, setCustomSellMode)}
+                    onBlur={(e) => setCustomSellMode(autoCorrectTitle(e.target.value))}
+                    spellCheck={true}
+                    autoCorrect="on"
                     style={{ width: '100%', marginTop: '6px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--brand-primary)', color: 'var(--text-main)', fontSize: '12px' }}
                     autoFocus
                   />
@@ -809,6 +844,10 @@ export const SpecializedWorkspace: React.FC = () => {
                   placeholder="e.g. 4K Video Editing & Gaming Rig"
                   value={pcBuildName}
                   onChange={(e) => setPcBuildName(e.target.value)}
+                  onKeyDown={(e) => handleAutoCorrectKeyDown(e, pcBuildName, setPcBuildName)}
+                  onBlur={(e) => setPcBuildName(autoCorrectTitle(e.target.value))}
+                  spellCheck={true}
+                  autoCorrect="on"
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
               </div>
@@ -820,6 +859,9 @@ export const SpecializedWorkspace: React.FC = () => {
                   placeholder="CUST-001"
                   value={pcCustomerId}
                   onChange={(e) => setPcCustomerId(e.target.value)}
+                  onBlur={(e) => setPcCustomerId(autoCorrectCode(e.target.value))}
+                  spellCheck={false}
+                  autoCorrect="off"
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
               </div>
@@ -874,6 +916,10 @@ export const SpecializedWorkspace: React.FC = () => {
                   placeholder="e.g. Same display black screen issue returned after 10 days of repair..."
                   value={claimIssue}
                   onChange={(e) => setClaimIssue(e.target.value)}
+                  onKeyDown={(e) => handleAutoCorrectKeyDown(e, claimIssue, setClaimIssue)}
+                  onBlur={(e) => setClaimIssue(autoCorrectGeneralText(e.target.value))}
+                  spellCheck={true}
+                  autoCorrect="on"
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
               </div>

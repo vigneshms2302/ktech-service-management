@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { User, X, AlertTriangle } from 'lucide-react';
 import type { CustomerDuplicateCandidate } from '../../types/index.ts';
+import {
+  autoCorrectName,
+  autoCorrectPhone,
+  autoCorrectEmail,
+  autoCorrectCode,
+  autoCorrectTitle,
+  autoCorrectGeneralText,
+  autoCorrectAddress,
+  handleAutoCorrectKeyDown,
+} from '../../utils/autoCorrect.ts';
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -265,7 +275,14 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                   setFullName(e.target.value);
                   checkDupes(primaryPhone, e.target.value, email);
                 }}
+                onKeyDown={(e) => handleAutoCorrectKeyDown(e, fullName, (v) => {
+                  setFullName(v);
+                  checkDupes(primaryPhone, v, email);
+                })}
+                onBlur={() => setFullName(autoCorrectName(fullName))}
                 placeholder="e.g. Senthil Kumar"
+                spellCheck={true}
+                autoCorrect="on"
                 required
               />
             </div>
@@ -280,6 +297,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 className="input-field"
                 value={primaryPhone}
                 onChange={(e) => handlePhoneChange(e.target.value)}
+                onBlur={() => setPrimaryPhone(autoCorrectPhone(primaryPhone))}
                 placeholder="e.g. 98430 11223"
                 required
               />
@@ -296,6 +314,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 className="input-field"
                 value={secondaryPhone}
                 onChange={(e) => setSecondaryPhone(e.target.value)}
+                onBlur={() => setSecondaryPhone(autoCorrectPhone(secondaryPhone))}
                 placeholder="Optional secondary contact"
               />
             </div>
@@ -312,7 +331,9 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                   setEmail(e.target.value);
                   checkDupes(primaryPhone, fullName, e.target.value);
                 }}
+                onBlur={() => setEmail(autoCorrectEmail(email))}
                 placeholder="client@gmail.com"
+                spellCheck={false}
               />
             </div>
           </div>
@@ -350,6 +371,10 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                   placeholder="e.g. Government, VIP Client, AMC Partner"
                   value={customCustomerType}
                   onChange={(e) => setCustomCustomerType(e.target.value)}
+                  onKeyDown={(e) => handleAutoCorrectKeyDown(e, customCustomerType, setCustomCustomerType)}
+                  onBlur={() => setCustomCustomerType(autoCorrectTitle(customCustomerType))}
+                  spellCheck={true}
+                  autoCorrect="on"
                   autoFocus
                 />
               )}
@@ -364,6 +389,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 className="input-field"
                 value={gstin}
                 onChange={(e) => setGstin(e.target.value)}
+                onBlur={() => setGstin(autoCorrectCode(gstin))}
                 placeholder="33AAAAA0000A1Z5"
               />
             </div>
@@ -379,7 +405,11 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               className="input-field"
               value={addressLine1}
               onChange={(e) => setAddressLine1(e.target.value)}
+              onKeyDown={(e) => handleAutoCorrectKeyDown(e, addressLine1, setAddressLine1)}
+              onBlur={() => setAddressLine1(autoCorrectAddress(addressLine1))}
               placeholder="Door No, Street Name, Area"
+              spellCheck={true}
+              autoCorrect="on"
             />
           </div>
 
@@ -393,6 +423,10 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 className="input-field"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
+                onKeyDown={(e) => handleAutoCorrectKeyDown(e, city, setCity)}
+                onBlur={() => setCity(autoCorrectAddress(city))}
+                spellCheck={true}
+                autoCorrect="on"
               />
             </div>
 
@@ -405,6 +439,10 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 className="input-field"
                 value={state}
                 onChange={(e) => setState(e.target.value)}
+                onKeyDown={(e) => handleAutoCorrectKeyDown(e, state, setState)}
+                onBlur={() => setState(autoCorrectAddress(state))}
+                spellCheck={true}
+                autoCorrect="on"
               />
             </div>
 
@@ -417,6 +455,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 className="input-field"
                 value={pincode}
                 onChange={(e) => setPincode(e.target.value)}
+                onBlur={() => setPincode(autoCorrectCode(pincode))}
                 placeholder="641001"
               />
             </div>
@@ -431,7 +470,11 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Referred by ABC Corp, VIP customer, prefers WhatsApp contact"
+              onKeyDown={(e) => handleAutoCorrectKeyDown(e, notes, setNotes)}
+              onBlur={() => setNotes(autoCorrectGeneralText(notes))}
+              placeholder="Special instructions, referral info, VIP customer preferences..."
+              spellCheck={true}
+              autoCorrect="on"
             />
           </div>
 

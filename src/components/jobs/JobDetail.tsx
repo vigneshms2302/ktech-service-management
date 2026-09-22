@@ -27,6 +27,13 @@ import {
 import type { JobDetailData } from '../../types/index.ts';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
+import {
+  autoCorrectFaultText,
+  autoCorrectHardwareText,
+  autoCorrectTitle,
+  autoCorrectGeneralText,
+  handleAutoCorrectKeyDown,
+} from '../../utils/autoCorrect.ts';
 
 export const FAULT_CATEGORY_PRESETS = [
   'Motherboard / Chip-Level',
@@ -449,7 +456,10 @@ export const JobDetail: React.FC<JobDetailProps> = ({
             type="text"
             value={newDiscoveredFault}
             onChange={(e) => setNewDiscoveredFault(e.target.value)}
+            onBlur={() => setNewDiscoveredFault(autoCorrectFaultText(newDiscoveredFault))}
             placeholder="e.g. Found damaged trace near PU401 / Broken hinge mount during teardown..."
+            spellCheck={true}
+            autoCorrect="on"
             style={{
               flex: 1,
               minWidth: '220px',
@@ -1881,7 +1891,11 @@ export const JobDetail: React.FC<JobDetailProps> = ({
               rows={3}
               value={inspNotes}
               onChange={(e) => setInspNotes(e.target.value)}
+              onKeyDown={(e) => handleAutoCorrectKeyDown(e, inspNotes, setInspNotes)}
+              onBlur={() => setInspNotes(autoCorrectGeneralText(inspNotes))}
               placeholder="e.g. Injected 1V on 5V rail, thermal cam detected heating at charging controller PU401..."
+              spellCheck={true}
+              autoCorrect="on"
               style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px', outline: 'none' }}
             />
           </div>
@@ -2140,7 +2154,11 @@ export const JobDetail: React.FC<JobDetailProps> = ({
               rows={3}
               value={diagRootCause}
               onChange={(e) => setDiagRootCause(e.target.value)}
+              onKeyDown={(e) => handleAutoCorrectKeyDown(e, diagRootCause, setDiagRootCause)}
+              onBlur={() => setDiagRootCause(autoCorrectGeneralText(diagRootCause))}
               placeholder="e.g. Shorted High-Side MOSFET PQ302 on 19V rail caused charging controller PU401 to overheat and lock power delivery."
+              spellCheck={true}
+              autoCorrect="on"
               style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
             />
           </div>
@@ -2152,7 +2170,11 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                 type="text"
                 value={diagFaultyComponents}
                 onChange={(e) => setDiagFaultyComponents(e.target.value)}
+                onKeyDown={(e) => handleAutoCorrectKeyDown(e, diagFaultyComponents, setDiagFaultyComponents)}
+                onBlur={() => setDiagFaultyComponents(autoCorrectHardwareText(diagFaultyComponents))}
                 placeholder="e.g. PU401 (BQ24780S), PQ302 (AON7408 MOSFET), PC201"
+                spellCheck={true}
+                autoCorrect="on"
                 style={{ width: '100%', marginTop: '4px', padding: '7px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
               />
             </div>
@@ -2163,7 +2185,11 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                 type="text"
                 value={diagRecommendedAction}
                 onChange={(e) => setDiagRecommendedAction(e.target.value)}
+                onKeyDown={(e) => handleAutoCorrectKeyDown(e, diagRecommendedAction, setDiagRecommendedAction)}
+                onBlur={() => setDiagRecommendedAction(autoCorrectGeneralText(diagRecommendedAction))}
                 placeholder="e.g. Replace MOSFET & PWM chip; verify 19V rail before boot"
+                spellCheck={true}
+                autoCorrect="on"
                 style={{ width: '100%', marginTop: '4px', padding: '7px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
               />
             </div>
@@ -2189,6 +2215,10 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                 placeholder="e.g. Board rework / Replace IC"
                 value={planServiceName}
                 onChange={(e) => setPlanServiceName(e.target.value)}
+                onKeyDown={(e) => handleAutoCorrectKeyDown(e, planServiceName, setPlanServiceName)}
+                onBlur={() => setPlanServiceName(autoCorrectTitle(planServiceName))}
+                spellCheck={true}
+                autoCorrect="on"
                 style={{ flex: 1, padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
               />
               <input
@@ -2238,6 +2268,10 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                   placeholder="Part description (e.g. 15.6 FHD Screen / BQ24780S IC)"
                   value={partName}
                   onChange={(e) => setPartName(e.target.value)}
+                  onKeyDown={(e) => handleAutoCorrectKeyDown(e, partName, setPartName)}
+                  onBlur={() => setPartName(autoCorrectHardwareText(partName))}
+                  spellCheck={true}
+                  autoCorrect="on"
                   style={{ flex: 1, padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
                 <input
@@ -2341,6 +2375,10 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                 placeholder="Activity title (e.g. Desoldered damaged MOSFET & replaced with AON7408)"
                 value={actTitle}
                 onChange={(e) => setActTitle(e.target.value)}
+                onKeyDown={(e) => handleAutoCorrectKeyDown(e, actTitle, setActTitle)}
+                onBlur={() => setActTitle(autoCorrectTitle(actTitle))}
+                spellCheck={true}
+                autoCorrect="on"
                 style={{ flex: 1, padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '12px' }}
               />
               <input
@@ -2357,6 +2395,10 @@ export const JobDetail: React.FC<JobDetailProps> = ({
               placeholder="Detailed technical observation or test results during this step..."
               value={actDescription}
               onChange={(e) => setActDescription(e.target.value)}
+              onKeyDown={(e) => handleAutoCorrectKeyDown(e, actDescription, setActDescription)}
+              onBlur={() => setActDescription(autoCorrectGeneralText(actDescription))}
+              spellCheck={true}
+              autoCorrect="on"
               style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '12px' }}
             />
 

@@ -6,6 +6,12 @@ import {
   Search,
 } from 'lucide-react';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
+import {
+  autoCorrectTitle,
+  autoCorrectCode,
+  autoCorrectGeneralText,
+  handleAutoCorrectKeyDown,
+} from '../../utils/autoCorrect.ts';
 
 export const BillingWorkspace: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'invoices' | 'quotations'>('invoices');
@@ -590,6 +596,10 @@ export const BillingWorkspace: React.FC = () => {
                     placeholder="e.g. Sodexo, Gift Card, Crypto, Store Credit"
                     value={customPayMode}
                     onChange={(e) => setCustomPayMode(e.target.value)}
+                    onKeyDown={(e) => handleAutoCorrectKeyDown(e, customPayMode, setCustomPayMode)}
+                    onBlur={(e) => setCustomPayMode(autoCorrectTitle(e.target.value))}
+                    spellCheck={true}
+                    autoCorrect="on"
                     style={{ width: '100%', marginTop: '4px', padding: '6px 8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '11px' }}
                     autoFocus
                   />
@@ -603,6 +613,9 @@ export const BillingWorkspace: React.FC = () => {
                   placeholder="e.g. UPI Ref 329182390192"
                   value={payRef}
                   onChange={(e) => setPayRef(e.target.value)}
+                  onBlur={(e) => setPayRef(autoCorrectCode(e.target.value))}
+                  spellCheck={false}
+                  autoCorrect="off"
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
               </div>
@@ -692,6 +705,10 @@ export const BillingWorkspace: React.FC = () => {
                     placeholder="e.g. SMS, Telegram, Purchase Order (PO)"
                     value={customApprovalMethod}
                     onChange={(e) => setCustomApprovalMethod(e.target.value)}
+                    onKeyDown={(e) => handleAutoCorrectKeyDown(e, customApprovalMethod, setCustomApprovalMethod)}
+                    onBlur={(e) => setCustomApprovalMethod(autoCorrectTitle(e.target.value))}
+                    spellCheck={true}
+                    autoCorrect="on"
                     style={{ width: '100%', marginTop: '4px', padding: '6px 8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '11px' }}
                     autoFocus
                   />
@@ -705,6 +722,9 @@ export const BillingWorkspace: React.FC = () => {
                   required
                   value={approvalContact}
                   onChange={(e) => setApprovalContact(e.target.value)}
+                  onBlur={(e) => setApprovalContact(autoCorrectTitle(e.target.value))}
+                  spellCheck={false}
+                  autoCorrect="off"
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
               </div>
@@ -716,6 +736,10 @@ export const BillingWorkspace: React.FC = () => {
                   placeholder="e.g. Customer agreed to ₹2,500 total, requested delivery by Saturday..."
                   value={approvalNotes}
                   onChange={(e) => setApprovalNotes(e.target.value)}
+                  onKeyDown={(e) => handleAutoCorrectKeyDown(e, approvalNotes, setApprovalNotes)}
+                  onBlur={(e) => setApprovalNotes(autoCorrectGeneralText(e.target.value))}
+                  spellCheck={true}
+                  autoCorrect="on"
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
               </div>

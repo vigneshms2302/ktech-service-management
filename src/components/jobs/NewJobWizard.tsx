@@ -17,6 +17,12 @@ import type { EquipmentType } from '../../types/index.ts';
 import { CustomerModal } from '../customers/CustomerModal.tsx';
 import { EquipmentModal } from '../equipment/EquipmentModal.tsx';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
+import {
+  autoCorrectFaultText,
+  autoCorrectTitle,
+  autoCorrectGeneralText,
+  handleAutoCorrectKeyDown,
+} from '../../utils/autoCorrect.ts';
 
 const FAULT_CATEGORY_OPTIONS = [
   'Motherboard / Chip-Level',
@@ -636,23 +642,28 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                   placeholder="+ Type custom fault / issue and press Add..."
                   value={customFault}
                   onChange={(e) => setCustomFault(e.target.value)}
+                  onBlur={() => setCustomFault(autoCorrectFaultText(customFault))}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      if (customFault.trim() && !selectedFaults.includes(customFault.trim())) {
-                        setSelectedFaults([...selectedFaults, customFault.trim()]);
+                      const corrected = autoCorrectFaultText(customFault.trim());
+                      if (corrected && !selectedFaults.includes(corrected)) {
+                        setSelectedFaults([...selectedFaults, corrected]);
                         setCustomFault('');
                       }
                     }
                   }}
+                  spellCheck={true}
+                  autoCorrect="on"
                   style={{ flex: 1, padding: '5px 10px', fontSize: '11px' }}
                 />
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => {
-                    if (customFault.trim() && !selectedFaults.includes(customFault.trim())) {
-                      setSelectedFaults([...selectedFaults, customFault.trim()]);
+                    const corrected = autoCorrectFaultText(customFault.trim());
+                    if (corrected && !selectedFaults.includes(corrected)) {
+                      setSelectedFaults([...selectedFaults, corrected]);
                       setCustomFault('');
                     }
                   }}
@@ -690,7 +701,11 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                 rows={3}
                 value={reportedIssue}
                 onChange={(e) => setReportedIssue(e.target.value)}
+                onKeyDown={(e) => handleAutoCorrectKeyDown(e, reportedIssue, setReportedIssue)}
+                onBlur={() => setReportedIssue(autoCorrectFaultText(reportedIssue))}
                 placeholder="e.g. Device does not turn on. Power light blinks orange. Customer states it happened after a lightning surge."
+                spellCheck={true}
+                autoCorrect="on"
                 required
               />
 
@@ -834,7 +849,11 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                   className="input-field"
                   value={physicalConditionNotes}
                   onChange={(e) => setPhysicalConditionNotes(e.target.value)}
+                  onKeyDown={(e) => handleAutoCorrectKeyDown(e, physicalConditionNotes, setPhysicalConditionNotes)}
+                  onBlur={() => setPhysicalConditionNotes(autoCorrectGeneralText(physicalConditionNotes))}
                   placeholder="Physical observations (e.g. 2 bottom screws missing, crack near left hinge)"
+                  spellCheck={true}
+                  autoCorrect="on"
                 />
               </div>
             </div>
@@ -876,7 +895,10 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                   className="input-field"
                   value={customAccessory}
                   onChange={(e) => setCustomAccessory(e.target.value)}
+                  onBlur={() => setCustomAccessory(autoCorrectTitle(customAccessory))}
                   placeholder="Custom accessory (e.g. HDMI Cable)"
+                  spellCheck={true}
+                  autoCorrect="on"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -1001,7 +1023,10 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                 className="input-field"
                 value={initialNote}
                 onChange={(e) => setInitialNote(e.target.value)}
+                onBlur={() => setInitialNote(autoCorrectGeneralText(initialNote))}
                 placeholder="Staff remarks, customer urgency reason, or special instructions..."
+                spellCheck={true}
+                autoCorrect="on"
               />
             </div>
 

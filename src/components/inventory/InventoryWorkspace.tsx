@@ -7,6 +7,11 @@ import {
   Truck,
   Boxes,
 } from 'lucide-react';
+import {
+  autoCorrectHardwareText,
+  autoCorrectTitle,
+  handleAutoCorrectKeyDown,
+} from '../../utils/autoCorrect.ts';
 
 interface InventoryItem {
   id: string;
@@ -714,6 +719,10 @@ export const InventoryWorkspace: React.FC = () => {
                   placeholder="e.g. 15.6 FHD IPS 30-Pin Display Panel / BQ24780S IC"
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
+                  onKeyDown={(e) => handleAutoCorrectKeyDown(e, newItemName, (v) => setNewItemName(autoCorrectHardwareText(v)))}
+                  onBlur={() => setNewItemName(autoCorrectHardwareText(newItemName))}
+                  spellCheck={true}
+                  autoCorrect="on"
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
               </div>
@@ -741,6 +750,10 @@ export const InventoryWorkspace: React.FC = () => {
                       placeholder="e.g. Graphic Cards, Thermal Pads"
                       value={customCategoryName}
                       onChange={(e) => setCustomCategoryName(e.target.value)}
+                      onKeyDown={(e) => handleAutoCorrectKeyDown(e, customCategoryName, (v) => setCustomCategoryName(autoCorrectTitle(v)))}
+                      onBlur={() => setCustomCategoryName(autoCorrectTitle(customCategoryName))}
+                      spellCheck={true}
+                      autoCorrect="on"
                       style={{ width: '100%', marginTop: '4px', padding: '6px 8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '11px' }}
                       autoFocus
                     />
@@ -767,6 +780,10 @@ export const InventoryWorkspace: React.FC = () => {
                       placeholder="e.g. Diagnostic Dongle, Tester"
                       value={customItemType}
                       onChange={(e) => setCustomItemType(e.target.value)}
+                      onKeyDown={(e) => handleAutoCorrectKeyDown(e, customItemType, (v) => setCustomItemType(autoCorrectTitle(v)))}
+                      onBlur={() => setCustomItemType(autoCorrectTitle(customItemType))}
+                      spellCheck={true}
+                      autoCorrect="on"
                       style={{ width: '100%', marginTop: '4px', padding: '6px 8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '11px' }}
                       autoFocus
                     />
@@ -1135,6 +1152,10 @@ export const InventoryWorkspace: React.FC = () => {
                   placeholder="e.g. 8GB DDR4 2666MHz RAM / 15.6 FHD LCD / Original Dell Charger"
                   value={harvestPartName}
                   onChange={(e) => setHarvestPartName(e.target.value)}
+                  onKeyDown={(e) => handleAutoCorrectKeyDown(e, harvestPartName, (v) => setHarvestPartName(autoCorrectHardwareText(v)))}
+                  onBlur={() => setHarvestPartName(autoCorrectHardwareText(harvestPartName))}
+                  spellCheck={true}
+                  autoCorrect="on"
                   style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
                 />
               </div>
@@ -1176,6 +1197,7 @@ export const InventoryWorkspace: React.FC = () => {
                       placeholder="Specify condition..."
                       value={customHarvestCondition}
                       onChange={(e) => setCustomHarvestCondition(e.target.value)}
+                      onKeyDown={(e) => handleAutoCorrectKeyDown(e, customHarvestCondition, setCustomHarvestCondition)}
                       style={{ width: '100%', marginTop: '6px', padding: '8px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--brand-primary)', color: 'var(--text-main)', fontSize: '12px' }}
                       autoFocus
                     />

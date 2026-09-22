@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Laptop, Monitor, Smartphone, Wrench, X, AlertTriangle, Lock } from 'lucide-react';
 import type { DeviceDuplicateCandidate } from '../../types/index.ts';
+import {
+  autoCorrectBrand,
+  autoCorrectModel,
+  autoCorrectSpecs,
+  autoCorrectCode,
+  autoCorrectTitle,
+  handleAutoCorrectKeyDown,
+} from '../../utils/autoCorrect.ts';
 
 type SimpleCategory = 'LAPTOP' | 'COMPUTER' | 'MOBILE' | 'OTHER';
 
@@ -309,7 +317,11 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
                 className="input-field"
                 value={customDeviceType}
                 onChange={(e) => setCustomDeviceType(e.target.value)}
+                onKeyDown={(e) => handleAutoCorrectKeyDown(e, customDeviceType, setCustomDeviceType)}
+                onBlur={() => setCustomDeviceType(autoCorrectTitle(customDeviceType))}
                 placeholder="e.g. Printer, Tablet, iPad, Smart TV, Audio Receiver, Gaming Console..."
+                spellCheck={true}
+                autoCorrect="on"
                 required
                 autoFocus
               />
@@ -330,7 +342,18 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
                   setBrand(e.target.value);
                   checkDuplicates(serialNumber, e.target.value, modelName);
                 }}
+                onKeyDown={(e) => handleAutoCorrectKeyDown(e, brand, (v) => {
+                  setBrand(v);
+                  checkDuplicates(serialNumber, v, modelName);
+                })}
+                onBlur={() => {
+                  const b = autoCorrectBrand(brand);
+                  setBrand(b);
+                  checkDuplicates(serialNumber, b, modelName);
+                }}
                 placeholder={category === 'MOBILE' ? 'e.g. Apple, Samsung, OnePlus' : 'e.g. Dell, HP, Lenovo, Apple'}
+                spellCheck={true}
+                autoCorrect="on"
                 required
               />
               {/* Quick Brand Suggestions */}
@@ -370,7 +393,18 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
                   setModelName(e.target.value);
                   checkDuplicates(serialNumber, brand, e.target.value);
                 }}
+                onKeyDown={(e) => handleAutoCorrectKeyDown(e, modelName, (v) => {
+                  setModelName(v);
+                  checkDuplicates(serialNumber, brand, v);
+                })}
+                onBlur={() => {
+                  const m = autoCorrectModel(modelName);
+                  setModelName(m);
+                  checkDuplicates(serialNumber, brand, m);
+                }}
                 placeholder={category === 'MOBILE' ? 'e.g. iPhone 14, Galaxy S23' : category === 'LAPTOP' ? 'e.g. Inspiron 15 3520' : 'e.g. Pavilion Gaming, OptiPlex'}
+                spellCheck={true}
+                autoCorrect="on"
                 required
               />
             </div>
@@ -390,6 +424,11 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
                   setSerialNumber(e.target.value);
                   checkDuplicates(e.target.value, brand, modelName);
                 }}
+                onBlur={() => {
+                  const s = autoCorrectCode(serialNumber);
+                  setSerialNumber(s);
+                  checkDuplicates(s, brand, modelName);
+                }}
                 placeholder={category === 'MOBILE' ? 'e.g. 356789012345678' : 'e.g. PF39AB12, 8CG1234XYZ'}
               />
             </div>
@@ -403,7 +442,11 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
                 className="input-field"
                 value={colorFinish}
                 onChange={(e) => setColorFinish(e.target.value)}
+                onKeyDown={(e) => handleAutoCorrectKeyDown(e, colorFinish, setColorFinish)}
+                onBlur={() => setColorFinish(autoCorrectTitle(colorFinish))}
                 placeholder="e.g. Black, Silver, Space Grey, Blue"
+                spellCheck={true}
+                autoCorrect="on"
               />
             </div>
           </div>
@@ -418,7 +461,11 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
               className="input-field"
               value={specsSummary}
               onChange={(e) => setSpecsSummary(e.target.value)}
+              onKeyDown={(e) => handleAutoCorrectKeyDown(e, specsSummary, setSpecsSummary)}
+              onBlur={() => setSpecsSummary(autoCorrectSpecs(specsSummary))}
               placeholder={category === 'MOBILE' ? 'e.g. 128GB, 8GB RAM' : 'e.g. Core i5, 16GB RAM, 512GB SSD'}
+              spellCheck={true}
+              autoCorrect="on"
             />
           </div>
 
