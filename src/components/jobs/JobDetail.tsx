@@ -1867,7 +1867,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                           copy[idx].measured = e.target.value;
                           setInspVoltageRails(copy);
                         }}
-                        style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '12px', width: '130px' }}
+                        style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px', width: '130px' }}
                       />
                     </td>
                     <td style={{ padding: '6px 8px' }}>
@@ -1878,7 +1878,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                           copy[idx].status = e.target.value;
                           setInspVoltageRails(copy);
                         }}
-                        style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '11px' }}
+                        style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '11px', outline: 'none', cursor: 'pointer' }}
                       >
                         <option value="NORMAL">Normal / OK</option>
                         <option value="SHORT_TO_GND">Short to GND</option>

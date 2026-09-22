@@ -396,7 +396,7 @@ export const TechnicianWorkspace: React.FC<TechnicianWorkspaceProps> = ({ onOpen
             style={{
               padding: '7px 10px',
               borderRadius: '6px',
-              backgroundColor: 'var(--bg-main)',
+              backgroundColor: 'var(--bg-surface)',
               border: '1px solid var(--border-color)',
               color: 'var(--text-main)',
               fontSize: '12px',
@@ -415,7 +415,7 @@ export const TechnicianWorkspace: React.FC<TechnicianWorkspaceProps> = ({ onOpen
             style={{
               padding: '7px 10px',
               borderRadius: '6px',
-              backgroundColor: 'var(--bg-main)',
+              backgroundColor: 'var(--bg-surface)',
               border: '1px solid var(--border-color)',
               color: 'var(--text-main)',
               fontSize: '12px',
