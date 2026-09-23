@@ -67,6 +67,29 @@ export const DIAGNOSTIC_OUTCOME_PRESETS = [
   'Testing Passed / No Fault Found',
 ];
 
+export const LABOR_SERVICE_PRESETS = [
+  'Motherboard BGA Rework',
+  'Charging IC / Power Rail Repair',
+  'Display Replacement Labor',
+  'BIOS / EC Chip Reprogramming',
+  'Keyboard Replacement Labor',
+  'OS & Driver Installation',
+  'Thermal Servicing & Fan Cleaning',
+  'Liquid Damage Ultrasonic Cleaning',
+];
+
+export const REPAIR_PART_PRESETS = [
+  '15.6" FHD 30-Pin IPS Screen',
+  '14.0" FHD IPS Screen',
+  'BQ24780S Charging Controller IC',
+  'ISL95520 Buck Controller IC',
+  '512GB M.2 NVMe SSD',
+  '8GB DDR4 3200MHz RAM',
+  'Replacement Internal Battery',
+  'Backlit Laptop Keyboard',
+  'DC Power Jack Harness',
+];
+
 interface JobDetailProps {
   jobId: string;
   onBack: () => void;
@@ -131,20 +154,14 @@ export const JobDetail: React.FC<JobDetailProps> = ({
   const [newDiscoveredSeverity, setNewDiscoveredSeverity] = useState<'CRITICAL' | 'MODERATE' | 'COSMETIC' | 'ADVISORY'>('MODERATE');
   const [isLoggingDiscoveredFault, setIsLoggingDiscoveredFault] = useState(false);
 
-  // Repair Plan form states
-  const [planServiceName, setPlanServiceName] = useState('');
-  const [planLaborChargeStr, setPlanLaborChargeStr] = useState('');
-  const planLaborCharge = Number(planLaborChargeStr) || 0;
-
-  // Required Part form states
-  const [partName, setPartName] = useState('');
-  const [partSerialNumber, setPartSerialNumber] = useState('');
-  const [partQuantity, setPartQuantity] = useState(1);
-  const [partCostStr, setPartCostStr] = useState('');
-  const [partPriceStr, setPartPriceStr] = useState('');
-  const [partWarrantyMonths] = useState(3);
-  const partCost = Number(partCostStr) || 0;
-  const partPrice = Number(partPriceStr) || 0;
+  // Unified Repair Plan & Parts item builder state
+  const [planItemType, setPlanItemType] = useState<'LABOR' | 'PART'>('LABOR');
+  const [planItemDescription, setPlanItemDescription] = useState('');
+  const [planItemQuantity, setPlanItemQuantity] = useState(1);
+  const [planItemPriceStr, setPlanItemPriceStr] = useState('');
+  const [planItemCostStr, setPlanItemCostStr] = useState('');
+  const [planItemSerial, setPlanItemSerial] = useState('');
+  const [isAddingPlanItem, setIsAddingPlanItem] = useState(false);
 
   // Modals & Action States
   const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false);
@@ -516,27 +533,57 @@ export const JobDetail: React.FC<JobDetailProps> = ({
     );
   };
 
-  const handleAddRepairPlanAction = async (e: React.FormEvent) => {
+  const handleUnifiedAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!planServiceName.trim()) return;
+    if (!planItemDescription.trim()) return;
+    setIsAddingPlanItem(true);
 
     try {
-      if (!window.electronAPI?.jobs?.addRepairPlanAction) return;
-      const res = await window.electronAPI.jobs.addRepairPlanAction({
-        jobId,
-        serviceName: planServiceName.trim(),
-        laborCharge: planLaborCharge,
-      });
+      if (planItemType === 'LABOR') {
+        if (!window.electronAPI?.jobs?.addRepairPlanAction) return;
+        const laborCharge = Number(planItemPriceStr) || 0;
+        const res = await window.electronAPI.jobs.addRepairPlanAction({
+          jobId,
+          serviceName: planItemDescription.trim(),
+          laborCharge,
+        });
 
-      if (res.success) {
-        setPlanServiceName('');
-        setPlanLaborChargeStr('');
-        fetchJob();
+        if (res.success) {
+          setPlanItemDescription('');
+          setPlanItemPriceStr('');
+          fetchJob();
+        } else {
+          alert(res.error || 'Failed to add repair plan action');
+        }
       } else {
-        alert(res.error || 'Failed to add repair plan action');
+        if (!window.electronAPI?.jobs?.addRequiredPart) return;
+        const unitSellingPrice = Number(planItemPriceStr) || 0;
+        const unitCostPrice = Number(planItemCostStr) || 0;
+        const res = await window.electronAPI.jobs.addRequiredPart({
+          jobId,
+          partName: planItemDescription.trim(),
+          serialNumber: planItemSerial.trim() || undefined,
+          quantity: Math.max(1, planItemQuantity),
+          unitCostPrice,
+          unitSellingPrice,
+          warrantyMonths: 3,
+        });
+
+        if (res.success) {
+          setPlanItemDescription('');
+          setPlanItemSerial('');
+          setPlanItemQuantity(1);
+          setPlanItemCostStr('');
+          setPlanItemPriceStr('');
+          fetchJob();
+        } else {
+          alert(res.error || 'Failed to add required part');
+        }
       }
     } catch (err: unknown) {
       alert((err as Error).message);
+    } finally {
+      setIsAddingPlanItem(false);
     }
   };
 
@@ -545,37 +592,6 @@ export const JobDetail: React.FC<JobDetailProps> = ({
     const res = await window.electronAPI.jobs.deleteRepairPlanAction({ serviceId });
     if (res.success) {
       fetchJob();
-    }
-  };
-
-  const handleAddRequiredPart = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!partName.trim()) return;
-
-    try {
-      if (!window.electronAPI?.jobs?.addRequiredPart) return;
-      const res = await window.electronAPI.jobs.addRequiredPart({
-        jobId,
-        partName: partName.trim(),
-        serialNumber: partSerialNumber.trim() || undefined,
-        quantity: partQuantity,
-        unitCostPrice: partCost,
-        unitSellingPrice: partPrice,
-        warrantyMonths: partWarrantyMonths,
-      });
-
-      if (res.success) {
-        setPartName('');
-        setPartSerialNumber('');
-        setPartQuantity(1);
-        setPartCostStr('');
-        setPartPriceStr('');
-        fetchJob();
-      } else {
-        alert(res.error || 'Failed to add required part');
-      }
-    } catch (err: unknown) {
-      alert((err as Error).message);
     }
   };
 
@@ -2209,161 +2225,375 @@ export const JobDetail: React.FC<JobDetailProps> = ({
 
       {/* TAB 4: REPAIR PLAN & REQUIRED PARTS */}
       {activeTab === 'repair' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px', flexShrink: 0 }}>
-          {/* Planned Services / Actions */}
-          <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-            <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 10px 0', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Wrench size={15} color="var(--brand-primary)" /> Planned Repair Actions
-            </h3>
-
-            <form onSubmit={handleAddRepairPlanAction} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-              <input
-                type="text"
-                placeholder="e.g. Board rework / Replace IC"
-                value={planServiceName}
-                onChange={(e) => setPlanServiceName(e.target.value)}
-                onKeyDown={(e) => handleAutoCorrectKeyDown(e, planServiceName, setPlanServiceName)}
-                onBlur={() => setPlanServiceName(autoCorrectTitle(planServiceName))}
-                spellCheck={true}
-                autoCorrect="on"
-                style={{ flex: 1, padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
-              />
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="Labor ₹"
-                value={planLaborChargeStr}
-                onChange={(e) => setPlanLaborChargeStr(e.target.value.replace(/[^0-9.]/g, ''))}
-                style={{ width: '90px', padding: '7px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
-              />
-              <button
-                type="submit"
-                style={{ padding: '7px 12px', borderRadius: '6px', backgroundColor: 'var(--brand-primary)', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-              >
-                <Plus size={14} />
-              </button>
-            </form>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {repairPlans.map((plan) => (
-                <div key={plan.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)' }}>
-                  <div>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-main)' }}>{plan.serviceName}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Labor: ₹{plan.laborCharge.toFixed(2)}</div>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteRepairPlanAction(plan.id)}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', flexShrink: 0 }}>
+          {/* Unified Container Card */}
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px 20px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            
+            {/* Header with Title and Real-Time Total Badge */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Wrench size={16} color="var(--brand-primary)" />
+                  <Layers size={16} color="#fb923c" />
+                  Repair Plan, Labor & Required Parts
+                </h3>
+                <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>
+                  Unified workspace to define repair services, replacement hardware, and generate estimates or invoices.
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Required Parts */}
-          <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-            <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 10px 0', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Layers size={15} color="#fb923c" /> Required Components & Parts
-            </h3>
-
-            <form onSubmit={handleAddRequiredPart} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  placeholder="Part description (e.g. 15.6 FHD Screen / BQ24780S IC)"
-                  value={partName}
-                  onChange={(e) => setPartName(e.target.value)}
-                  onKeyDown={(e) => handleAutoCorrectKeyDown(e, partName, setPartName)}
-                  onBlur={() => setPartName(autoCorrectHardwareText(partName))}
-                  spellCheck={true}
-                  autoCorrect="on"
-                  style={{ flex: 1, padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
-                />
-                <input
-                  type="number"
-                  placeholder="Qty"
-                  value={partQuantity}
-                  onChange={(e) => setPartQuantity(Math.max(1, Number(e.target.value)))}
-                  style={{ width: '60px', padding: '7px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
-                />
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="Cost Price ₹"
-                  value={partCostStr}
-                  onChange={(e) => setPartCostStr(e.target.value.replace(/[^0-9.]/g, ''))}
-                  style={{ flex: 1, padding: '7px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
-                />
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="Selling Price ₹"
-                  value={partPriceStr}
-                  onChange={(e) => setPartPriceStr(e.target.value.replace(/[^0-9.]/g, ''))}
-                  style={{ flex: 1, padding: '7px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '12px' }}
-                />
+              {/* Real-time Total Pill */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600 }}>Total Items:</span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-main)' }}>{repairPlans.length + requiredParts.length}</span>
+                <span style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-color)', margin: '0 4px' }} />
+                <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600 }}>Plan Total:</span>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-success)', fontFamily: 'var(--font-mono)' }}>
+                  ₹{(repairPlans.reduce((s, p) => s + (p.laborCharge || 0), 0) + requiredParts.reduce((s, p) => s + ((p.unitSellingPrice || 0) * (p.quantity || 1)), 0)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            {/* Unified Add Item Form */}
+            <form onSubmit={handleUnifiedAddItem} style={{ backgroundColor: 'var(--bg-surface)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              
+              {/* Type Switcher Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-dim)', marginRight: '4px' }}>ITEM TYPE:</span>
                 <button
-                  type="submit"
-                  style={{ padding: '7px 14px', borderRadius: '6px', backgroundColor: '#fb923c', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                  type="button"
+                  onClick={() => {
+                    setPlanItemType('LABOR');
+                    setPlanItemQuantity(1);
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    border: planItemType === 'LABOR' ? '1px solid var(--brand-primary)' : '1px solid var(--border-color)',
+                    backgroundColor: planItemType === 'LABOR' ? 'rgba(2, 132, 199, 0.15)' : 'var(--bg-card)',
+                    color: planItemType === 'LABOR' ? 'var(--brand-accent)' : 'var(--text-muted)',
+                    transition: 'all 0.15s ease',
+                  }}
                 >
-                  Add Part
+                  <Wrench size={13} /> Planned Service / Labor
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPlanItemType('PART')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    border: planItemType === 'PART' ? '1px solid #fb923c' : '1px solid var(--border-color)',
+                    backgroundColor: planItemType === 'PART' ? 'rgba(251, 146, 60, 0.15)' : 'var(--bg-card)',
+                    color: planItemType === 'PART' ? '#fb923c' : 'var(--text-muted)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <Layers size={13} /> Hardware Component / Spare Part
                 </button>
               </div>
+
+              {/* Form Input Grid (Clean Responsive Layout with No Overflow) */}
+              <div style={{ display: 'grid', gridTemplateColumns: planItemType === 'PART' ? 'minmax(200px, 3fr) 75px minmax(95px, 1fr) minmax(110px, 1fr) auto' : 'minmax(220px, 3fr) minmax(130px, 1fr) auto', gap: '8px', alignItems: 'center' }}>
+                
+                {/* Description Input */}
+                <input
+                  type="text"
+                  placeholder={planItemType === 'LABOR' ? "Service description (e.g. Board rework / Replace IC / Screen Fitting)" : "Part description (e.g. 15.6 FHD IPS Screen / BQ24780S IC)"}
+                  value={planItemDescription}
+                  onChange={(e) => setPlanItemDescription(e.target.value)}
+                  onKeyDown={(e) => handleAutoCorrectKeyDown(e, planItemDescription, setPlanItemDescription)}
+                  onBlur={() => setPlanItemDescription(planItemType === 'LABOR' ? autoCorrectTitle(planItemDescription) : autoCorrectHardwareText(planItemDescription))}
+                  spellCheck={true}
+                  autoCorrect="on"
+                  required
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-card)',
+                    color: 'var(--text-main)',
+                    fontSize: '12px',
+                    width: '100%',
+                    outline: 'none',
+                  }}
+                />
+
+                {/* Part Qty */}
+                {planItemType === 'PART' && (
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="Qty"
+                    value={planItemQuantity}
+                    onChange={(e) => setPlanItemQuantity(Math.max(1, Number(e.target.value)))}
+                    style={{
+                      padding: '8px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: 'var(--bg-card)',
+                      color: 'var(--text-main)',
+                      fontSize: '12px',
+                      textAlign: 'center',
+                      outline: 'none',
+                      width: '100%',
+                    }}
+                    title="Quantity"
+                  />
+                )}
+
+                {/* Part Cost Price */}
+                {planItemType === 'PART' && (
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Cost ₹ (Opt)"
+                    value={planItemCostStr}
+                    onChange={(e) => setPlanItemCostStr(e.target.value.replace(/[^0-9.]/g, ''))}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: 'var(--bg-card)',
+                      color: 'var(--text-main)',
+                      fontSize: '12px',
+                      outline: 'none',
+                      width: '100%',
+                    }}
+                    title="Unit Cost Price"
+                  />
+                )}
+
+                {/* Labor Charge or Selling Price */}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder={planItemType === 'LABOR' ? "Labor Charge ₹" : "Selling Price ₹"}
+                  value={planItemPriceStr}
+                  onChange={(e) => setPlanItemPriceStr(e.target.value.replace(/[^0-9.]/g, ''))}
+                  required
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-card)',
+                    color: 'var(--text-main)',
+                    fontSize: '12px',
+                    outline: 'none',
+                    width: '100%',
+                  }}
+                  title={planItemType === 'LABOR' ? "Labor Charge" : "Selling Price"}
+                />
+
+                {/* Submit Add Button */}
+                <button
+                  type="submit"
+                  disabled={isAddingPlanItem}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    backgroundColor: planItemType === 'LABOR' ? 'var(--brand-primary)' : '#fb923c',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    whiteSpace: 'nowrap',
+                    boxShadow: planItemType === 'LABOR' ? '0 2px 6px rgba(2, 132, 199, 0.3)' : '0 2px 6px rgba(251, 146, 60, 0.3)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <Plus size={14} />
+                  {planItemType === 'LABOR' ? 'Add Service' : 'Add Part'}
+                </button>
+              </div>
+
+              {/* Quick Tags row for fast entry */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', paddingTop: '2px' }}>
+                <span style={{ fontSize: '10px', color: 'var(--text-dim)', marginRight: '4px' }}>Quick Presets:</span>
+                {(planItemType === 'LABOR' ? LABOR_SERVICE_PRESETS : REPAIR_PART_PRESETS).map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setPlanItemDescription(preset)}
+                    style={{
+                      fontSize: '10.5px',
+                      padding: '2px 7px',
+                      borderRadius: '4px',
+                      backgroundColor: 'var(--bg-card)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      transition: 'all 0.1s ease',
+                    }}
+                  >
+                    + {preset}
+                  </button>
+                ))}
+              </div>
             </form>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {requiredParts.map((part) => (
-                <div key={part.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)' }}>
-                  <div>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-main)' }}>
-                      {part.partName} <span style={{ color: 'var(--brand-primary)' }}>(Qty: {part.quantity})</span>
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-                      Cost: ₹{part.unitCostPrice.toFixed(2)} | Price: ₹{part.unitSellingPrice.toFixed(2)}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteRequiredPart(part.id)}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+            {/* Unified Items Table */}
+            <div style={{ borderRadius: '6px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-dim)', textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>
+                    <th style={{ padding: '8px 12px', width: '110px' }}>Type</th>
+                    <th style={{ padding: '8px 12px' }}>Item / Service Description</th>
+                    <th style={{ padding: '8px 12px', width: '70px', textAlign: 'center' }}>Qty</th>
+                    <th style={{ padding: '8px 12px', width: '120px', textAlign: 'right' }}>Unit Rate</th>
+                    <th style={{ padding: '8px 12px', width: '120px', textAlign: 'right' }}>Amount</th>
+                    <th style={{ padding: '8px 12px', width: '50px', textAlign: 'center' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {repairPlans.length === 0 && requiredParts.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '12px' }}>
+                        No repair services or parts added to this job yet. Use the form above to add billable items.
+                      </td>
+                    </tr>
+                  ) : (
+                    <>
+                      {/* Labor Services */}
+                      {repairPlans.map((plan) => (
+                        <tr key={plan.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.1s ease' }}>
+                          <td style={{ padding: '8px 12px' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, backgroundColor: 'rgba(2, 132, 199, 0.15)', color: 'var(--brand-accent)', border: '1px solid rgba(2, 132, 199, 0.3)' }}>
+                              <Wrench size={11} /> Labor
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text-main)' }}>
+                            {plan.serviceName}
+                          </td>
+                          <td style={{ padding: '8px 12px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            1
+                          </td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                            ₹{plan.laborCharge.toFixed(2)}
+                          </td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-main)' }}>
+                            ₹{plan.laborCharge.toFixed(2)}
+                          </td>
+                          <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRepairPlanAction(plan.id)}
+                              title="Delete service action"
+                              style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '4px', borderRadius: '4px' }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
 
-          {/* Quick Conversion Banner */}
-          <div style={{ gridColumn: '1 / -1', padding: '14px 18px', borderRadius: '8px', backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-primary)' }}>
-                Ready to Quote or Bill this Service?
+                      {/* Required Parts */}
+                      {requiredParts.map((part) => (
+                        <tr key={part.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.1s ease' }}>
+                          <td style={{ padding: '8px 12px' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, backgroundColor: 'rgba(251, 146, 60, 0.15)', color: '#fb923c', border: '1px solid rgba(251, 146, 60, 0.3)' }}>
+                              <Layers size={11} /> Part
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 12px', color: 'var(--text-main)' }}>
+                            <div style={{ fontWeight: 600 }}>{part.partName}</div>
+                            {part.serialNumber && (
+                              <div style={{ fontSize: '10.5px', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
+                                S/N: {part.serialNumber}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600, color: 'var(--text-main)' }}>
+                            {part.quantity}
+                          </td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                            ₹{part.unitSellingPrice.toFixed(2)}
+                          </td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-main)' }}>
+                            ₹{(part.unitSellingPrice * part.quantity).toFixed(2)}
+                          </td>
+                          <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRequiredPart(part.id)}
+                              title="Delete part"
+                              style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '4px', borderRadius: '4px' }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Subtotal Breakdown & Grand Total Bar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '12px 16px', borderRadius: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '12px' }}>
+                <span style={{ color: 'var(--text-muted)' }}>
+                  Total Labor: <strong style={{ color: 'var(--text-main)', fontFamily: 'var(--font-mono)' }}>₹{repairPlans.reduce((s, p) => s + (p.laborCharge || 0), 0).toFixed(2)}</strong> ({repairPlans.length})
+                </span>
+                <span style={{ color: 'var(--text-muted)' }}>
+                  Total Parts: <strong style={{ color: 'var(--text-main)', fontFamily: 'var(--font-mono)' }}>₹{requiredParts.reduce((s, p) => s + ((p.unitSellingPrice || 0) * (p.quantity || 1)), 0).toFixed(2)}</strong> ({requiredParts.length})
+                </span>
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                All repair actions & parts above will automatically become billable items with GST calculations.
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>ESTIMATED TOTAL:</span>
+                <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-success)', fontFamily: 'var(--font-mono)' }}>
+                  ₹{(repairPlans.reduce((s, p) => s + (p.laborCharge || 0), 0) + requiredParts.reduce((s, p) => s + ((p.unitSellingPrice || 0) * (p.quantity || 1)), 0)).toFixed(2)}
+                </span>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={handleCreateQuotation}
-                disabled={isCreatingQuotation}
-                style={{ padding: '8px 16px', borderRadius: '6px', backgroundColor: '#8b5cf6', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <FileText size={14} /> {isCreatingQuotation ? 'Generating...' : '1-Click Estimate'}
-              </button>
-              <button
-                onClick={handleCreateInvoice}
-                disabled={isCreatingInvoice}
-                style={{ padding: '8px 16px', borderRadius: '6px', backgroundColor: 'var(--brand-primary)', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Receipt size={14} /> {isCreatingInvoice ? 'Billing...' : '1-Click Tax Invoice'}
-              </button>
+
+            {/* Quick Conversion Banner */}
+            <div style={{ padding: '14px 18px', borderRadius: '8px', backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--brand-primary)' }}>
+                  Ready to Quote or Bill this Service?
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  All repair actions & parts above will automatically become billable items with GST calculations.
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={handleCreateQuotation}
+                  disabled={isCreatingQuotation}
+                  style={{ padding: '8px 16px', borderRadius: '6px', backgroundColor: '#8b5cf6', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <FileText size={14} /> {isCreatingQuotation ? 'Generating...' : '1-Click Estimate'}
+                </button>
+                <button
+                  onClick={handleCreateInvoice}
+                  disabled={isCreatingInvoice}
+                  style={{ padding: '8px 16px', borderRadius: '6px', backgroundColor: 'var(--brand-primary)', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Receipt size={14} /> {isCreatingInvoice ? 'Billing...' : '1-Click Tax Invoice'}
+                </button>
+              </div>
             </div>
+
           </div>
         </div>
       )}
