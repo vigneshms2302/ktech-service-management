@@ -86,6 +86,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
       >
         {/* Search Bar Input */}
         <div
+          className="search-box"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -100,12 +101,12 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
           <Search size={18} color="var(--brand-primary)" />
           <input
             type="text"
-            className="input-field"
+            className="search-input"
             value={query}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search customer phone, name, Job #, serial number, or device brand..."
             autoFocus
-            style={{ border: 'none', background: 'transparent', padding: 0, fontSize: '13px' }}
+            style={{ border: 'none', background: 'transparent', padding: 0, fontSize: '13px', outline: 'none', boxShadow: 'none' }}
           />
           <kbd
             style={{

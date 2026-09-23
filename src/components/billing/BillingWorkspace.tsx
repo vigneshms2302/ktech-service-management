@@ -313,7 +313,7 @@ export const BillingWorkspace: React.FC = () => {
           <Search size={14} style={{ position: 'absolute', left: '10px', top: '9px', color: 'var(--text-dim)' }} />
           <input
             type="text"
-            placeholder="Search invoice #, customer name, phone, estimate #..."
+            placeholder="Search invoice #, customer name, phone, job #..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -324,6 +324,8 @@ export const BillingWorkspace: React.FC = () => {
               border: '1px solid var(--border-color)',
               color: 'var(--text-main)',
               fontSize: '12px',
+              outline: 'none',
+              boxShadow: 'none',
             }}
           />
         </div>

@@ -458,6 +458,8 @@ export const InventoryWorkspace: React.FC = () => {
                   border: '1px solid var(--border-color)',
                   color: 'var(--text-main)',
                   fontSize: '12px',
+                  outline: 'none',
+                  boxShadow: 'none',
                 }}
               />
             </div>

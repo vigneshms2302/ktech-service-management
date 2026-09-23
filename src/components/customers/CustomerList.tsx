@@ -93,6 +93,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
       {/* Search Bar */}
       <div style={{ marginBottom: '16px' }}>
         <div
+          className="search-box"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -102,16 +103,17 @@ export const CustomerList: React.FC<CustomerListProps> = ({
             borderRadius: '6px',
             padding: '8px 12px',
             maxWidth: '500px',
+            flex: 1,
           }}
         >
           <Search size={16} color="var(--text-dim)" />
           <input
             type="text"
-            className="input-field"
+            className="search-input"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Type 10-digit phone, customer name, CUST-10001, or email..."
-            style={{ border: 'none', background: 'transparent', padding: 0 }}
+            style={{ border: 'none', background: 'transparent', padding: 0, outline: 'none', boxShadow: 'none', width: '100%' }}
           />
           {search && (
             <button

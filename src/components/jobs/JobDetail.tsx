@@ -1411,8 +1411,8 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                 </>
               )}
 
-              {/* Step: Tax Invoice generation */}
-              {(job.currentStatus === 'REPAIR_COMPLETED' || job.currentStatus === 'UNDER_REPAIR' || job.currentStatus === 'READY_FOR_DELIVERY') && (
+              {/* Step: Final Bill / Tax Invoice generation */}
+              {(job.currentStatus === 'REPAIR_COMPLETED' || job.currentStatus === 'UNDER_REPAIR' || job.currentStatus === 'READY_FOR_DELIVERY' || job.currentStatus === 'DELIVERED' || job.currentStatus === 'CLOSED') && (
                 <button
                   onClick={handleCreateOrViewInvoice}
                   disabled={isCreatingInvoice}
@@ -1430,7 +1430,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                     gap: '4px',
                   }}
                 >
-                  <Receipt size={13} /> {isCreatingInvoice ? 'Opening...' : '🧾 View / Generate Final Bill'}
+                  <Receipt size={13} /> {isCreatingInvoice ? 'Opening...' : (job.currentStatus === 'DELIVERED' || job.currentStatus === 'CLOSED' ? '🧾 View Final Bill' : '🧾 View / Generate Final Bill')}
                 </button>
               )}
 

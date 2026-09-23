@@ -384,6 +384,7 @@ export const TechnicianWorkspace: React.FC<TechnicianWorkspaceProps> = ({ onOpen
               color: 'var(--text-main)',
               fontSize: '12px',
               outline: 'none',
+              boxShadow: 'none',
             }}
           />
         </div>

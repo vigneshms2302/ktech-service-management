@@ -65,6 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, maxWidth: '560px' }}>
         <div
           onClick={onOpenSearch}
+          className="search-box"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -80,6 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
           <Search size={14} color="var(--text-dim)" />
           <input
             type="text"
+            className="search-input"
             placeholder="Search Phone, Job #, Serial, Customer... (Ctrl+K)"
             readOnly
             onClick={onOpenSearch}
@@ -87,6 +89,7 @@ export const Header: React.FC<HeaderProps> = ({
               background: 'transparent',
               border: 'none',
               outline: 'none',
+              boxShadow: 'none',
               color: 'var(--text-main)',
               fontSize: '12px',
               width: '100%',

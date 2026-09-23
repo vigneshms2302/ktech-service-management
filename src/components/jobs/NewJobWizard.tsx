@@ -393,6 +393,7 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
 
             <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
               <div
+                className="search-box"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -407,12 +408,12 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                 <Search size={16} color="var(--text-dim)" />
                 <input
                   type="text"
-                  className="input-field"
+                  className="search-input"
                   value={customerSearch}
                   onChange={(e) => handleCustomerSearch(e.target.value)}
                   placeholder="Type 10-digit mobile number or customer name..."
                   autoFocus
-                  style={{ border: 'none', background: 'transparent', padding: 0 }}
+                  style={{ border: 'none', background: 'transparent', padding: 0, outline: 'none', boxShadow: 'none', width: '100%' }}
                 />
               </div>
 

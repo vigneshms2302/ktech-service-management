@@ -114,6 +114,7 @@ export const JobList: React.FC<JobListProps> = ({ onSelectJob, onNewJob }) => {
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap' }}>
         {/* Search */}
         <div
+          className="search-box"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -123,16 +124,17 @@ export const JobList: React.FC<JobListProps> = ({ onSelectJob, onNewJob }) => {
             borderRadius: '6px',
             padding: '6px 12px',
             minWidth: '320px',
+            flex: 1,
           }}
         >
           <Search size={14} color="var(--text-dim)" />
           <input
             type="text"
-            className="input-field"
+            className="search-input"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search Job ID, customer, phone, serial #..."
-            style={{ border: 'none', background: 'transparent', padding: 0 }}
+            style={{ border: 'none', background: 'transparent', padding: 0, outline: 'none', boxShadow: 'none', width: '100%' }}
           />
           {search && (
             <button
