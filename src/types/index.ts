@@ -773,6 +773,7 @@ export interface ElectronAPI {
       jobId: string;
       validityDays?: number;
       discountAmount?: number;
+      isGstQuotation?: boolean;
       items: Array<{
         itemType: 'PART' | 'LABOR' | 'OTHER';
         inventoryItemId?: string;
@@ -782,6 +783,10 @@ export interface ElectronAPI {
         taxRate?: number;
       }>;
     }) => Promise<IPCResponse<{ quotationId: string; quotationNumber: string; totalAmount: number }>>;
+    toggleQuotationGst: (payload: {
+      quotationId: string;
+      isGst: boolean;
+    }) => Promise<IPCResponse<{ partsSubtotal: number; laborSubtotal: number; totalTax: number; grandTotal: number }>>;
     recordApproval: (payload: {
       quotationId: string;
       approvalStatus: 'APPROVED' | 'PARTIAL_APPROVAL' | 'REJECTED';
@@ -790,7 +795,7 @@ export interface ElectronAPI {
       customerContactUsed: string;
       notes?: string;
     }) => Promise<IPCResponse<{ approvalId: string; status: string }>>;
-    listInvoices: (params?: { paymentStatus?: string; customerId?: string; search?: string }) => Promise<IPCResponse<Array<Record<string, unknown>>>>;
+    listInvoices: (params?: { paymentStatus?: string; customerId?: string; jobId?: string; search?: string }) => Promise<IPCResponse<Array<Record<string, unknown>>>>;
     getInvoiceById: (params: { invoiceId: string }) => Promise<IPCResponse<{ invoice: Record<string, unknown>; items: Array<Record<string, unknown>>; payments: Array<Record<string, unknown>> }>>;
     createInvoice: (payload: {
       customerId: string;
@@ -811,6 +816,10 @@ export interface ElectronAPI {
         taxRate?: number;
       }>;
     }) => Promise<IPCResponse<{ invoiceId: string; invoiceNumber: string; totalAmount: number; balanceDue: number }>>;
+    toggleInvoiceGst: (payload: {
+      invoiceId: string;
+      isGst: boolean;
+    }) => Promise<IPCResponse<{ partsSubtotal: number; laborSubtotal: number; totalTax: number; cgst: number; sgst: number; totalAmount: number; balanceDue: number }>>;
     recordPayment: (payload: {
       invoiceId: string;
       amount: number;

@@ -361,6 +361,7 @@ const electronAPI = {
       jobId: string;
       validityDays?: number;
       discountAmount?: number;
+      isGstQuotation?: boolean;
       items: Array<{
         itemType: 'PART' | 'LABOR' | 'OTHER';
         inventoryItemId?: string;
@@ -371,6 +372,11 @@ const electronAPI = {
       }>;
     }): Promise<IPCResponse<{ quotationId: string; quotationNumber: string; totalAmount: number }>> =>
       ipcRenderer.invoke('billing:createQuotation', payload),
+    toggleQuotationGst: (payload: {
+      quotationId: string;
+      isGst: boolean;
+    }): Promise<IPCResponse<{ partsSubtotal: number; laborSubtotal: number; totalTax: number; grandTotal: number }>> =>
+      ipcRenderer.invoke('billing:toggleQuotationGst', payload),
     recordApproval: (payload: {
       quotationId: string;
       approvalStatus: 'APPROVED' | 'PARTIAL_APPROVAL' | 'REJECTED';
@@ -380,7 +386,7 @@ const electronAPI = {
       notes?: string;
     }): Promise<IPCResponse<{ approvalId: string; status: string }>> =>
       ipcRenderer.invoke('billing:recordApproval', payload),
-    listInvoices: (params?: { paymentStatus?: string; customerId?: string; search?: string }): Promise<IPCResponse> =>
+    listInvoices: (params?: { paymentStatus?: string; customerId?: string; jobId?: string; search?: string }): Promise<IPCResponse> =>
       ipcRenderer.invoke('billing:listInvoices', params),
     getInvoiceById: (params: { invoiceId: string }): Promise<IPCResponse> =>
       ipcRenderer.invoke('billing:getInvoiceById', params),
@@ -404,6 +410,11 @@ const electronAPI = {
       }>;
     }): Promise<IPCResponse<{ invoiceId: string; invoiceNumber: string; totalAmount: number; balanceDue: number }>> =>
       ipcRenderer.invoke('billing:createInvoice', payload),
+    toggleInvoiceGst: (payload: {
+      invoiceId: string;
+      isGst: boolean;
+    }): Promise<IPCResponse<{ partsSubtotal: number; laborSubtotal: number; totalTax: number; cgst: number; sgst: number; totalAmount: number; balanceDue: number }>> =>
+      ipcRenderer.invoke('billing:toggleInvoiceGst', payload),
     recordPayment: (payload: {
       invoiceId: string;
       amount: number;

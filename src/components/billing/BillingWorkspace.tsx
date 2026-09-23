@@ -30,6 +30,13 @@ export const BillingWorkspace: React.FC = () => {
     payments: Array<Record<string, unknown>>;
   } | null>(null);
 
+  // Quotation Print Preview Modal
+  const [selectedQuotationForPrint, setSelectedQuotationForPrint] = useState<{
+    quotation: Record<string, unknown>;
+    items: Array<Record<string, unknown>>;
+    approval: Record<string, unknown> | null;
+  } | null>(null);
+
   // Collect Payment Modal
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedInvoiceForPay, setSelectedInvoiceForPay] = useState<Record<string, unknown> | null>(null);
@@ -85,6 +92,52 @@ export const BillingWorkspace: React.FC = () => {
     const res = await window.electronAPI.billing.getInvoiceById({ invoiceId });
     if (res.success && res.data) {
       setSelectedInvoiceForPrint(res.data as typeof selectedInvoiceForPrint);
+    }
+  };
+
+  const handleOpenQuotationPrintPreview = async (quotationId: string) => {
+    if (!window.electronAPI?.billing?.getQuotationById) return;
+    const res = await window.electronAPI.billing.getQuotationById({ quotationId });
+    if (res.success && res.data) {
+      setSelectedQuotationForPrint(res.data as typeof selectedQuotationForPrint);
+    }
+  };
+
+  const handleToggleInvoiceGstInBilling = async (newGstState: boolean) => {
+    if (!selectedInvoiceForPrint) return;
+    try {
+      if (!window.electronAPI?.billing?.toggleInvoiceGst) return;
+      const res = await window.electronAPI.billing.toggleInvoiceGst({
+        invoiceId: String(selectedInvoiceForPrint.invoice.id),
+        isGst: newGstState,
+      });
+      if (res.success) {
+        handleOpenPrintPreview(String(selectedInvoiceForPrint.invoice.id));
+        fetchBillingData();
+      } else {
+        alert(res.error || 'Failed to update GST setting on invoice');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    }
+  };
+
+  const handleToggleQuotationGstInBilling = async (newGstState: boolean) => {
+    if (!selectedQuotationForPrint) return;
+    try {
+      if (!window.electronAPI?.billing?.toggleQuotationGst) return;
+      const res = await window.electronAPI.billing.toggleQuotationGst({
+        quotationId: String(selectedQuotationForPrint.quotation.id),
+        isGst: newGstState,
+      });
+      if (res.success) {
+        handleOpenQuotationPrintPreview(String(selectedQuotationForPrint.quotation.id));
+        fetchBillingData();
+      } else {
+        alert(res.error || 'Failed to update GST setting on quotation');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
     }
   };
 
@@ -393,7 +446,8 @@ export const BillingWorkspace: React.FC = () => {
                               const shopUpper = (shopSettings.shopName || 'KTech Computers').toUpperCase();
                               const shopName = shopSettings.shopName || 'KTech Computers';
                               const shopPhone = shopSettings.phone || '+91 98400 12345';
-                              const msg = `*${shopUpper} - TAX INVOICE* 🧾\n\nDear *${inv.customer_name}*,\nYour invoice *${inv.invoice_number}* has been issued.\n\n💰 *Total Amount:* ₹${Number(inv.total_amount || 0).toFixed(2)}\n💵 *Paid:* ₹${Number(inv.amount_paid || 0).toFixed(2)}\n💳 *Balance Due:* ₹${Number(inv.balance_due || 0).toFixed(2)}\n\nThank you for choosing ${shopName}!\n📞 ${shopPhone}`;
+                              const isGst = Boolean(inv.is_gst_invoice);
+                              const msg = `*${shopUpper} - ${isGst ? 'TAX INVOICE' : 'FINAL SERVICE BILL'}* 🧾\n\nDear *${inv.customer_name}*,\nYour final bill *${inv.invoice_number}* has been issued.\n\n💰 *Total Bill Amount:* ₹${Number(inv.total_amount || 0).toFixed(2)}\n💵 *Amount Paid:* ₹${Number(inv.amount_paid || 0).toFixed(2)}\n💳 *Final Balance Due:* ₹${Number(inv.balance_due || 0).toFixed(2)}\n\nThank you for choosing ${shopName}!\n📞 ${shopPhone}`;
                               window.open(`https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`, '_blank');
                             }}
                             style={{
@@ -500,6 +554,24 @@ export const BillingWorkspace: React.FC = () => {
                     </td>
                     <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => handleOpenQuotationPrintPreview(q.id as string)}
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            border: '1px solid var(--border-color)',
+                            backgroundColor: 'var(--bg-surface)',
+                            color: 'var(--text-main)',
+                            fontSize: '11px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                        >
+                          <Printer size={12} /> Print A4
+                        </button>
+
                         <button
                           onClick={() => {
                             const cleanPhone = String(q.customer_phone || '').replace(/[^0-9]/g, '');
@@ -775,131 +847,405 @@ export const BillingWorkspace: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: A4 GST TAX INVOICE PRINT PREVIEW */}
-      {selectedInvoiceForPrint && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#ffffff', color: '#0f172a', borderRadius: '8px', maxWidth: '750px', width: '100%', padding: '24px', maxHeight: '92vh', overflowY: 'auto', fontFamily: 'sans-serif' }}>
-            {/* Header with Shop details */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #0f172a', paddingBottom: '12px' }}>
-              <div>
-                <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 900, color: '#1e3a8a', letterSpacing: '0.5px' }}>
-                  {(shopSettings.shopName || 'KTech Computers').toUpperCase()}
-                </h1>
-                <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>
-                  {shopSettings.tagline}<br />
-                  {shopSettings.address}<br />
-                  Phone: {shopSettings.phone} {shopSettings.gstin ? `| GSTIN: ${shopSettings.gstin}` : ''} {shopSettings.upiId ? `| UPI: ${shopSettings.upiId}` : ''}
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>TAX INVOICE</div>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb', fontFamily: 'monospace' }}>
-                  {selectedInvoiceForPrint.invoice.invoice_number as string}
-                </div>
-                <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>
-                  Date: {new Date(selectedInvoiceForPrint.invoice.created_at as string).toLocaleDateString('en-IN')}
-                </div>
-              </div>
-            </div>
+      {/* MODAL: A4 INVOICE / CASH MEMO PRINT PREVIEW */}
+      {selectedInvoiceForPrint && (() => {
+        const isInvoiceGst = Boolean(
+          selectedInvoiceForPrint.invoice.is_gst_invoice === 1 ||
+          selectedInvoiceForPrint.invoice.is_gst_invoice === true
+        ) && (Number(selectedInvoiceForPrint.invoice.cgst_amount || 0) + Number(selectedInvoiceForPrint.invoice.sgst_amount || 0) > 0 || Number(selectedInvoiceForPrint.invoice.tax_total || 0) > 0);
 
-            {/* Billed To / Job Info */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', margin: '14px 0', fontSize: '11px', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '6px' }}>
-              <div>
-                <div style={{ fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '2px' }}>Customer Details:</div>
-                <div style={{ fontWeight: 800, fontSize: '12px' }}>{selectedInvoiceForPrint.invoice.customer_name as string}</div>
-                <div>Phone: {formatPhoneDisplay(selectedInvoiceForPrint.invoice.customer_phone as string)}</div>
-                {selectedInvoiceForPrint.invoice.customer_gstin ? <div>GSTIN: {String(selectedInvoiceForPrint.invoice.customer_gstin)}</div> : null}
-              </div>
-              <div>
-                <div style={{ fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '2px' }}>Service Device:</div>
-                <div style={{ fontWeight: 700 }}>
-                  [{selectedInvoiceForPrint.invoice.equipment_type as string}] {selectedInvoiceForPrint.invoice.device_brand as string} {selectedInvoiceForPrint.invoice.device_model as string}
+        return (
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+            <div style={{ backgroundColor: '#ffffff', color: '#0f172a', borderRadius: '8px', maxWidth: '750px', width: '100%', padding: '24px', maxHeight: '92vh', overflowY: 'auto', fontFamily: 'sans-serif', position: 'relative' }}>
+              {/* Modal Controls Bar (Hidden in Print) */}
+              <div className="no-print" style={{ position: 'sticky', top: '-24px', backgroundColor: '#ffffff', zIndex: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingTop: '4px', paddingBottom: '12px', borderBottom: '2px solid #f1f5f9', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'inline-flex', padding: '3px', backgroundColor: '#f1f5f9', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleInvoiceGstInBilling(false)}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      fontSize: '11px',
+                      fontWeight: !isInvoiceGst ? 800 : 600,
+                      backgroundColor: !isInvoiceGst ? '#ffffff' : 'transparent',
+                      color: !isInvoiceGst ? '#0f172a' : '#64748b',
+                      boxShadow: !isInvoiceGst ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    🚫 Non-GST Bill
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleInvoiceGstInBilling(true)}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      fontSize: '11px',
+                      fontWeight: isInvoiceGst ? 800 : 600,
+                      backgroundColor: isInvoiceGst ? '#0284c7' : 'transparent',
+                      color: isInvoiceGst ? '#ffffff' : '#64748b',
+                      boxShadow: isInvoiceGst ? '0 1px 3px rgba(2, 132, 199, 0.3)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    🧾 18% GST Invoice
+                  </button>
                 </div>
-                {selectedInvoiceForPrint.invoice.job_number ? <div>Job Ref: {String(selectedInvoiceForPrint.invoice.job_number)}</div> : null}
-                {selectedInvoiceForPrint.invoice.device_serial ? <div>Serial #: {String(selectedInvoiceForPrint.invoice.device_serial)}</div> : null}
-              </div>
-            </div>
 
-            {/* Items Table */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', margin: '10px 0' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#e2e8f0', color: '#1e293b', textAlign: 'left' }}>
-                  <th style={{ padding: '6px 8px' }}>#</th>
-                  <th style={{ padding: '6px 8px' }}>Description</th>
-                  <th style={{ padding: '6px 8px' }}>HSN/SAC</th>
-                  <th style={{ padding: '6px 8px', textAlign: 'center' }}>Qty</th>
-                  <th style={{ padding: '6px 8px', textAlign: 'right' }}>Rate ₹</th>
-                  <th style={{ padding: '6px 8px', textAlign: 'right' }}>GST %</th>
-                  <th style={{ padding: '6px 8px', textAlign: 'right' }}>Amount ₹</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedInvoiceForPrint.items.map((item, idx) => (
-                  <tr key={item.id as string} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '6px 8px' }}>{idx + 1}</td>
-                    <td style={{ padding: '6px 8px', fontWeight: 600 }}>{item.description as string}</td>
-                    <td style={{ padding: '6px 8px', color: '#64748b' }}>{(item.hsn_sac_code as string) || '9987'}</td>
-                    <td style={{ padding: '6px 8px', textAlign: 'center' }}>{item.quantity as number}</td>
-                    <td style={{ padding: '6px 8px', textAlign: 'right' }}>{Number(item.unit_price || 0).toFixed(2)}</td>
-                    <td style={{ padding: '6px 8px', textAlign: 'right' }}>{item.tax_rate as number}%</td>
-                    <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700 }}>{Number(item.total_amount || 0).toFixed(2)}</td>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    onClick={() => window.print()}
+                    style={{ padding: '6px 14px', borderRadius: '6px', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <Printer size={13} /> Print
+                  </button>
+                  <button
+                    onClick={() => setSelectedInvoiceForPrint(null)}
+                    style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    ✕ Close
+                  </button>
+                </div>
+              </div>
+
+              {/* Header with Shop details */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #0f172a', paddingBottom: '12px' }}>
+                <div>
+                  <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 900, color: '#1e3a8a', letterSpacing: '0.5px' }}>
+                    {(shopSettings.shopName || 'KTech Computers').toUpperCase()}
+                  </h1>
+                  <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>
+                    {shopSettings.tagline}<br />
+                    {shopSettings.address}<br />
+                    Phone: {shopSettings.phone} {shopSettings.gstin ? `| GSTIN: ${shopSettings.gstin}` : ''} {shopSettings.upiId ? `| UPI: ${shopSettings.upiId}` : ''}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 800, textTransform: 'uppercase', color: isInvoiceGst ? '#1e3a8a' : '#166534' }}>
+                    {isInvoiceGst ? 'TAX INVOICE / BILL OF SUPPLY' : 'FINAL SERVICE BILL / CASH MEMO'}
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: 900, color: '#2563eb', fontFamily: 'monospace' }}>
+                    {selectedInvoiceForPrint.invoice.invoice_number as string}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>
+                    Date: {new Date(selectedInvoiceForPrint.invoice.created_at as string).toLocaleDateString('en-IN')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Billed To / Job Info */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', margin: '14px 0', fontSize: '11px', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '6px' }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '2px' }}>Customer Details:</div>
+                  <div style={{ fontWeight: 800, fontSize: '12px' }}>{selectedInvoiceForPrint.invoice.customer_name as string}</div>
+                  <div>Phone: {formatPhoneDisplay(selectedInvoiceForPrint.invoice.customer_phone as string)}</div>
+                  {selectedInvoiceForPrint.invoice.customer_gstin ? <div>GSTIN: {String(selectedInvoiceForPrint.invoice.customer_gstin)}</div> : null}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '2px' }}>Service Device:</div>
+                  <div style={{ fontWeight: 700 }}>
+                    [{selectedInvoiceForPrint.invoice.equipment_type as string}] {selectedInvoiceForPrint.invoice.device_brand as string} {selectedInvoiceForPrint.invoice.device_model as string}
+                  </div>
+                  {selectedInvoiceForPrint.invoice.job_number ? <div>Job Ref: {String(selectedInvoiceForPrint.invoice.job_number)}</div> : null}
+                  {selectedInvoiceForPrint.invoice.device_serial ? <div>Serial #: {String(selectedInvoiceForPrint.invoice.device_serial)}</div> : null}
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', margin: '10px 0' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#e2e8f0', color: '#1e293b', textAlign: 'left' }}>
+                    <th style={{ padding: '6px 8px' }}>#</th>
+                    <th style={{ padding: '6px 8px' }}>Description</th>
+                    {isInvoiceGst && <th style={{ padding: '6px 8px' }}>HSN/SAC</th>}
+                    <th style={{ padding: '6px 8px', textAlign: 'center' }}>Qty</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'right' }}>Rate ₹</th>
+                    {isInvoiceGst && <th style={{ padding: '6px 8px', textAlign: 'right' }}>GST %</th>}
+                    <th style={{ padding: '6px 8px', textAlign: 'right' }}>Amount ₹</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {selectedInvoiceForPrint.items.map((item, idx) => (
+                    <tr key={item.id as string} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '6px 8px' }}>{idx + 1}</td>
+                      <td style={{ padding: '6px 8px', fontWeight: 600 }}>{item.description as string}</td>
+                      {isInvoiceGst && <td style={{ padding: '6px 8px', color: '#64748b' }}>{(item.hsn_sac_code as string) || '9987'}</td>}
+                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>{item.quantity as number}</td>
+                      <td style={{ padding: '6px 8px', textAlign: 'right' }}>{Number(item.unit_price || 0).toFixed(2)}</td>
+                      {isInvoiceGst && <td style={{ padding: '6px 8px', textAlign: 'right' }}>{item.tax_rate as number}%</td>}
+                      <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700 }}>{Number(item.total_amount || 0).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
-            {/* Totals & GST Split */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '11px' }}>
-              <div style={{ maxWidth: '300px' }}>
-                <div style={{ fontWeight: 700, marginBottom: '2px' }}>Terms & Conditions:</div>
-                <div style={{ color: '#64748b', fontSize: '10px', lineHeight: 1.4 }}>
-                  1. 30-Day Service Warranty on replaced chip-level components.<br />
-                  2. No warranty against liquid damage, electrical surges, or burnt components.<br />
-                  3. Goods once sold will not be taken back.
+              {/* Totals & GST Split */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '11px' }}>
+                <div style={{ maxWidth: '300px' }}>
+                  <div style={{ fontWeight: 700, marginBottom: '2px' }}>Terms & Conditions:</div>
+                  <div style={{ color: '#64748b', fontSize: '10px', lineHeight: 1.4 }}>
+                    1. 30-Day Service Warranty on replaced chip-level components.<br />
+                    2. No warranty against liquid damage, electrical surges, or burnt components.<br />
+                    3. Goods once sold will not be taken back.
+                  </div>
+                </div>
+
+                <div style={{ width: '240px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Subtotal:</span>
+                    <span>₹{Number((Number(selectedInvoiceForPrint.invoice.subtotal_parts || 0) + Number(selectedInvoiceForPrint.invoice.subtotal_labor || 0)) || selectedInvoiceForPrint.invoice.total_amount || 0).toFixed(2)}</span>
+                  </div>
+                  {isInvoiceGst ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>CGST (9%):</span>
+                        <span>₹{Number(selectedInvoiceForPrint.invoice.cgst_amount || 0).toFixed(2)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>SGST (9%):</span>
+                        <span>₹{Number(selectedInvoiceForPrint.invoice.sgst_amount || 0).toFixed(2)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '10px' }}>
+                      <span>GST / Tax:</span>
+                      <span>₹0.00 (Non-GST)</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #0f172a', paddingTop: '4px', fontWeight: 800, fontSize: '13px' }}>
+                    <span>Total Amount:</span>
+                    <span>₹{Number(selectedInvoiceForPrint.invoice.total_amount || 0).toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontWeight: 700 }}>
+                    <span>Amount Paid:</span>
+                    <span>₹{Number(selectedInvoiceForPrint.invoice.amount_paid || 0).toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontWeight: 700 }}>
+                    <span>Balance Due:</span>
+                    <span>₹{Number(selectedInvoiceForPrint.invoice.balance_due || 0).toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
 
-              <div style={{ width: '220px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>CGST (9%):</span>
-                  <span>₹{Number(selectedInvoiceForPrint.invoice.cgst_amount || 0).toFixed(2)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>SGST (9%):</span>
-                  <span>₹{Number(selectedInvoiceForPrint.invoice.sgst_amount || 0).toFixed(2)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #0f172a', paddingTop: '4px', fontWeight: 800, fontSize: '13px' }}>
-                  <span>Total Amount:</span>
-                  <span>₹{Number(selectedInvoiceForPrint.invoice.total_amount || 0).toFixed(2)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontWeight: 700 }}>
-                  <span>Amount Paid:</span>
-                  <span>₹{Number(selectedInvoiceForPrint.invoice.amount_paid || 0).toFixed(2)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontWeight: 700 }}>
-                  <span>Balance Due:</span>
-                  <span>₹{Number(selectedInvoiceForPrint.invoice.balance_due || 0).toFixed(2)}</span>
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
+                <button
+                  onClick={() => setSelectedInvoiceForPrint(null)}
+                  style={{ padding: '6px 14px', borderRadius: '6px', backgroundColor: '#e2e8f0', border: 'none', color: '#0f172a', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Close Preview
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  style={{ padding: '6px 16px', borderRadius: '6px', backgroundColor: '#1e3a8a', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <Printer size={13} /> Print Bill (Ctrl+P)
+                </button>
               </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
-              <button
-                onClick={() => setSelectedInvoiceForPrint(null)}
-                style={{ padding: '6px 14px', borderRadius: '6px', backgroundColor: '#e2e8f0', border: 'none', color: '#0f172a', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-              >
-                Close Preview
-              </button>
-              <button
-                onClick={() => window.print()}
-                style={{ padding: '6px 16px', borderRadius: '6px', backgroundColor: '#1e3a8a', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-              >
-                <Printer size={13} /> Print Invoice (Ctrl+P)
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
+      {/* MODAL: A4 ESTIMATE / QUOTATION PRINT PREVIEW */}
+      {selectedQuotationForPrint && (() => {
+        const isQuotationGst = Number(selectedQuotationForPrint.quotation.tax_total || selectedQuotationForPrint.quotation.tax_amount || 0) > 0;
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+            <div style={{ backgroundColor: '#ffffff', color: '#0f172a', borderRadius: '8px', maxWidth: '750px', width: '100%', padding: '24px', maxHeight: '92vh', overflowY: 'auto', fontFamily: 'sans-serif', position: 'relative' }}>
+              {/* Modal Controls Bar (Hidden in Print) */}
+              <div className="no-print" style={{ position: 'sticky', top: '-24px', backgroundColor: '#ffffff', zIndex: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingTop: '4px', paddingBottom: '12px', borderBottom: '2px solid #f1f5f9', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'inline-flex', padding: '3px', backgroundColor: '#f1f5f9', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleQuotationGstInBilling(false)}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      fontSize: '11px',
+                      fontWeight: !isQuotationGst ? 800 : 600,
+                      backgroundColor: !isQuotationGst ? '#ffffff' : 'transparent',
+                      color: !isQuotationGst ? '#0f172a' : '#64748b',
+                      boxShadow: !isQuotationGst ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    🚫 Non-GST (0% Tax)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleQuotationGstInBilling(true)}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      fontSize: '11px',
+                      fontWeight: isQuotationGst ? 800 : 600,
+                      backgroundColor: isQuotationGst ? '#7e22ce' : 'transparent',
+                      color: isQuotationGst ? '#ffffff' : '#64748b',
+                      boxShadow: isQuotationGst ? '0 1px 3px rgba(126, 34, 206, 0.3)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    🧾 18% GST Tax
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    onClick={() => window.print()}
+                    style={{ padding: '6px 14px', borderRadius: '6px', backgroundColor: '#7e22ce', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <Printer size={13} /> Print
+                  </button>
+                  <button
+                    onClick={() => setSelectedQuotationForPrint(null)}
+                    style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    ✕ Close
+                  </button>
+                </div>
+              </div>
+
+              {/* Header with Shop details */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #6b21a8', paddingBottom: '12px' }}>
+                <div>
+                  <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 900, color: '#6b21a8', letterSpacing: '0.5px' }}>
+                    {(shopSettings.shopName || 'KTech Computers').toUpperCase()}
+                  </h1>
+                  <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>
+                    {shopSettings.tagline}<br />
+                    {shopSettings.address}<br />
+                    Phone: {shopSettings.phone} {shopSettings.gstin ? `| GSTIN: ${shopSettings.gstin}` : ''}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', color: isQuotationGst ? '#7e22ce' : '#2563eb' }}>
+                    {isQuotationGst ? 'REPAIR COST ESTIMATE (WITH GST)' : 'REPAIR COST ESTIMATE (NON-GST)'}
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: 900, color: '#6b21a8', fontFamily: 'monospace' }}>
+                    {selectedQuotationForPrint.quotation.quotation_number as string}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>
+                    Date: {new Date(selectedQuotationForPrint.quotation.created_at as string).toLocaleDateString('en-IN')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Customer / Job Info */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', margin: '14px 0', fontSize: '11px', backgroundColor: '#faf5ff', padding: '10px', borderRadius: '6px' }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#7e22ce', textTransform: 'uppercase', marginBottom: '2px' }}>Customer Details:</div>
+                  <div style={{ fontWeight: 800, fontSize: '12px' }}>{selectedQuotationForPrint.quotation.customer_name as string}</div>
+                  <div>Phone: {formatPhoneDisplay(selectedQuotationForPrint.quotation.customer_phone as string)}</div>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#7e22ce', textTransform: 'uppercase', marginBottom: '2px' }}>Service Device:</div>
+                  <div style={{ fontWeight: 700 }}>
+                    {String(selectedQuotationForPrint.quotation.device_brand || '')} {String(selectedQuotationForPrint.quotation.device_model || '')}
+                  </div>
+                  {selectedQuotationForPrint.quotation.job_number ? <div>Job Ref: {String(selectedQuotationForPrint.quotation.job_number)}</div> : null}
+                  {selectedQuotationForPrint.quotation.reported_issue ? <div>Issue: {String(selectedQuotationForPrint.quotation.reported_issue)}</div> : null}
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', margin: '10px 0' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f3e8ff', color: '#581c87', textAlign: 'left' }}>
+                    <th style={{ padding: '6px 8px' }}>#</th>
+                    <th style={{ padding: '6px 8px' }}>Type</th>
+                    <th style={{ padding: '6px 8px' }}>Description / Repair Action</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center' }}>Qty</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'right' }}>Rate ₹</th>
+                    {isQuotationGst && <th style={{ padding: '6px 8px', textAlign: 'right' }}>GST %</th>}
+                    <th style={{ padding: '6px 8px', textAlign: 'right' }}>Amount ₹</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedQuotationForPrint.items.map((item, idx) => (
+                    <tr key={item.id as string || idx} style={{ borderBottom: '1px solid #f3e8ff' }}>
+                      <td style={{ padding: '6px 8px' }}>{idx + 1}</td>
+                      <td style={{ padding: '6px 8px' }}>
+                        <span style={{ padding: '1px 5px', borderRadius: '3px', fontSize: '9px', fontWeight: 700, backgroundColor: item.item_type === 'PART' ? '#fff7ed' : '#eff6ff', color: item.item_type === 'PART' ? '#c2410c' : '#1d4ed8' }}>
+                          {String(item.item_type || 'LABOR')}
+                        </span>
+                      </td>
+                      <td style={{ padding: '6px 8px', fontWeight: 600 }}>{item.description as string}</td>
+                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>{Number(item.quantity || 1)}</td>
+                      <td style={{ padding: '6px 8px', textAlign: 'right' }}>{Number(item.unit_price || 0).toFixed(2)}</td>
+                      {isQuotationGst && <td style={{ padding: '6px 8px', textAlign: 'right' }}>{Number(item.tax_rate || 0)}%</td>}
+                      <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700 }}>{Number(item.total_price || item.total_amount || (Number(item.quantity || 1) * Number(item.unit_price || 0))).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Totals Summary */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '11px' }}>
+                <div style={{ maxWidth: '300px' }}>
+                  <div style={{ fontWeight: 700, marginBottom: '2px' }}>Quotation Terms:</div>
+                  <div style={{ color: '#64748b', fontSize: '10px', lineHeight: 1.4 }}>
+                    1. Validity: 7 days from estimate date.<br />
+                    2. Estimated cost is subject to change if unrepairable internal defects are found during board repair.<br />
+                    3. Work begins after customer approval.
+                  </div>
+                </div>
+
+                <div style={{ width: '240px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Parts Subtotal:</span>
+                    <span>₹{Number(selectedQuotationForPrint.quotation.parts_subtotal || 0).toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Labor Subtotal:</span>
+                    <span>₹{Number(selectedQuotationForPrint.quotation.labor_subtotal || 0).toFixed(2)}</span>
+                  </div>
+                  {isQuotationGst ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>GST (CGST + SGST):</span>
+                      <span>₹{Number(selectedQuotationForPrint.quotation.tax_total || selectedQuotationForPrint.quotation.tax_amount || 0).toFixed(2)}</span>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '10px' }}>
+                      <span>Tax (0% Non-GST):</span>
+                      <span>₹0.00</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #6b21a8', paddingTop: '4px', fontWeight: 800, fontSize: '13px', color: '#6b21a8' }}>
+                    <span>Estimated Total:</span>
+                    <span>₹{Number(selectedQuotationForPrint.quotation.total_amount || 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
+                <button
+                  onClick={() => setSelectedQuotationForPrint(null)}
+                  style={{ padding: '6px 14px', borderRadius: '6px', backgroundColor: '#e2e8f0', border: 'none', color: '#0f172a', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Close Preview
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  style={{ padding: '6px 16px', borderRadius: '6px', backgroundColor: '#6b21a8', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <Printer size={13} /> Print Estimate (Ctrl+P)
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

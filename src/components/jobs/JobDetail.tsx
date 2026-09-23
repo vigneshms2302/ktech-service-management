@@ -23,6 +23,8 @@ import {
   Receipt,
   Check,
   Tag,
+  ChevronDown,
+  CreditCard,
 } from 'lucide-react';
 import type { JobDetailData } from '../../types/index.ts';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
@@ -162,12 +164,28 @@ export const JobDetail: React.FC<JobDetailProps> = ({
   const [planItemCostStr, setPlanItemCostStr] = useState('');
   const [planItemSerial, setPlanItemSerial] = useState('');
   const [isAddingPlanItem, setIsAddingPlanItem] = useState(false);
+  const [isGstEnabled, setIsGstEnabled] = useState(false);
 
   // Modals & Action States
   const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false);
+  const [showPrintMenu, setShowPrintMenu] = useState(false);
   const [showPrintSlipModal, setShowPrintSlipModal] = useState(false);
+  const [estimateModalData, setEstimateModalData] = useState<{
+    quotation: Record<string, unknown>;
+    items: Array<Record<string, unknown>>;
+    approval?: Record<string, unknown> | null;
+  } | null>(null);
+  const [invoiceModalData, setInvoiceModalData] = useState<{
+    invoice: Record<string, unknown>;
+    items: Array<Record<string, unknown>>;
+    payments: Array<Record<string, unknown>>;
+  } | null>(null);
   const [isCreatingQuotation, setIsCreatingQuotation] = useState(false);
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
+  const [showQuickPaymentInJob, setShowQuickPaymentInJob] = useState(false);
+  const [quickPayAmountStr, setQuickPayAmountStr] = useState('');
+  const [quickPayMode, setQuickPayMode] = useState('UPI_QR');
+  const [quickPayRef, setQuickPayRef] = useState('');
 
   // Repair Activity form states
   const [actTitle, setActTitle] = useState('');
@@ -603,15 +621,27 @@ export const JobDetail: React.FC<JobDetailProps> = ({
     }
   };
 
-  const handleCreateQuotation = async () => {
+  const handleCreateOrViewQuotation = async () => {
     if (!data) return;
     setIsCreatingQuotation(true);
     try {
-      if (!window.electronAPI?.billing?.createQuotation) {
+      if (!window.electronAPI?.billing) {
         alert('Billing API not available');
         return;
       }
 
+      // Check if quotation already exists for this job
+      const listRes = await window.electronAPI.billing.listQuotations({ jobId: data.job.id });
+      if (listRes.success && listRes.data && listRes.data.length > 0) {
+        const latestQ = listRes.data[0];
+        const qDetail = await window.electronAPI.billing.getQuotationById({ quotationId: latestQ.id as string });
+        if (qDetail.success && qDetail.data) {
+          setEstimateModalData(qDetail.data);
+          return;
+        }
+      }
+
+      // Build items from repair plans and required parts
       const items: Array<{
         itemType: 'PART' | 'LABOR';
         inventoryItemId?: string;
@@ -628,7 +658,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
             description: p.serviceName,
             quantity: 1,
             unitPrice: p.laborCharge,
-            taxRate: p.taxRate || 18,
+            taxRate: isGstEnabled ? (p.taxRate || 18) : 0,
           });
         });
       }
@@ -641,7 +671,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
             description: part.partName + (part.serialNumber ? ` (S/N: ${part.serialNumber})` : ''),
             quantity: part.quantity || 1,
             unitPrice: part.unitSellingPrice || 0,
-            taxRate: part.taxRate || 18,
+            taxRate: isGstEnabled ? (part.taxRate || 18) : 0,
           });
         });
       }
@@ -652,20 +682,24 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           description: `${data.job.deviceBrand} ${data.job.deviceModel} - Service & Repair Charges`,
           quantity: 1,
           unitPrice: data.job.estimatedCost > 0 ? data.job.estimatedCost : 500,
-          taxRate: 18,
+          taxRate: isGstEnabled ? 18 : 0,
         });
       }
 
       const res = await window.electronAPI.billing.createQuotation({
         jobId: data.job.id,
+        isGstQuotation: isGstEnabled,
         items,
       });
 
-      if (res.success) {
-        alert('Quotation Estimate generated successfully! Ticket updated to Awaiting Approval.');
+      if (res.success && res.data) {
+        const qDetail = await window.electronAPI.billing.getQuotationById({ quotationId: res.data.quotationId });
+        if (qDetail.success && qDetail.data) {
+          setEstimateModalData(qDetail.data);
+        }
         fetchJob();
       } else {
-        alert(res.error || 'Failed to create quotation');
+        alert(res.error || 'Failed to generate quotation estimate');
       }
     } catch (err: unknown) {
       alert((err as Error).message);
@@ -674,17 +708,132 @@ export const JobDetail: React.FC<JobDetailProps> = ({
     }
   };
 
-  const handleCreateInvoice = async () => {
+  const handleApproveQuotationDirectly = async (quotationId: string, approvedAmount: number) => {
+    if (!data) return;
+    try {
+      if (!window.electronAPI?.billing?.recordApproval) return;
+      const res = await window.electronAPI.billing.recordApproval({
+        quotationId,
+        approvalStatus: 'APPROVED',
+        approvedAmount,
+        approvalMethod: 'WHATSAPP',
+        customerContactUsed: data.job.customerPhone,
+        notes: 'Approved by customer via Estimate Workspace',
+      });
+
+      if (res.success) {
+        const qDetail = await window.electronAPI.billing.getQuotationById({ quotationId });
+        if (qDetail.success && qDetail.data) {
+          setEstimateModalData(qDetail.data);
+        }
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to record customer approval');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    }
+  };
+
+  const handleRejectQuotationDirectly = async (quotationId: string) => {
+    if (!data) return;
+    const reason = window.prompt('Enter customer reason for declining estimate:', 'Too expensive / Customer decided not to repair');
+    if (reason === null) return;
+
+    try {
+      if (!window.electronAPI?.billing?.recordApproval) return;
+      const res = await window.electronAPI.billing.recordApproval({
+        quotationId,
+        approvalStatus: 'REJECTED',
+        approvedAmount: 0,
+        approvalMethod: 'PHONE_CALL',
+        customerContactUsed: data.job.customerPhone,
+        notes: reason || 'Customer rejected estimate',
+      });
+
+      if (res.success) {
+        const qDetail = await window.electronAPI.billing.getQuotationById({ quotationId });
+        if (qDetail.success && qDetail.data) {
+          setEstimateModalData(qDetail.data);
+        }
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to record rejection');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    }
+  };
+
+  const handleToggleEstimateGst = async (newGstState: boolean) => {
+    if (!estimateModalData) return;
+    setIsGstEnabled(newGstState);
+    try {
+      if (!window.electronAPI?.billing?.toggleQuotationGst) return;
+      const res = await window.electronAPI.billing.toggleQuotationGst({
+        quotationId: String(estimateModalData.quotation.id),
+        isGst: newGstState,
+      });
+      if (res.success) {
+        const qDetail = await window.electronAPI.billing.getQuotationById({ quotationId: String(estimateModalData.quotation.id) });
+        if (qDetail.success && qDetail.data) {
+          setEstimateModalData(qDetail.data);
+        }
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to update GST setting on estimate');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    }
+  };
+
+  const handleToggleInvoiceGst = async (newGstState: boolean) => {
+    if (!invoiceModalData) return;
+    setIsGstEnabled(newGstState);
+    try {
+      if (!window.electronAPI?.billing?.toggleInvoiceGst) return;
+      const res = await window.electronAPI.billing.toggleInvoiceGst({
+        invoiceId: String(invoiceModalData.invoice.id),
+        isGst: newGstState,
+      });
+      if (res.success) {
+        const invDetail = await window.electronAPI.billing.getInvoiceById({ invoiceId: String(invoiceModalData.invoice.id) });
+        if (invDetail.success && invDetail.data) {
+          setInvoiceModalData(invDetail.data);
+        }
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to update GST setting on invoice');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    }
+  };
+
+  const handleCreateOrViewInvoice = async () => {
     if (!data) return;
     setIsCreatingInvoice(true);
     try {
-      if (!window.electronAPI?.billing?.createInvoice) {
+      if (!window.electronAPI?.billing) {
         alert('Billing API not available');
         return;
       }
 
+      // Check if invoice already exists for this job
+      const listRes = await window.electronAPI.billing.listInvoices({ jobId: data.job.id });
+      if (listRes.success && listRes.data && listRes.data.length > 0) {
+        const latestInv = listRes.data[0];
+        const invDetail = await window.electronAPI.billing.getInvoiceById({ invoiceId: latestInv.id as string });
+        if (invDetail.success && invDetail.data) {
+          setInvoiceModalData(invDetail.data);
+          return;
+        }
+      }
+
+      // Build items from repair plans and required parts
       const items: Array<{
-        itemType: 'PART' | 'LABOR';
+        itemType: string;
         itemRefId?: string;
         description: string;
         quantity: number;
@@ -699,7 +848,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
             description: p.serviceName,
             quantity: 1,
             unitPrice: p.laborCharge,
-            taxRate: p.taxRate || 18,
+            taxRate: isGstEnabled ? (p.taxRate || 18) : 0,
           });
         });
       }
@@ -712,7 +861,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
             description: part.partName + (part.serialNumber ? ` (S/N: ${part.serialNumber})` : ''),
             quantity: part.quantity || 1,
             unitPrice: part.unitSellingPrice || 0,
-            taxRate: part.taxRate || 18,
+            taxRate: isGstEnabled ? (part.taxRate || 18) : 0,
           });
         });
       }
@@ -723,7 +872,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           description: `${data.job.deviceBrand} ${data.job.deviceModel} - Service & Labor Charges`,
           quantity: 1,
           unitPrice: data.job.estimatedCost > 0 ? data.job.estimatedCost : 500,
-          taxRate: 18,
+          taxRate: isGstEnabled ? 18 : 0,
         });
       }
 
@@ -731,21 +880,58 @@ export const JobDetail: React.FC<JobDetailProps> = ({
         customerId: data.job.customerId,
         serviceJobId: data.job.id,
         invoiceType: 'SERVICE_REPAIR',
-        isGstInvoice: true,
+        isGstInvoice: isGstEnabled,
         advanceAdjusted: data.job.advanceDeposit || 0,
         items,
       });
 
-      if (res.success) {
-        alert('Tax Invoice generated successfully! Device is now Ready for Delivery.');
+      if (res.success && res.data) {
+        const invDetail = await window.electronAPI.billing.getInvoiceById({ invoiceId: res.data.invoiceId });
+        if (invDetail.success && invDetail.data) {
+          setInvoiceModalData(invDetail.data);
+        }
         fetchJob();
       } else {
-        alert(res.error || 'Failed to generate invoice');
+        alert(res.error || 'Failed to generate tax invoice');
       }
     } catch (err: unknown) {
       alert((err as Error).message);
     } finally {
       setIsCreatingInvoice(false);
+    }
+  };
+
+  const handleRecordQuickPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!invoiceModalData) return;
+    const inv = invoiceModalData.invoice;
+    const amount = Number(quickPayAmountStr) || 0;
+    if (amount <= 0) return;
+
+    try {
+      if (!window.electronAPI?.billing?.recordPayment) return;
+      const res = await window.electronAPI.billing.recordPayment({
+        invoiceId: inv.id as string,
+        amount,
+        paymentMode: quickPayMode,
+        transactionReference: quickPayRef.trim() || undefined,
+        markJobDelivered: true,
+      });
+
+      if (res.success) {
+        const invDetail = await window.electronAPI.billing.getInvoiceById({ invoiceId: inv.id as string });
+        if (invDetail.success && invDetail.data) {
+          setInvoiceModalData(invDetail.data);
+        }
+        setShowQuickPaymentInJob(false);
+        setQuickPayAmountStr('');
+        setQuickPayRef('');
+        fetchJob();
+      } else {
+        alert(res.error || 'Failed to record payment');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message);
     }
   };
 
@@ -771,8 +957,20 @@ export const JobDetail: React.FC<JobDetailProps> = ({
       const diagText = data.diagnoses?.[0]?.rootCauseAnalysis || 'Inspection and circuit test completed';
       msg = `*${shopUpper} - ESTIMATE APPROVAL REQUIRED* 📋\n\nDear *${j.customerName}*,\nDiagnosis is complete for your *${j.deviceBrand} ${j.deviceModel}* (Job: ${j.jobNumber}).\n\n🔍 *Diagnosis:* ${diagText}\n💰 *Total Estimate:* ₹${j.estimatedCost.toFixed(2)}\n\nPlease reply *APPROVE* to authorize repair work or call us if you have any questions.\n\n📞 ${shopPhone} | ${shopName}`;
     } else if (type === 'ready') {
-      const balance = Math.max(0, j.estimatedCost - j.advanceDeposit);
-      msg = `*${shopUpper} - DEVICE READY FOR PICKUP* ✅\n\nDear *${j.customerName}*,\nGreat news! Your *${j.deviceBrand} ${j.deviceModel}* (Job: ${j.jobNumber}) is fully repaired and bench-tested.\n\n💰 *Total Bill:* ₹${j.estimatedCost.toFixed(2)}\n💵 *Advance Deducted:* ₹${j.advanceDeposit.toFixed(2)}\n💳 *Balance Payable:* ₹${balance.toFixed(2)}\n\n⏰ Pickup Hours: 10:00 AM - 9:00 PM\n📍 ${shopName}, ${shopAddress}\nSee you soon!`;
+      const isInvoiceAvailable = Boolean(invoiceModalData?.invoice);
+      const isGst = isInvoiceAvailable ? Boolean(invoiceModalData?.invoice?.is_gst_invoice) : false;
+      const totalBill = isInvoiceAvailable
+        ? Number(invoiceModalData?.invoice?.total_amount || invoiceModalData?.invoice?.totalAmount || j.estimatedCost)
+        : j.estimatedCost;
+      const advance = isInvoiceAvailable
+        ? Number(invoiceModalData?.invoice?.advance_adjusted || invoiceModalData?.invoice?.advanceAdjusted || j.advanceDeposit)
+        : j.advanceDeposit;
+      const balance = isInvoiceAvailable
+        ? Number(invoiceModalData?.invoice?.balance_due ?? invoiceModalData?.invoice?.balanceDue ?? Math.max(0, totalBill - advance))
+        : Math.max(0, j.estimatedCost - j.advanceDeposit);
+      const billNoStr = invoiceModalData?.invoice?.invoice_number ? `\n📄 *Bill No:* ${invoiceModalData.invoice.invoice_number}` : '';
+
+      msg = `*${shopUpper} - ${isGst ? 'TAX INVOICE' : 'FINAL SERVICE BILL'}* 🧾\n\nDear *${j.customerName}*,\nGreat news! Your *${j.deviceBrand} ${j.deviceModel}* (Job: ${j.jobNumber}) is fully repaired and ready for collection.${billNoStr}\n\n💰 *Total Bill Amount:* ₹${totalBill.toFixed(2)}\n💵 *Advance Deducted:* ₹${advance.toFixed(2)}\n💳 *Final Balance Payable:* ₹${balance.toFixed(2)}\n\n⏰ Pickup Hours: 10:00 AM - 9:00 PM\n📍 ${shopName}, ${shopAddress}\n📞 Support: ${shopPhone}`;
     } else if (type === 'delivery') {
       msg = `*${shopUpper} - THANK YOU & WARRANTY* 🤝\n\nDear *${j.customerName}*,\nThank you for collecting your *${j.deviceBrand} ${j.deviceModel}* (Job: ${j.jobNumber}).\n\nWe appreciate your business! All repairs are backed by our service warranty.\nNeed any assistance in future? Contact us anytime at ${shopPhone}.`;
     }
@@ -1167,33 +1365,56 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                 </>
               )}
 
-              {/* Step: Quotation / Estimate generation */}
+              {/* Step: Quotation / Estimate generation & Quick Approval */}
               {(job.currentStatus === 'DIAGNOSIS_COMPLETED' || job.currentStatus === 'WAITING_FOR_APPROVAL') && (
-                <button
-                  onClick={handleCreateQuotation}
-                  disabled={isCreatingQuotation}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    backgroundColor: '#8b5cf6',
-                    color: '#ffffff',
-                    border: 'none',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <FileText size={13} /> {isCreatingQuotation ? 'Generating...' : 'Create Estimate'}
-                </button>
+                <>
+                  <button
+                    onClick={handleCreateOrViewQuotation}
+                    disabled={isCreatingQuotation}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      backgroundColor: '#8b5cf6',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <FileText size={13} /> {isCreatingQuotation ? 'Opening...' : '📋 View / Send Estimate'}
+                  </button>
+
+                  {job.currentStatus === 'WAITING_FOR_APPROVAL' && (
+                    <button
+                      onClick={() => handleStatusTransition('UNDER_REPAIR', 'Customer gave approval via phone/WhatsApp')}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        backgroundColor: 'var(--color-success)',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <CheckCircle2 size={13} /> ✅ Customer Approved (Start Repair)
+                    </button>
+                  )}
+                </>
               )}
 
               {/* Step: Tax Invoice generation */}
-              {(job.currentStatus === 'REPAIR_COMPLETED' || job.currentStatus === 'UNDER_REPAIR') && (
+              {(job.currentStatus === 'REPAIR_COMPLETED' || job.currentStatus === 'UNDER_REPAIR' || job.currentStatus === 'READY_FOR_DELIVERY') && (
                 <button
-                  onClick={handleCreateInvoice}
+                  onClick={handleCreateOrViewInvoice}
                   disabled={isCreatingInvoice}
                   style={{
                     padding: '6px 12px',
@@ -1209,7 +1430,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                     gap: '4px',
                   }}
                 >
-                  <Receipt size={13} /> {isCreatingInvoice ? 'Billing...' : 'Generate Tax Bill'}
+                  <Receipt size={13} /> {isCreatingInvoice ? 'Opening...' : '🧾 View / Generate Final Bill'}
                 </button>
               )}
 
@@ -1231,7 +1452,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                     gap: '4px',
                   }}
                 >
-                  <CheckCircle2 size={13} /> Deliver to Customer
+                  <CheckCircle2 size={13} /> 🤝 Deliver to Customer
                 </button>
               )}
 
@@ -1377,25 +1598,134 @@ export const JobDetail: React.FC<JobDetailProps> = ({
             )}
           </div>
 
-          {/* Print Slip Button */}
-          <button
-            onClick={() => setShowPrintSlipModal(true)}
-            style={{
-              padding: '6px 12px',
-              borderRadius: '6px',
-              backgroundColor: 'var(--bg-surface)',
-              color: 'var(--text-main)',
-              border: '1px solid var(--border-color)',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
-          >
-            <Printer size={13} /> Print Slip
-          </button>
+          {/* 🖨️ Print Slips Multi-Document Dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowPrintMenu(!showPrintMenu)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                backgroundColor: 'var(--bg-surface)',
+                color: 'var(--text-main)',
+                border: '1px solid var(--border-color)',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <Printer size={13} /> 🖨️ Print Slips <ChevronDown size={12} />
+            </button>
+            {showPrintMenu && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '6px',
+                  backgroundColor: 'var(--bg-card)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                  padding: '6px',
+                  zIndex: 50,
+                  minWidth: '240px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
+                <button
+                  onClick={() => {
+                    setShowPrintSlipModal(true);
+                    setShowPrintMenu(false);
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    textAlign: 'left',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-main)',
+                    fontSize: '12px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  <span style={{ fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    📄 1. Device Intake Slip
+                  </span>
+                  <span style={{ fontSize: '10.5px', color: 'var(--text-dim)' }}>
+                    Counter handover receipt given at admission
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowPrintMenu(false);
+                    handleCreateOrViewQuotation();
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    textAlign: 'left',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-main)',
+                    fontSize: '12px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  <span style={{ fontWeight: 700, color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    📋 2. Cost Estimate Slip
+                  </span>
+                  <span style={{ fontSize: '10.5px', color: 'var(--text-dim)' }}>
+                    Quotation sheet with parts & labor pricing
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowPrintMenu(false);
+                    handleCreateOrViewInvoice();
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    textAlign: 'left',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-main)',
+                    fontSize: '12px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  <span style={{ fontWeight: 700, color: 'var(--brand-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    🧾 3. GST Tax Invoice / Final Bill
+                  </span>
+                  <span style={{ fontSize: '10.5px', color: 'var(--text-dim)' }}>
+                    Final delivery bill with or without GST breakdown
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -2254,6 +2584,55 @@ export const JobDetail: React.FC<JobDetailProps> = ({
               </div>
             </div>
 
+            {/* GST Configuration Toggle Bar (Unchecked by default for local/retail repairs) */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                backgroundColor: isGstEnabled ? 'rgba(59, 130, 246, 0.1)' : 'var(--bg-surface)',
+                border: isGstEnabled ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid var(--border-color)',
+                transition: 'all 0.15s ease',
+                flexWrap: 'wrap',
+                gap: '8px',
+              }}
+            >
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  checked={isGstEnabled}
+                  onChange={(e) => setIsGstEnabled(e.target.checked)}
+                  style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--brand-primary)' }}
+                />
+                <div>
+                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: isGstEnabled ? 'var(--brand-primary)' : 'var(--text-main)' }}>
+                    {isGstEnabled ? '🧾 Apply GST (18% - CGST 9% + SGST 9%)' : '🚫 Standard Retail (No GST / 0% Tax)'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                    {isGstEnabled
+                      ? 'Official Tax Invoice mode enabled. 18% GST with HSN/SAC will be applied to quotations and final bills.'
+                      : 'Unchecked for local shops / retail repairs. Quotations & final bills will be generated with exact amounts without GST.'}
+                  </div>
+                </div>
+              </label>
+
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  backgroundColor: isGstEnabled ? 'var(--brand-primary)' : 'var(--bg-card)',
+                  color: isGstEnabled ? '#ffffff' : 'var(--text-dim)',
+                  border: '1px solid var(--border-color)',
+                }}
+              >
+                {isGstEnabled ? 'GST 18% ACTIVE' : 'NON-GST / 0% TAX'}
+              </span>
+            </div>
+
             {/* Unified Add Item Form */}
             <form onSubmit={handleUnifiedAddItem} style={{ backgroundColor: 'var(--bg-surface)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               
@@ -2556,12 +2935,22 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                 <span style={{ color: 'var(--text-muted)' }}>
                   Total Parts: <strong style={{ color: 'var(--text-main)', fontFamily: 'var(--font-mono)' }}>₹{requiredParts.reduce((s, p) => s + ((p.unitSellingPrice || 0) * (p.quantity || 1)), 0).toFixed(2)}</strong> ({requiredParts.length})
                 </span>
+                {isGstEnabled && (
+                  <span style={{ color: '#0284c7' }}>
+                    GST (18%): <strong style={{ fontFamily: 'var(--font-mono)' }}>₹{((repairPlans.reduce((s, p) => s + (p.laborCharge || 0), 0) + requiredParts.reduce((s, p) => s + ((p.unitSellingPrice || 0) * (p.quantity || 1)), 0)) * 0.18).toFixed(2)}</strong>
+                  </span>
+                )}
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>ESTIMATED TOTAL:</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  {isGstEnabled ? 'ESTIMATED TOTAL (INCL. GST):' : 'ESTIMATED TOTAL (NO GST):'}
+                </span>
                 <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-success)', fontFamily: 'var(--font-mono)' }}>
-                  ₹{(repairPlans.reduce((s, p) => s + (p.laborCharge || 0), 0) + requiredParts.reduce((s, p) => s + ((p.unitSellingPrice || 0) * (p.quantity || 1)), 0)).toFixed(2)}
+                  ₹{(
+                    (repairPlans.reduce((s, p) => s + (p.laborCharge || 0), 0) + requiredParts.reduce((s, p) => s + ((p.unitSellingPrice || 0) * (p.quantity || 1)), 0)) *
+                    (isGstEnabled ? 1.18 : 1.0)
+                  ).toFixed(2)}
                 </span>
               </div>
             </div>
@@ -2573,23 +2962,25 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                   Ready to Quote or Bill this Service?
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  All repair actions & parts above will automatically become billable items with GST calculations.
+                  Convert the repair services & replacement parts above into an official document with 1 click:
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button
-                  onClick={handleCreateQuotation}
+                  type="button"
+                  onClick={handleCreateOrViewQuotation}
                   disabled={isCreatingQuotation}
                   style={{ padding: '8px 16px', borderRadius: '6px', backgroundColor: '#8b5cf6', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <FileText size={14} /> {isCreatingQuotation ? 'Generating...' : '1-Click Estimate'}
+                  <FileText size={14} /> {isCreatingQuotation ? 'Opening...' : '📋 Generate & View Estimate Slip'}
                 </button>
                 <button
-                  onClick={handleCreateInvoice}
+                  type="button"
+                  onClick={handleCreateOrViewInvoice}
                   disabled={isCreatingInvoice}
                   style={{ padding: '8px 16px', borderRadius: '6px', backgroundColor: 'var(--brand-primary)', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <Receipt size={14} /> {isCreatingInvoice ? 'Billing...' : '1-Click Tax Invoice'}
+                  <Receipt size={14} /> {isCreatingInvoice ? 'Opening...' : '🧾 Generate & View Final Bill / Invoice'}
                 </button>
               </div>
             </div>
@@ -2864,7 +3255,9 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           >
             {/* Modal Controls (Hidden in Print) */}
             <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0' }}>
-              <div style={{ fontWeight: 700, fontSize: '14px', color: '#334155' }}>Counter Intake Slip Preview</div>
+              <div style={{ fontWeight: 700, fontSize: '14px', color: '#334155' }}>
+                📄 Device Intake Counter Slip Preview
+              </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   onClick={() => window.print()}
@@ -2882,7 +3275,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
                     gap: '6px',
                   }}
                 >
-                  <Printer size={15} /> Print Now
+                  <Printer size={15} /> Print Slip
                 </button>
                 <button
                   onClick={() => setShowPrintSlipModal(false)}
@@ -3015,6 +3408,871 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           </div>
         </div>
       )}
+
+      {/* 📋 Cost Estimate Quotation Preview Modal */}
+      {estimateModalData && (() => {
+        const isEstimateGst = Number(estimateModalData.quotation.tax_total || estimateModalData.quotation.tax_amount || 0) > 0;
+
+        return (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.75)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 1000,
+              padding: '20px',
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                color: '#0f172a',
+                borderRadius: '12px',
+                maxWidth: '780px',
+                width: '100%',
+                maxHeight: '92vh',
+                overflowY: 'auto',
+                padding: '28px',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                position: 'relative',
+              }}
+            >
+              {/* Modal Controls (Sticky Top Bar - Hidden in Print) */}
+              <div
+                className="no-print"
+                style={{
+                  position: 'sticky',
+                  top: '-28px',
+                  backgroundColor: '#ffffff',
+                  zIndex: 20,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '20px',
+                  paddingTop: '6px',
+                  paddingBottom: '14px',
+                  borderBottom: '2px solid #f1f5f9',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                }}
+              >
+                {/* Left: Title + Clean Segmented Pill Mode Switcher */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontWeight: 900, fontSize: '16px', color: '#6b21a8' }}>
+                      Cost Estimate
+                    </span>
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        backgroundColor: String(estimateModalData.quotation.status) === 'APPROVED' ? '#dcfce7' : '#f3e8ff',
+                        color: String(estimateModalData.quotation.status) === 'APPROVED' ? '#166534' : '#7e22ce',
+                      }}
+                    >
+                      {String(estimateModalData.quotation.status || 'DRAFT')}
+                    </span>
+                  </div>
+
+                  {/* Clean Segmented GST / Non-GST Switcher */}
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      padding: '3px',
+                      backgroundColor: '#f1f5f9',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleToggleEstimateGst(false)}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        fontSize: '11px',
+                        fontWeight: !isEstimateGst ? 800 : 600,
+                        backgroundColor: !isEstimateGst ? '#ffffff' : 'transparent',
+                        color: !isEstimateGst ? '#0f172a' : '#64748b',
+                        boxShadow: !isEstimateGst ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      🚫 Non-GST (0% Tax)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleEstimateGst(true)}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        fontSize: '11px',
+                        fontWeight: isEstimateGst ? 800 : 600,
+                        backgroundColor: isEstimateGst ? '#7e22ce' : 'transparent',
+                        color: isEstimateGst ? '#ffffff' : '#64748b',
+                        boxShadow: isEstimateGst ? '0 1px 3px rgba(126, 34, 206, 0.3)' : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      🧾 18% GST Tax
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right: Actions */}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {String(estimateModalData.quotation.status) !== 'APPROVED' && (
+                    <>
+                      <button
+                        onClick={() => handleApproveQuotationDirectly(
+                          String(estimateModalData.quotation.id),
+                          Number(estimateModalData.quotation.total_amount || estimateModalData.quotation.totalAmount || 0)
+                        )}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          backgroundColor: '#16a34a',
+                          color: '#ffffff',
+                          border: 'none',
+                          fontWeight: 700,
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <CheckCircle2 size={14} /> Accept
+                      </button>
+                      <button
+                        onClick={() => handleRejectQuotationDirectly(String(estimateModalData.quotation.id))}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          backgroundColor: '#fee2e2',
+                          color: '#dc2626',
+                          border: '1px solid #fecaca',
+                          fontWeight: 600,
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Decline
+                      </button>
+                    </>
+                  )}
+
+                  <button
+                    onClick={() => handleSendWhatsApp('estimate')}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      backgroundColor: '#25D366',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontWeight: 700,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <MessageSquare size={13} /> WhatsApp
+                  </button>
+
+                  <button
+                    onClick={() => window.print()}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '6px',
+                      backgroundColor: '#7e22ce',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontWeight: 700,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Printer size={14} /> Print
+                  </button>
+
+                  <button
+                    onClick={() => setEstimateModalData(null)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      backgroundColor: '#f1f5f9',
+                      color: '#475569',
+                      border: '1px solid #cbd5e1',
+                      fontWeight: 600,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✕ Close
+                  </button>
+                </div>
+              </div>
+
+              {/* Printable Quotation Document */}
+              <div id="printable-estimate-slip" style={{ fontFamily: 'system-ui, sans-serif' }}>
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #6b21a8', paddingBottom: '12px' }}>
+                  <div>
+                    <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 900, letterSpacing: '-0.5px', color: '#0f172a' }}>
+                      {(shopSettings.shopName || 'KTech Computers').toUpperCase()}
+                    </h1>
+                    <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>
+                      {shopSettings.tagline}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#64748b' }}>
+                      {shopSettings.address} | Phone: {shopSettings.phone} {shopSettings.gstin ? `| GSTIN: ${shopSettings.gstin}` : ''}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: isEstimateGst ? '#7e22ce' : '#2563eb' }}>
+                      {isEstimateGst ? 'REPAIR COST ESTIMATE (WITH GST)' : 'REPAIR COST ESTIMATE (NON-GST)'}
+                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: 900, fontFamily: 'monospace', color: '#6b21a8' }}>
+                      {String(estimateModalData.quotation.quotation_number || estimateModalData.quotation.quotationNumber || '')}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>
+                      Job Ref: <strong>{job.jobNumber}</strong>
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#64748b' }}>
+                      Date: {new Date(String(estimateModalData.quotation.created_at || estimateModalData.quotation.createdAt || new Date())).toLocaleDateString('en-IN')}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Customer & Device Information */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '14px', fontSize: '12px' }}>
+                  <div style={{ padding: '10px', backgroundColor: '#faf5ff', borderRadius: '6px', border: '1px solid #f3e8ff' }}>
+                    <div style={{ fontWeight: 800, fontSize: '11px', textTransform: 'uppercase', color: '#7e22ce', marginBottom: '4px' }}>
+                      Customer Details
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{job.customerName}</div>
+                    <div style={{ color: '#334155' }}>Phone: {job.customerPhone}</div>
+                    <div style={{ color: '#64748b', fontSize: '11px' }}>Customer Code: {job.customerCode}</div>
+                  </div>
+
+                  <div style={{ padding: '10px', backgroundColor: '#faf5ff', borderRadius: '6px', border: '1px solid #f3e8ff' }}>
+                    <div style={{ fontWeight: 800, fontSize: '11px', textTransform: 'uppercase', color: '#7e22ce', marginBottom: '4px' }}>
+                      Device & Issue
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                      {job.deviceBrand} {job.deviceModel}
+                    </div>
+                    <div style={{ color: '#334155' }}>Type: {job.equipmentType.replace(/_/g, ' ')}</div>
+                    <div style={{ color: '#64748b', fontSize: '11px' }}>Defect: {job.reportedIssue}</div>
+                  </div>
+                </div>
+
+                {/* Itemized Table */}
+                <div style={{ marginTop: '16px', borderRadius: '6px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f8fafc', color: '#475569', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
+                        <th style={{ padding: '8px 10px', width: '40px' }}>#</th>
+                        <th style={{ padding: '8px 10px', width: '80px' }}>Type</th>
+                        <th style={{ padding: '8px 10px' }}>Description / Repair Action</th>
+                        <th style={{ padding: '8px 10px', width: '50px', textAlign: 'center' }}>Qty</th>
+                        <th style={{ padding: '8px 10px', width: '90px', textAlign: 'right' }}>Rate (₹)</th>
+                        {isEstimateGst && <th style={{ padding: '8px 10px', width: '70px', textAlign: 'right' }}>GST %</th>}
+                        <th style={{ padding: '8px 10px', width: '100px', textAlign: 'right' }}>Amount (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {estimateModalData.items.map((item, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '8px 10px', color: '#94a3b8' }}>{idx + 1}</td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <span
+                              style={{
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                backgroundColor: item.item_type === 'PART' || item.itemType === 'PART' ? '#fff7ed' : '#eff6ff',
+                                color: item.item_type === 'PART' || item.itemType === 'PART' ? '#c2410c' : '#1d4ed8',
+                              }}
+                            >
+                              {String(item.item_type || item.itemType || 'LABOR')}
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 10px', fontWeight: 600, color: '#0f172a' }}>
+                            {String(item.description || '')}
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'center', color: '#334155' }}>
+                            {Number(item.quantity || 1)}
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace', color: '#334155' }}>
+                            {Number(item.unit_price || item.unitPrice || 0).toFixed(2)}
+                          </td>
+                          {isEstimateGst && (
+                            <td style={{ padding: '8px 10px', textAlign: 'right', color: '#64748b' }}>
+                              {Number(item.tax_rate || item.taxRate || 0)}%
+                            </td>
+                          )}
+                          <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#0f172a' }}>
+                            {Number(item.total_amount || item.totalAmount || (Number(item.quantity || 1) * Number(item.unit_price || item.unitPrice || 0))).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Financial Totals Summary */}
+                <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                      <span>Parts Subtotal:</span>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>₹{Number(estimateModalData.quotation.parts_subtotal || estimateModalData.quotation.partsSubtotal || 0).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                      <span>Labor Subtotal:</span>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>₹{Number(estimateModalData.quotation.labor_subtotal || estimateModalData.quotation.laborSubtotal || 0).toFixed(2)}</span>
+                    </div>
+                    {isEstimateGst ? (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                        <span>GST Tax (CGST + SGST):</span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>₹{Number(estimateModalData.quotation.tax_total || estimateModalData.quotation.tax_amount || 0).toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '11px' }}>
+                        <span>Tax (Non-GST / 0%):</span>
+                        <span style={{ fontFamily: 'monospace' }}>₹0.00</span>
+                      </div>
+                    )}
+                    {job.advanceDeposit > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#166534' }}>
+                        <span>Advance Paid Deductible:</span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>- ₹{job.advanceDeposit.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '2px solid #0f172a', borderBottom: '2px solid #0f172a', fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
+                      <span>Estimated Net Total:</span>
+                      <span style={{ fontFamily: 'monospace', color: '#6b21a8' }}>
+                        ₹{Math.max(0, Number(estimateModalData.quotation.total_amount || estimateModalData.quotation.totalAmount || 0) - job.advanceDeposit).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quotation Approval Status Alert */}
+                {estimateModalData.approval ? (
+                  <div style={{ marginTop: '16px', padding: '10px 14px', borderRadius: '6px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: '12px', color: '#166534' }}>
+                    <strong>✅ Customer Authorization Recorded:</strong> {String(estimateModalData.approval.approval_status)} via {String(estimateModalData.approval.approval_method)} on {new Date(String(estimateModalData.approval.approval_timestamp || estimateModalData.approval.created_at)).toLocaleString('en-IN')}.
+                  </div>
+                ) : (
+                  <div style={{ marginTop: '16px', padding: '10px 14px', borderRadius: '6px', backgroundColor: '#faf5ff', border: '1px solid #e9d5ff', fontSize: '11px', color: '#6b21a8' }}>
+                    ℹ️ <em>Please approve this estimate via WhatsApp or phone call so bench repair work can begin.</em>
+                  </div>
+                )}
+
+                {/* Terms & Conditions */}
+                <div style={{ marginTop: '14px', padding: '8px 12px', borderLeft: '3px solid #cbd5e1', fontSize: '10px', color: '#64748b', lineHeight: 1.4 }}>
+                  1. This estimate is valid for 7 days from the date of issue.<br />
+                  2. If additional internal board damage is discovered during micro-soldering, a revised estimate will be sent.<br />
+                  3. Repair work commences immediately upon customer approval.
+                </div>
+
+                {/* Signatures */}
+                <div style={{ marginTop: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: '10px' }}>
+                  <div style={{ textAlign: 'center', width: '200px', borderTop: '1px dashed #94a3b8', paddingTop: '6px', fontSize: '11px', color: '#475569' }}>
+                    Customer Acceptance Signature
+                  </div>
+                  <div style={{ textAlign: 'center', width: '200px', borderTop: '1px dashed #94a3b8', paddingTop: '6px', fontSize: '11px', color: '#475569' }}>
+                    Authorized Signatory ({shopSettings.shopName})
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 🧾 GST Tax Invoice & Cash Bill Preview Modal */}
+      {invoiceModalData && (() => {
+        const isInvoiceGst = Boolean(
+          invoiceModalData.invoice.is_gst_invoice === 1 ||
+          invoiceModalData.invoice.is_gst_invoice === true ||
+          invoiceModalData.invoice.isGstInvoice
+        ) && (Number(invoiceModalData.invoice.cgst_amount || 0) + Number(invoiceModalData.invoice.sgst_amount || 0) > 0 || Number(invoiceModalData.invoice.tax_total || invoiceModalData.invoice.taxTotal || 0) > 0);
+
+        return (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.75)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 1000,
+              padding: '20px',
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                color: '#0f172a',
+                borderRadius: '12px',
+                maxWidth: '800px',
+                width: '100%',
+                maxHeight: '92vh',
+                overflowY: 'auto',
+                padding: '28px',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                position: 'relative',
+              }}
+            >
+              {/* Modal Controls (Sticky Top Bar - Hidden in Print) */}
+              <div
+                className="no-print"
+                style={{
+                  position: 'sticky',
+                  top: '-28px',
+                  backgroundColor: '#ffffff',
+                  zIndex: 20,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '20px',
+                  paddingTop: '6px',
+                  paddingBottom: '14px',
+                  borderBottom: '2px solid #f1f5f9',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                }}
+              >
+                {/* Left: Title + Clean Segmented Pill Mode Switcher */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontWeight: 900, fontSize: '16px', color: '#0284c7' }}>
+                      {isInvoiceGst ? 'GST Tax Invoice' : 'Final Service Bill / Cash Memo'}
+                    </span>
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        backgroundColor: String(invoiceModalData.invoice.payment_status || invoiceModalData.invoice.paymentStatus) === 'PAID' ? '#dcfce7' : '#fee2e2',
+                        color: String(invoiceModalData.invoice.payment_status || invoiceModalData.invoice.paymentStatus) === 'PAID' ? '#166534' : '#dc2626',
+                      }}
+                    >
+                      {String(invoiceModalData.invoice.payment_status || invoiceModalData.invoice.paymentStatus || 'UNPAID')}
+                    </span>
+                  </div>
+
+                  {/* Clean Segmented GST / Non-GST Switcher */}
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      padding: '3px',
+                      backgroundColor: '#f1f5f9',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleToggleInvoiceGst(false)}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        fontSize: '11px',
+                        fontWeight: !isInvoiceGst ? 800 : 600,
+                        backgroundColor: !isInvoiceGst ? '#ffffff' : 'transparent',
+                        color: !isInvoiceGst ? '#0f172a' : '#64748b',
+                        boxShadow: !isInvoiceGst ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      🚫 Non-GST Bill
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleInvoiceGst(true)}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        fontSize: '11px',
+                        fontWeight: isInvoiceGst ? 800 : 600,
+                        backgroundColor: isInvoiceGst ? '#0284c7' : 'transparent',
+                        color: isInvoiceGst ? '#ffffff' : '#64748b',
+                        boxShadow: isInvoiceGst ? '0 1px 3px rgba(2, 132, 199, 0.3)' : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      🧾 18% GST Invoice
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right: Actions */}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {Number(invoiceModalData.invoice.balance_due ?? invoiceModalData.invoice.balanceDue ?? 1) > 0 && (
+                    <button
+                      onClick={() => {
+                        setQuickPayAmountStr(String(invoiceModalData.invoice.balance_due ?? invoiceModalData.invoice.balanceDue ?? ''));
+                        setShowQuickPaymentInJob(!showQuickPaymentInJob);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        backgroundColor: '#16a34a',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontWeight: 700,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <CreditCard size={14} /> Collect Pay
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => handleSendWhatsApp('ready')}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      backgroundColor: '#25D366',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontWeight: 700,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <MessageSquare size={13} /> WhatsApp
+                  </button>
+
+                  <button
+                    onClick={() => window.print()}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '6px',
+                      backgroundColor: '#0284c7',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontWeight: 700,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Printer size={14} /> Print
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setInvoiceModalData(null);
+                      setShowQuickPaymentInJob(false);
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      backgroundColor: '#f1f5f9',
+                      color: '#475569',
+                      border: '1px solid #cbd5e1',
+                      fontWeight: 600,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✕ Close
+                  </button>
+                </div>
+              </div>
+
+            {/* Quick Payment Collection Form */}
+            {showQuickPaymentInJob && (
+              <form
+                onSubmit={handleRecordQuickPayment}
+                className="no-print"
+                style={{
+                  marginBottom: '20px',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  backgroundColor: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: '13px', color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CreditCard size={15} /> Collect Customer Payment & Settle Delivery
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 600, color: '#166534' }}>Amount to Collect (₹)</label>
+                    <input
+                      type="text"
+                      value={quickPayAmountStr}
+                      onChange={(e) => setQuickPayAmountStr(e.target.value.replace(/[^0-9.]/g, ''))}
+                      required
+                      style={{ width: '100%', marginTop: '3px', padding: '6px 8px', borderRadius: '4px', border: '1px solid #86efac', fontSize: '13px', fontWeight: 700 }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 600, color: '#166534' }}>Payment Mode</label>
+                    <select
+                      value={quickPayMode}
+                      onChange={(e) => setQuickPayMode(e.target.value)}
+                      style={{ width: '100%', marginTop: '3px', padding: '6px 8px', borderRadius: '4px', border: '1px solid #86efac', fontSize: '12px', fontWeight: 600 }}
+                    >
+                      <option value="UPI_QR">📲 UPI / QR Code</option>
+                      <option value="CASH">💵 Cash</option>
+                      <option value="CREDIT_CARD">💳 Credit Card</option>
+                      <option value="DEBIT_CARD">💳 Debit Card</option>
+                      <option value="NET_BANKING">🏦 Net Banking / NEFT</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 600, color: '#166534' }}>Txn Ref / UTR / Remarks</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. GPay Ref # 938472"
+                      value={quickPayRef}
+                      onChange={(e) => setQuickPayRef(e.target.value)}
+                      style={{ width: '100%', marginTop: '3px', padding: '6px 8px', borderRadius: '4px', border: '1px solid #86efac', fontSize: '12px' }}
+                    />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickPaymentInJob(false)}
+                    style={{ padding: '6px 12px', borderRadius: '4px', backgroundColor: '#e2e8f0', border: 'none', fontSize: '12px', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    style={{ padding: '6px 16px', borderRadius: '4px', backgroundColor: '#16a34a', color: '#ffffff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    Record Payment & Mark Delivered
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Printable Tax Invoice Document */}
+            <div id="printable-tax-invoice" style={{ fontFamily: 'system-ui, sans-serif' }}>
+                  {/* Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #0f172a', paddingBottom: '12px' }}>
+                    <div>
+                      <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 900, letterSpacing: '-0.5px', color: '#0f172a' }}>
+                        {(shopSettings.shopName || 'KTech Computers').toUpperCase()}
+                      </h1>
+                      <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>
+                        {shopSettings.tagline}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#64748b' }}>
+                        {shopSettings.address} | Phone: {shopSettings.phone}
+                      </div>
+                      {shopSettings.gstin && (
+                        <div style={{ fontSize: '11px', fontWeight: 800, color: '#0284c7', marginTop: '2px' }}>
+                          GSTIN: {shopSettings.gstin}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', color: isInvoiceGst ? '#0284c7' : '#166534' }}>
+                        {isInvoiceGst ? 'TAX INVOICE / BILL OF SUPPLY' : 'FINAL SERVICE BILL / CASH MEMO'}
+                      </div>
+                      <div style={{ fontSize: '17px', fontWeight: 900, fontFamily: 'monospace', color: '#0f172a' }}>
+                        {String(invoiceModalData.invoice.invoice_number || invoiceModalData.invoice.invoiceNumber || '')}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>
+                        Job Ref: <strong>{job.jobNumber}</strong>
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#64748b' }}>
+                        Date: {new Date(String(invoiceModalData.invoice.created_at || invoiceModalData.invoice.createdAt || new Date())).toLocaleDateString('en-IN')}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Customer & Device Information */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '14px', fontSize: '12px' }}>
+                    <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontWeight: 800, fontSize: '11px', textTransform: 'uppercase', color: '#475569', marginBottom: '4px' }}>
+                        Billed To (Customer)
+                      </div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{job.customerName}</div>
+                      <div style={{ color: '#334155' }}>Phone: {job.customerPhone}</div>
+                      {String(invoiceModalData.invoice.customer_gstin || '') && (
+                        <div style={{ color: '#0284c7', fontWeight: 700, fontSize: '11px' }}>
+                          GSTIN: {String(invoiceModalData.invoice.customer_gstin)}
+                        </div>
+                      )}
+                      <div style={{ color: '#64748b', fontSize: '11px' }}>Customer Code: {job.customerCode}</div>
+                    </div>
+
+                    <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontWeight: 800, fontSize: '11px', textTransform: 'uppercase', color: '#475569', marginBottom: '4px' }}>
+                        Service Details
+                      </div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                        {job.deviceBrand} {job.deviceModel}
+                      </div>
+                      <div style={{ color: '#334155' }}>Type: {job.equipmentType.replace(/_/g, ' ')}</div>
+                      {job.deviceSerial && <div style={{ color: '#64748b', fontSize: '11px' }}>S/N: {job.deviceSerial}</div>}
+                      <div style={{ color: '#64748b', fontSize: '11px' }}>Defect Repaired: {job.reportedIssue}</div>
+                    </div>
+                  </div>
+
+                  {/* Itemized Table */}
+                  <div style={{ marginTop: '16px', borderRadius: '6px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f8fafc', color: '#475569', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
+                          <th style={{ padding: '8px 10px', width: '35px' }}>#</th>
+                          <th style={{ padding: '8px 10px' }}>Item / Service Description</th>
+                          {isInvoiceGst && <th style={{ padding: '8px 10px', width: '80px' }}>HSN/SAC</th>}
+                          <th style={{ padding: '8px 10px', width: '45px', textAlign: 'center' }}>Qty</th>
+                          <th style={{ padding: '8px 10px', width: '85px', textAlign: 'right' }}>Rate (₹)</th>
+                          {isInvoiceGst && <th style={{ padding: '8px 10px', width: '65px', textAlign: 'right' }}>GST %</th>}
+                          <th style={{ padding: '8px 10px', width: '95px', textAlign: 'right' }}>Total (₹)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invoiceModalData.items.map((item, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '8px 10px', color: '#94a3b8' }}>{idx + 1}</td>
+                            <td style={{ padding: '8px 10px', fontWeight: 600, color: '#0f172a' }}>
+                              {String(item.description || '')}
+                            </td>
+                            {isInvoiceGst && (
+                              <td style={{ padding: '8px 10px', color: '#64748b', fontFamily: 'monospace', fontSize: '11px' }}>
+                                {String(item.hsn_sac_code || item.hsnSacCode || (item.item_type === 'PART' ? '847330' : '998713'))}
+                              </td>
+                            )}
+                            <td style={{ padding: '8px 10px', textAlign: 'center', color: '#334155' }}>
+                              {Number(item.quantity || 1)}
+                            </td>
+                            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace', color: '#334155' }}>
+                              {Number(item.unit_price || item.unitPrice || 0).toFixed(2)}
+                            </td>
+                            {isInvoiceGst && (
+                              <td style={{ padding: '8px 10px', textAlign: 'right', color: '#64748b' }}>
+                                {Number(item.tax_rate || item.taxRate || 18)}%
+                              </td>
+                            )}
+                            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#0f172a' }}>
+                              {Number(item.total_amount || item.totalAmount || (Number(item.quantity || 1) * Number(item.unit_price || item.unitPrice || 0))).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Financial Totals Summary */}
+                  <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'flex-end' }}>
+                    <div style={{ width: '290px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                        <span>{isInvoiceGst ? 'Taxable Subtotal:' : 'Items Subtotal:'}</span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>₹{Number(invoiceModalData.invoice.subtotal || (Number(invoiceModalData.invoice.subtotal_parts || 0) + Number(invoiceModalData.invoice.subtotal_labor || 0)) || 0).toFixed(2)}</span>
+                      </div>
+                      {isInvoiceGst ? (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                          <span>GST (CGST 9% + SGST 9%):</span>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>₹{Number(invoiceModalData.invoice.tax_total || invoiceModalData.invoice.taxTotal || (Number(invoiceModalData.invoice.cgst_amount || 0) + Number(invoiceModalData.invoice.sgst_amount || 0)) || 0).toFixed(2)}</span>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '11px' }}>
+                          <span>Taxes / GST:</span>
+                          <span style={{ fontWeight: 600 }}>₹0.00 (Non-GST Bill)</span>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0f172a', fontWeight: 700 }}>
+                        <span>{isInvoiceGst ? 'Gross Invoice Amount:' : 'Total Amount Payable:'}</span>
+                        <span style={{ fontFamily: 'monospace' }}>₹{Number(invoiceModalData.invoice.total_amount || invoiceModalData.invoice.totalAmount || 0).toFixed(2)}</span>
+                      </div>
+                      {Number(invoiceModalData.invoice.advance_adjusted || invoiceModalData.invoice.advanceAdjusted || 0) > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#166534' }}>
+                          <span>Advance Deposit Adjusted:</span>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>- ₹{Number(invoiceModalData.invoice.advance_adjusted || invoiceModalData.invoice.advanceAdjusted || 0).toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#166534', fontWeight: 600 }}>
+                        <span>Total Paid / Received:</span>
+                        <span style={{ fontFamily: 'monospace' }}>₹{Number(invoiceModalData.invoice.paid_amount || invoiceModalData.invoice.paidAmount || invoiceModalData.invoice.amount_paid || 0).toFixed(2)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '2px solid #0f172a', borderBottom: '2px solid #0f172a', fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
+                        <span>Balance Due:</span>
+                        <span style={{ fontFamily: 'monospace', color: Number(invoiceModalData.invoice.balance_due ?? invoiceModalData.invoice.balanceDue ?? 0) > 0 ? '#dc2626' : '#166534' }}>
+                          ₹{Number(invoiceModalData.invoice.balance_due ?? invoiceModalData.invoice.balanceDue ?? 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment Receipts Section */}
+                  {invoiceModalData.payments && invoiceModalData.payments.length > 0 && (
+                    <div style={{ marginTop: '16px', padding: '10px', backgroundColor: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0', fontSize: '11px' }}>
+                      <div style={{ fontWeight: 700, color: '#166534', marginBottom: '4px' }}>Payments Recorded:</div>
+                      {invoiceModalData.payments.map((p, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', color: '#14532d' }}>
+                          <span>{String(p.receipt_number || p.receiptNumber || 'REC')} • {String(p.payment_mode || p.paymentMode || 'CASH')} {p.transaction_reference ? `(Ref: ${p.transaction_reference})` : ''} on {new Date(String(p.payment_date || p.createdAt || new Date())).toLocaleDateString('en-IN')}</span>
+                          <strong style={{ fontFamily: 'monospace' }}>₹{Number(p.amount || 0).toFixed(2)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Warranty & Terms */}
+                  <div style={{ marginTop: '14px', padding: '8px 12px', borderLeft: '3px solid #cbd5e1', fontSize: '10px', color: '#64748b', lineHeight: 1.4 }}>
+                    1. Service warranty: 30 days on motherboard service labor from delivery date.<br />
+                    2. Replacement components carry manufacturer replacement warranty.<br />
+                    3. Physical damages, liquid contact, burn marks or broken warranty stickers void all warranties.
+                  </div>
+
+                  {/* Signatures */}
+                  <div style={{ marginTop: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: '10px' }}>
+                    <div style={{ textAlign: 'center', width: '200px', borderTop: '1px dashed #94a3b8', paddingTop: '6px', fontSize: '11px', color: '#475569' }}>
+                      Customer Signature (Received Goods in Good Order)
+                    </div>
+                    <div style={{ textAlign: 'center', width: '200px', borderTop: '1px dashed #94a3b8', paddingTop: '6px', fontSize: '11px', color: '#475569' }}>
+                      Authorized Signatory ({shopSettings.shopName})
+                    </div>
+                  </div>
+                </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

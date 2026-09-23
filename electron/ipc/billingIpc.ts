@@ -155,6 +155,7 @@ export function registerBillingIpc(): void {
     jobId: string;
     validityDays?: number;
     discountAmount?: number;
+    isGstQuotation?: boolean;
     items: Array<{
       itemType: 'PART' | 'LABOR' | 'OTHER';
       inventoryItemId?: string;
@@ -180,9 +181,11 @@ export function registerBillingIpc(): void {
       let laborSubtotal = 0;
       let totalTax = 0;
 
+      const isGst = Boolean(payload.isGstQuotation);
+
       for (const item of payload.items) {
         const itemTotal = item.quantity * item.unitPrice;
-        const taxRate = item.taxRate ?? 18.0;
+        const taxRate = isGst ? (item.taxRate ?? 18.0) : (item.taxRate ?? 0.0);
         const itemTax = (itemTotal * taxRate) / 100;
         totalTax += itemTax;
 
@@ -220,6 +223,7 @@ export function registerBillingIpc(): void {
         for (const item of payload.items) {
           const qiId = `QI-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
           const lineTotal = item.quantity * item.unitPrice;
+          const taxRate = isGst ? (item.taxRate ?? 18.0) : (item.taxRate ?? 0.0);
           await tx.execute({
             sql: `INSERT INTO quotation_items (
                     id, quotation_id, item_type, inventory_item_id, description,
@@ -233,7 +237,7 @@ export function registerBillingIpc(): void {
               item.description.trim(),
               item.quantity,
               item.unitPrice,
-              item.taxRate ?? 18.0,
+              taxRate,
               lineTotal,
             ],
           });
@@ -268,6 +272,79 @@ export function registerBillingIpc(): void {
       await logAudit(session.id, 'QUOTATION_CREATE', 'quotations', quotationId, null, { quotationNumber, grandTotal });
 
       return { success: true, data: { quotationId, quotationNumber, totalAmount: grandTotal } };
+    } catch (error: unknown) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // 3b. Toggle Quotation GST (Switch between 18% GST and 0% Non-GST on existing estimate)
+  ipcMain.handle('billing:toggleQuotationGst', async (_event, payload: { quotationId: string; isGst: boolean }) => {
+    try {
+      const client = getClient();
+      const qRes = await client.execute({
+        sql: `SELECT * FROM quotations WHERE id = ? OR quotation_number = ? LIMIT 1`,
+        args: [payload.quotationId, payload.quotationId],
+      });
+      if (qRes.rows.length === 0) return { success: false, error: 'Quotation not found' };
+      const quotation = qRes.rows[0] as Record<string, unknown>;
+      const quotationId = String(quotation.id);
+
+      const itemsRes = await client.execute({
+        sql: `SELECT * FROM quotation_items WHERE quotation_id = ?`,
+        args: [quotationId],
+      });
+
+      let partsSubtotal = 0;
+      let laborSubtotal = 0;
+      let totalTax = 0;
+
+      for (const item of itemsRes.rows as unknown as Array<Record<string, unknown>>) {
+        const qty = Number(item.quantity || 1);
+        const unitPrice = Number(item.unit_price || 0);
+        const lineTotal = qty * unitPrice;
+        const taxRate = payload.isGst ? 18.0 : 0.0;
+        const lineTax = (lineTotal * taxRate) / 100;
+        totalTax += lineTax;
+
+        if (item.item_type === 'PART') {
+          partsSubtotal += lineTotal;
+        } else {
+          laborSubtotal += lineTotal;
+        }
+      }
+
+      const discount = Number(quotation.discount_amount || 0);
+      const grandTotal = Math.max(0, partsSubtotal + laborSubtotal + totalTax - discount);
+
+      const tx = await client.transaction('write');
+      try {
+        await tx.execute({
+          sql: `UPDATE quotations 
+                SET parts_subtotal = ?, labor_subtotal = ?, tax_amount = ?, total_amount = ?
+                WHERE id = ?`,
+          args: [partsSubtotal, laborSubtotal, totalTax, grandTotal, quotationId],
+        });
+
+        await tx.execute({
+          sql: `UPDATE quotation_items 
+                SET tax_rate = ?
+                WHERE quotation_id = ?`,
+          args: [payload.isGst ? 18.0 : 0.0, quotationId],
+        });
+
+        if (quotation.job_id) {
+          await tx.execute({
+            sql: `UPDATE service_jobs SET estimated_cost = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+            args: [grandTotal, String(quotation.job_id)],
+          });
+        }
+
+        await tx.commit();
+        return { success: true, data: { partsSubtotal, laborSubtotal, totalTax, grandTotal } };
+      } catch (err) {
+        await tx.rollback();
+        throw err;
+      }
     } catch (error: unknown) {
       return { success: false, error: (error as Error).message };
     }
@@ -384,12 +461,18 @@ export function registerBillingIpc(): void {
   ipcMain.handle('billing:listInvoices', async (_event, params?: {
     paymentStatus?: string;
     customerId?: string;
+    jobId?: string;
     search?: string;
   }) => {
     try {
       const client = getClient();
       const conditions: string[] = [];
       const args: InValue[] = [];
+
+      if (params?.jobId) {
+        conditions.push(`inv.service_job_id = ?`);
+        args.push(params.jobId);
+      }
 
       if (params?.customerId) {
         conditions.push(`inv.customer_id = ?`);
@@ -518,7 +601,7 @@ export function registerBillingIpc(): void {
 
       for (const item of payload.items) {
         const lineNet = (item.quantity * item.unitPrice) - (item.discount || 0);
-        const taxRate = payload.isGstInvoice !== false ? (item.taxRate ?? 18.0) : 0;
+        const taxRate = Boolean(payload.isGstInvoice) ? (item.taxRate ?? 18.0) : 0;
         const lineTax = (lineNet * taxRate) / 100;
         totalTax += lineTax;
 
@@ -554,7 +637,7 @@ export function registerBillingIpc(): void {
             payload.invoiceType || 'SERVICE_REPAIR',
             payload.customerId,
             payload.serviceJobId || null,
-            payload.isGstInvoice !== false ? 1 : 0,
+            payload.isGstInvoice ? 1 : 0,
             payload.customerGstin?.trim() || null,
             subtotalParts,
             subtotalLabor,
@@ -573,7 +656,7 @@ export function registerBillingIpc(): void {
         for (const item of payload.items) {
           const iiId = `II-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
           const net = (item.quantity * item.unitPrice) - (item.discount || 0);
-          const taxRate = payload.isGstInvoice !== false ? (item.taxRate ?? 18.0) : 0;
+          const taxRate = Boolean(payload.isGstInvoice) ? (item.taxRate ?? 18.0) : 0;
           const tax = (net * taxRate) / 100;
           const itemTotal = net + tax;
 
@@ -676,6 +759,88 @@ export function registerBillingIpc(): void {
           paymentStatus,
         },
       };
+    } catch (error: unknown) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // 6b. Toggle Invoice GST (Switch between 18% GST and 0% Non-GST on existing invoice)
+  ipcMain.handle('billing:toggleInvoiceGst', async (_event, payload: { invoiceId: string; isGst: boolean }) => {
+    try {
+      const client = getClient();
+      const invRes = await client.execute({
+        sql: `SELECT * FROM invoices WHERE id = ? OR invoice_number = ? LIMIT 1`,
+        args: [payload.invoiceId, payload.invoiceId],
+      });
+      if (invRes.rows.length === 0) return { success: false, error: 'Invoice not found' };
+      const invoice = invRes.rows[0] as Record<string, unknown>;
+      const invoiceId = String(invoice.id);
+
+      const itemsRes = await client.execute({
+        sql: `SELECT * FROM invoice_items WHERE invoice_id = ?`,
+        args: [invoiceId],
+      });
+
+      let partsSubtotal = 0;
+      let laborSubtotal = 0;
+      let totalTax = 0;
+
+      for (const item of itemsRes.rows as unknown as Array<Record<string, unknown>>) {
+        const qty = Number(item.quantity || 1);
+        const unitPrice = Number(item.unit_price || 0);
+        const lineNet = (qty * unitPrice) - Number(item.discount || 0);
+        const taxRate = payload.isGst ? 18.0 : 0.0;
+        const lineTax = (lineNet * taxRate) / 100;
+        totalTax += lineTax;
+
+        if (item.item_type === 'PART' || item.item_type === 'FINISHED_GOOD') {
+          partsSubtotal += lineNet;
+        } else {
+          laborSubtotal += lineNet;
+        }
+      }
+
+      const discount = Number(invoice.discount_amount || 0);
+      const totalAmount = Math.max(0, partsSubtotal + laborSubtotal + totalTax - discount);
+      const advance = Number(invoice.advance_adjusted || 0);
+      const balanceDue = Math.max(0, totalAmount - advance);
+      const paymentStatus = balanceDue <= 0 ? 'PAID' : advance > 0 ? 'PARTIALLY_PAID' : 'UNPAID';
+      const cgst = totalTax / 2;
+      const sgst = totalTax / 2;
+
+      const tx = await client.transaction('write');
+      try {
+        await tx.execute({
+          sql: `UPDATE invoices 
+                SET is_gst_invoice = ?, subtotal_parts = ?, subtotal_labor = ?,
+                    cgst_amount = ?, sgst_amount = ?, total_amount = ?, balance_due = ?, payment_status = ?
+                WHERE id = ?`,
+          args: [
+            payload.isGst ? 1 : 0,
+            partsSubtotal,
+            laborSubtotal,
+            cgst,
+            sgst,
+            totalAmount,
+            balanceDue,
+            paymentStatus,
+            invoiceId,
+          ],
+        });
+
+        await tx.execute({
+          sql: `UPDATE invoice_items 
+                SET tax_rate = ?, tax_amount = ((quantity * unit_price - discount) * ? / 100)
+                WHERE invoice_id = ?`,
+          args: [payload.isGst ? 18.0 : 0.0, payload.isGst ? 18.0 : 0.0, invoiceId],
+        });
+
+        await tx.commit();
+        return { success: true, data: { partsSubtotal, laborSubtotal, totalTax, cgst, sgst, totalAmount, balanceDue } };
+      } catch (err) {
+        await tx.rollback();
+        throw err;
+      }
     } catch (error: unknown) {
       return { success: false, error: (error as Error).message };
     }

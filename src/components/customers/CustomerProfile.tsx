@@ -530,7 +530,8 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
                             const shopUpper = (shopSettings.shopName || 'KTech Computers').toUpperCase();
                             const shopName = shopSettings.shopName || 'KTech Computers';
                             const shopPhone = shopSettings.phone || '+91 98400 12345';
-                            const msg = `*${shopUpper} - TAX INVOICE* 🧾\n\nDear *${customer.fullName}*,\nYour invoice *${inv.invoice_number}* is ready.\n\n💰 *Total:* ₹${Number(inv.total_amount || 0).toFixed(2)}\n💵 *Paid:* ₹${Number(inv.amount_paid || 0).toFixed(2)}\n💳 *Balance:* ₹${Number(inv.balance_due || 0).toFixed(2)}\n\nThank you for choosing ${shopName}!\nSupport: ${shopPhone}`;
+                            const isGst = Boolean(inv.is_gst_invoice);
+                            const msg = `*${shopUpper} - ${isGst ? 'TAX INVOICE' : 'FINAL SERVICE BILL'}* 🧾\n\nDear *${customer.fullName}*,\nYour final bill *${inv.invoice_number}* has been issued.\n\n💰 *Total Bill Amount:* ₹${Number(inv.total_amount || 0).toFixed(2)}\n💵 *Amount Paid:* ₹${Number(inv.amount_paid || 0).toFixed(2)}\n💳 *Final Balance Due:* ₹${Number(inv.balance_due || 0).toFixed(2)}\n\nThank you for choosing ${shopName}!\nSupport: ${shopPhone}`;
                             window.open(`https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`, '_blank');
                           }
                         }}
