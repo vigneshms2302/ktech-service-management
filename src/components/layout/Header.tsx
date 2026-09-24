@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   Moon,
@@ -27,6 +27,30 @@ export const Header: React.FC<HeaderProps> = ({
   const { currentUser, logout, userList, pinLogin } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showUserDropdown) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setShowUserDropdown(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowUserDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showUserDropdown]);
 
   const getRoleBadgeColor = (roleId?: string) => {
     switch (roleId) {
@@ -168,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/* Active Role & User Profile Dropdown */}
-        <div style={{ position: 'relative' }}>
+        <div ref={userDropdownRef} style={{ position: 'relative' }}>
           <button
             onClick={() => setShowUserDropdown(!showUserDropdown)}
             style={{

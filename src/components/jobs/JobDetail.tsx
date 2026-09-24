@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ArrowLeft,
   User,
@@ -169,6 +169,35 @@ export const JobDetail: React.FC<JobDetailProps> = ({
   // Modals & Action States
   const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
+  const whatsAppMenuRef = useRef<HTMLDivElement>(null);
+  const printMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showWhatsAppMenu && !showPrintMenu) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showWhatsAppMenu && whatsAppMenuRef.current && !whatsAppMenuRef.current.contains(event.target as Node)) {
+        setShowWhatsAppMenu(false);
+      }
+      if (showPrintMenu && printMenuRef.current && !printMenuRef.current.contains(event.target as Node)) {
+        setShowPrintMenu(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowWhatsAppMenu(false);
+        setShowPrintMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showWhatsAppMenu, showPrintMenu]);
   const [showPrintSlipModal, setShowPrintSlipModal] = useState(false);
   const [estimateModalData, setEstimateModalData] = useState<{
     quotation: Record<string, unknown>;
@@ -1476,7 +1505,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           )}
 
           {/* 1-Click Integrated WhatsApp Menu */}
-          <div style={{ position: 'relative' }}>
+          <div ref={whatsAppMenuRef} style={{ position: 'relative' }}>
             <button
               onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
               style={{
@@ -1599,7 +1628,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
           </div>
 
           {/* 🖨️ Print Slips Multi-Document Dropdown */}
-          <div style={{ position: 'relative' }}>
+          <div ref={printMenuRef} style={{ position: 'relative' }}>
             <button
               onClick={() => setShowPrintMenu(!showPrintMenu)}
               style={{
