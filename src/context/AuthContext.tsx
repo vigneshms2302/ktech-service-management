@@ -37,12 +37,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const res = await window.electronAPI.auth.getCurrentUser();
           if (res.success && res.data) {
             setCurrentUser(res.data);
-          } else {
-            // Default login to Owner in development / first launch for instant testing
-            const loginRes = await window.electronAPI.auth.login({ username: 'admin', password: 'admin123' });
-            if (loginRes.success && loginRes.data) {
-              setCurrentUser(loginRes.data);
-            }
           }
         }
         await refreshUserList();
@@ -55,6 +49,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initAuth();
   }, []);
+
+  // Standard POS/ERP Inactivity Auto-Lock (30 minutes of zero user input)
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+    let timeoutId: NodeJS.Timeout;
+
+    const resetInactivityTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        console.log('[Auth] Inactivity timeout reached (30 min idle). Locking terminal.');
+        logout();
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+    activityEvents.forEach((evt) => window.addEventListener(evt, resetInactivityTimer, { passive: true }));
+
+    // Start initial timer
+    resetInactivityTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      activityEvents.forEach((evt) => window.removeEventListener(evt, resetInactivityTimer));
+    };
+  }, [currentUser]);
 
   const login = async (credentials: { username: string; password: string }) => {
     if (!window.electronAPI?.auth?.login) {

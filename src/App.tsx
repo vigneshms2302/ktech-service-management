@@ -18,10 +18,11 @@ import { GlobalSearchModal } from './components/search/GlobalSearchModal.tsx';
 import { LoginModal } from './components/auth/LoginModal.tsx';
 import { PinModal } from './components/auth/PinModal.tsx';
 import { ShopSettingsModal } from './components/settings/ShopSettingsModal.tsx';
+import { LoginPage } from './components/auth/LoginPage.tsx';
 import { useAuth } from './context/AuthContext.tsx';
 
 export const App: React.FC = () => {
-  const { isLoading } = useAuth();
+  const { currentUser, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<NavTabId>('dashboard');
 
   // Deep Link States
@@ -101,6 +102,11 @@ export const App: React.FC = () => {
         Initializing KTech Service Management Desktop Engine...
       </div>
     );
+  }
+
+  // Show Dedicated Premium Login Page if user is not authenticated
+  if (!currentUser) {
+    return <LoginPage />;
   }
 
   // Render workspace content
