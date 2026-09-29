@@ -1,7 +1,7 @@
 import { getClient } from './database.ts';
 import { hashPassword, encryptSecret } from '../security/crypto.ts';
 
-export async function seedDatabase(): Promise<void> {
+export async function seedDatabase(includeTestFixtures = process.env.NODE_ENV === 'test'): Promise<void> {
   const client = getClient();
 
   // Check if roles already exist
@@ -109,69 +109,7 @@ export async function seedDatabase(): Promise<void> {
     }
   }
 
-  // 4. Default Users
-  const defaultUsers = [
-    {
-      id: 'USR_OWNER',
-      username: 'admin',
-      passwordHash: hashPassword('admin123'),
-      pinCode: '1234',
-      fullName: 'K. Vignesh (Owner)',
-      roleId: 'ROLE_OWNER',
-      phone: '+91 98765 00001',
-      commissionPct: 0.0,
-    },
-    {
-      id: 'USR_RECEPTION',
-      username: 'reception',
-      passwordHash: hashPassword('reception123'),
-      pinCode: '1111',
-      fullName: 'Anitha M. (Front Desk)',
-      roleId: 'ROLE_RECEPTION',
-      phone: '+91 98765 00002',
-      commissionPct: 0.0,
-    },
-    {
-      id: 'USR_TECH1',
-      username: 'tech1',
-      passwordHash: hashPassword('tech123'),
-      pinCode: '2222',
-      fullName: 'Rajesh Kumar (Senior Tech)',
-      roleId: 'ROLE_TECHNICIAN',
-      phone: '+91 98765 00003',
-      commissionPct: 15.0,
-    },
-    {
-      id: 'USR_TECH2',
-      username: 'tech2',
-      passwordHash: hashPassword('tech123'),
-      pinCode: '3333',
-      fullName: 'Suresh P. (Chip-Level Specialist)',
-      roleId: 'ROLE_TECHNICIAN',
-      phone: '+91 98765 00004',
-      commissionPct: 20.0,
-    },
-    {
-      id: 'USR_ACCOUNTS',
-      username: 'accounts',
-      passwordHash: hashPassword('accounts123'),
-      pinCode: '4444',
-      fullName: 'Priya S. (Accounts Manager)',
-      roleId: 'ROLE_ACCOUNTS',
-      phone: '+91 98765 00005',
-      commissionPct: 0.0,
-    },
-  ];
-
-  for (const u of defaultUsers) {
-    await client.execute({
-      sql: `INSERT INTO users (id, username, password_hash, pin_code, full_name, role_id, phone, commission_pct)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [u.id, u.username, u.passwordHash, u.pinCode, u.fullName, u.roleId, u.phone, u.commissionPct],
-    });
-  }
-
-  // 5. Default Inventory Categories
+  // 4. Default Inventory Categories
   const categories = [
     { id: 'CAT_RAM', name: 'RAM / Memory Modules', code: 'RAM', description: 'DDR3, DDR4, DDR5 Desktop & Laptop SODIMM Memory' },
     { id: 'CAT_SSD', name: 'Solid State Drives & M.2', code: 'SSD', description: '2.5" SATA SSD, NVMe PCIe Gen3/Gen4 M.2 SSDs' },
@@ -192,15 +130,8 @@ export async function seedDatabase(): Promise<void> {
     });
   }
 
-  // 6. Default Settings
+  // 5. Default Settings (System Essentials)
   const defaultSettings = [
-    { key: 'shop.name', value: 'KTech Computers', category: 'SHOP' },
-    { key: 'shop.tagline', value: 'Advanced Computer Service, Chip-Level & Data Recovery Solutions', category: 'SHOP' },
-    { key: 'shop.address', value: '123 Tech Avenue, Cross-Cut Road, Gandhipuram, Coimbatore - 641012', category: 'SHOP' },
-    { key: 'shop.phone', value: '+91 98765 43210', category: 'SHOP' },
-    { key: 'shop.email', value: 'service@ktechcomputers.com', category: 'SHOP' },
-    { key: 'shop.gstin', value: '33AAAAA0000A1Z5', category: 'SHOP' },
-    { key: 'shop.upi_id', value: 'ktechcomputers@okaxis', category: 'SHOP' },
     { key: 'tax.gst_enabled', value: '1', category: 'TAX' },
     { key: 'tax.default_service_rate', value: '18.0', category: 'TAX' },
     { key: 'tax.default_parts_rate', value: '18.0', category: 'TAX' },
@@ -217,28 +148,28 @@ export async function seedDatabase(): Promise<void> {
     });
   }
 
-  // 7. Default Communication Templates
+  // 6. Default Communication Templates
   const templates = [
     {
       id: 'tmpl_admission',
       templateKey: 'ADMISSION_SLIP',
       name: 'Service Admission Receipt',
-      templateBody: '🔧 *KTech Computers - Service Admission*\n\nHello *{{customer_name}}*,\nWe received your *{{equipment_type}}* (*{{job_number}}*) for inspection.\nReported Issue: {{reported_issue}}\nEst. Cost: ₹{{estimated_cost}} | Advance: ₹{{advance_deposit}}\n\n📍 KTech Computers | 📞 +91 98765 43210',
-      variablesJson: JSON.stringify(['customer_name', 'equipment_type', 'job_number', 'reported_issue', 'estimated_cost', 'advance_deposit']),
+      templateBody: '🔧 *{{shop_name}} - Service Admission*\n\nHello *{{customer_name}}*,\nWe received your *{{equipment_type}}* (*{{job_number}}*) for inspection.\nReported Issue: {{reported_issue}}\nEst. Cost: ₹{{estimated_cost}} | Advance: ₹{{advance_deposit}}\n\n📍 {{shop_address}} | 📞 {{shop_phone}}',
+      variablesJson: JSON.stringify(['customer_name', 'equipment_type', 'job_number', 'reported_issue', 'estimated_cost', 'advance_deposit', 'shop_name', 'shop_address', 'shop_phone']),
     },
     {
       id: 'tmpl_approval',
       templateKey: 'APPROVAL_REQUEST',
       name: 'Repair Estimate & Approval Request',
-      templateBody: '📊 *KTech Computers - Repair Estimate*\n\nHello *{{customer_name}}*,\nDiagnosis for your *{{equipment_type}}* (*{{job_number}}*) is complete.\nParts: ₹{{parts_total}} | Labor: ₹{{labor_total}}\nGrand Total: *₹{{grand_total}}*\n\nReply "APPROVED" or call +91 98765 43210 to authorize.',
-      variablesJson: JSON.stringify(['customer_name', 'equipment_type', 'job_number', 'parts_total', 'labor_total', 'grand_total']),
+      templateBody: '📊 *{{shop_name}} - Repair Estimate*\n\nHello *{{customer_name}}*,\nDiagnosis for your *{{equipment_type}}* (*{{job_number}}*) is complete.\nParts: ₹{{parts_total}} | Labor: ₹{{labor_total}}\nGrand Total: *₹{{grand_total}}*\n\nReply "APPROVED" or call {{shop_phone}} to authorize.',
+      variablesJson: JSON.stringify(['customer_name', 'equipment_type', 'job_number', 'parts_total', 'labor_total', 'grand_total', 'shop_name', 'shop_phone']),
     },
     {
       id: 'tmpl_ready',
       templateKey: 'READY_FOR_PICKUP',
       name: 'Ready for Collection Notice',
-      templateBody: '✅ *KTech Computers - Ready for Pickup!*\n\nHello *{{customer_name}}*,\nYour *{{equipment_type}}* (*{{job_number}}*) has passed all QC tests.\nBalance Due: *₹{{balance_due}}*\nTimings: 10 AM - 8:30 PM.\n\n📍 KTech Computers | 📞 +91 98765 43210',
-      variablesJson: JSON.stringify(['customer_name', 'equipment_type', 'job_number', 'balance_due']),
+      templateBody: '✅ *{{shop_name}} - Ready for Pickup!*\n\nHello *{{customer_name}}*,\nYour *{{equipment_type}}* (*{{job_number}}*) has passed all QC tests.\nBalance Due: *₹{{balance_due}}*\nTimings: 10 AM - 8:30 PM.\n\n📍 {{shop_address}} | 📞 {{shop_phone}}',
+      variablesJson: JSON.stringify(['customer_name', 'equipment_type', 'job_number', 'balance_due', 'shop_name', 'shop_address', 'shop_phone']),
     },
   ];
 
@@ -249,40 +180,58 @@ export async function seedDatabase(): Promise<void> {
     });
   }
 
-  // 8. Sample Realistic Demo Data (Customers, Equipment, Jobs, Inventory)
-  // Demo Customer 1
-  await client.execute(`
-    INSERT INTO customers (id, customer_code, full_name, primary_phone, email, customer_type, notes)
-    VALUES ('CUST-001', 'CUST-10001', 'Karthik Ramanathan', '+91 98430 11223', 'karthik.r@gmail.com', 'INDIVIDUAL', 'Regular client')
-  `);
-
-  // Demo Device 1 (Encrypted passcode)
-  await client.execute({
-    sql: `INSERT INTO devices (id, customer_id, equipment_type, brand, model_name, serial_number, encrypted_security_passcode, specs_summary)
-          VALUES ('DEV-001', 'CUST-001', 'LAPTOP', 'Lenovo', 'ThinkPad T14 Gen 2', 'PF39AB12', ?, 'Intel Core i7-1165G7, 16GB RAM, 512GB NVMe')`,
-    args: [encryptSecret('user@2026')],
-  });
-
-  // Demo Service Job 1
-  await client.execute(`
-    INSERT INTO service_jobs (id, job_number, customer_id, device_id, service_category, current_status, priority, assigned_technician_id, reported_issue, accessories_received, estimated_cost, advance_deposit, created_by)
-    VALUES ('JOB-001', 'JOB-2026-00001', 'CUST-001', 'DEV-001', 'CHIP_LEVEL', 'UNDER_INSPECTION', 'NORMAL', 'USR_TECH1', 'No power, battery light blinks orange 3 times and turns off', '["CHARGER", "BAG"]', 3500.0, 500.0, 'USR_RECEPTION')
-  `);
-
-  // Initial Job Status History
-  await client.execute(`
-    INSERT INTO job_status_history (id, job_id, previous_status, new_status, changed_by, reason_or_notes)
-    VALUES ('JSH-001', 'JOB-001', NULL, 'RECEIVED', 'USR_RECEPTION', 'Intake completed at counter')
-  `);
-  await client.execute(`
-    INSERT INTO job_status_history (id, job_id, previous_status, new_status, changed_by, reason_or_notes)
-    VALUES ('JSH-002', 'JOB-001', 'RECEIVED', 'UNDER_INSPECTION', 'USR_TECH1', 'Technician started mother board diagnostic check')
-  `);
-
-  // Initialize sequence counter so generateJobNumber starts at 00002
+  // 7. Reset sequence counter so first job starts at 00001
   const currentYear = new Date().getFullYear();
   await client.execute({
-    sql: `INSERT INTO settings (key, value, category) VALUES (?, '1', 'SEQUENCE') ON CONFLICT(key) DO UPDATE SET value = '1'`,
+    sql: `INSERT INTO settings (key, value, category) VALUES (?, '0', 'SEQUENCE') ON CONFLICT(key) DO UPDATE SET value = '0'`,
     args: [`sequence.job_counter_${currentYear}`],
   });
+
+  // 8. TEST FIXTURES ONLY: Seed test actors & sample fixtures during automated vitest execution
+  if (includeTestFixtures) {
+    const defaultUsers = [
+      { id: 'USR_OWNER', username: 'admin', passwordHash: hashPassword('admin123'), pinCode: '1234', fullName: 'K. Vignesh (Owner)', roleId: 'ROLE_OWNER', phone: '+91 98765 00001', commissionPct: 0.0 },
+      { id: 'USR_RECEPTION', username: 'reception', passwordHash: hashPassword('reception123'), pinCode: '1111', fullName: 'Anitha M. (Front Desk)', roleId: 'ROLE_RECEPTION', phone: '+91 98765 00002', commissionPct: 0.0 },
+      { id: 'USR_TECH1', username: 'tech1', passwordHash: hashPassword('tech123'), pinCode: '2222', fullName: 'Rajesh Kumar (Senior Tech)', roleId: 'ROLE_TECHNICIAN', phone: '+91 98765 00003', commissionPct: 15.0 },
+      { id: 'USR_TECH2', username: 'tech2', passwordHash: hashPassword('tech123'), pinCode: '3333', fullName: 'Suresh P. (Chip-Level Specialist)', roleId: 'ROLE_TECHNICIAN', phone: '+91 98765 00004', commissionPct: 20.0 },
+      { id: 'USR_ACCOUNTS', username: 'accounts', passwordHash: hashPassword('accounts123'), pinCode: '4444', fullName: 'Priya S. (Accounts Manager)', roleId: 'ROLE_ACCOUNTS', phone: '+91 98765 00005', commissionPct: 0.0 },
+    ];
+
+    for (const u of defaultUsers) {
+      await client.execute({
+        sql: `INSERT INTO users (id, username, password_hash, pin_code, full_name, role_id, phone, commission_pct) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [u.id, u.username, u.passwordHash, u.pinCode, u.fullName, u.roleId, u.phone, u.commissionPct],
+      });
+    }
+
+    await client.execute(`
+      INSERT INTO customers (id, customer_code, full_name, primary_phone, email, customer_type, notes)
+      VALUES ('CUST-001', 'CUST-10001', 'Karthik Ramanathan', '+91 98430 11223', 'karthik.r@gmail.com', 'INDIVIDUAL', 'Regular client')
+    `);
+
+    await client.execute({
+      sql: `INSERT INTO devices (id, customer_id, equipment_type, brand, model_name, serial_number, encrypted_security_passcode, specs_summary)
+            VALUES ('DEV-001', 'CUST-001', 'LAPTOP', 'Lenovo', 'ThinkPad T14 Gen 2', 'PF39AB12', ?, 'Intel Core i7-1165G7, 16GB RAM, 512GB NVMe')`,
+      args: [encryptSecret('user@2026')],
+    });
+
+    await client.execute(`
+      INSERT INTO service_jobs (id, job_number, customer_id, device_id, service_category, current_status, priority, assigned_technician_id, reported_issue, accessories_received, estimated_cost, advance_deposit, created_by)
+      VALUES ('JOB-001', 'JOB-2026-00001', 'CUST-001', 'DEV-001', 'CHIP_LEVEL', 'UNDER_INSPECTION', 'NORMAL', 'USR_TECH1', 'No power, battery light blinks orange 3 times and turns off', '["CHARGER", "BAG"]', 3500.0, 500.0, 'USR_RECEPTION')
+    `);
+
+    await client.execute(`
+      INSERT INTO job_status_history (id, job_id, previous_status, new_status, changed_by, reason_or_notes)
+      VALUES ('JSH-001', 'JOB-001', NULL, 'RECEIVED', 'USR_RECEPTION', 'Intake completed at counter')
+    `);
+    await client.execute(`
+      INSERT INTO job_status_history (id, job_id, previous_status, new_status, changed_by, reason_or_notes)
+      VALUES ('JSH-002', 'JOB-001', 'RECEIVED', 'UNDER_INSPECTION', 'USR_TECH1', 'Technician started mother board diagnostic check')
+    `);
+
+    await client.execute({
+      sql: `INSERT INTO settings (key, value, category) VALUES (?, '1', 'SEQUENCE') ON CONFLICT(key) DO UPDATE SET value = '1'`,
+      args: [`sequence.job_counter_${currentYear}`],
+    });
+  }
 }

@@ -29,6 +29,41 @@ const electronAPI = {
 
   // System & Health
   system: {
+    isSetupComplete: (): Promise<IPCResponse<{ isComplete: boolean; userCount: number }>> =>
+      ipcRenderer.invoke('system:isSetupComplete'),
+    completeSetup: (payload: {
+      owner: {
+        fullName: string;
+        username: string;
+        password: string;
+        pinCode: string;
+        phone?: string;
+        email?: string;
+      };
+      shop: {
+        shopName: string;
+        tagline?: string;
+        phone: string;
+        email?: string;
+        address: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
+        gstin?: string;
+        upiId?: string;
+      };
+      technicians?: Array<{
+        fullName: string;
+        username: string;
+        password?: string;
+        pinCode?: string;
+        phone?: string;
+        roleId: string;
+      }>;
+    }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('system:completeSetup', payload),
+    factoryReset: (): Promise<IPCResponse> =>
+      ipcRenderer.invoke('system:factoryReset'),
     getHealth: (): Promise<IPCResponse> =>
       ipcRenderer.invoke('system:getHealth'),
     getAuditLogs: (params: { limit?: number }): Promise<IPCResponse> =>

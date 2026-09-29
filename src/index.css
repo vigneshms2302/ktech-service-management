@@ -336,9 +336,11 @@ select optgroup {
   color: #0f172a;
 }
 
-.input-field {
+.input-field,
+.ktech-input {
   width: 100%;
-  padding: 8px 12px;
+  height: 40px;
+  padding: 0 14px;
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -346,16 +348,256 @@ select optgroup {
   font-size: 13px;
   font-family: var(--font-sans);
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-.input-field:focus {
-  border-color: var(--border-color-focus);
-  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+[data-theme='light'] .input-field,
+[data-theme='light'] .ktech-input {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
 }
 
-.input-field::placeholder {
+.input-field:hover,
+.ktech-input:hover {
+  border-color: var(--border-color-light);
+}
+
+[data-theme='light'] .input-field:hover,
+[data-theme='light'] .ktech-input:hover {
+  border-color: #94a3b8;
+  background-color: #ffffff;
+}
+
+.input-field:focus,
+.ktech-input:focus {
+  border-color: var(--brand-primary);
+  background-color: var(--bg-surface);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18), inset 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+[data-theme='light'] .input-field:focus,
+[data-theme='light'] .ktech-input:focus {
+  background-color: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3.5px rgba(2, 132, 199, 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.input-field::placeholder,
+.ktech-input::placeholder {
   color: var(--text-dim);
+  font-weight: 400;
+}
+
+/* Crafted Field Group with Icon Adornments */
+.ktech-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.ktech-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+[data-theme='light'] .ktech-label {
+  color: #334155;
+}
+
+.ktech-label .req-star {
+  color: #0284c7;
+  margin-left: 2px;
+  font-weight: 800;
+}
+
+.ktech-input-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border-radius: 10px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme='light'] .ktech-input-box {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.ktech-input-box:hover {
+  border-color: var(--border-color-light);
+}
+
+[data-theme='light'] .ktech-input-box:hover {
+  border-color: #94a3b8;
+  background-color: #ffffff;
+}
+
+.ktech-input-box:focus-within {
+  border-color: var(--brand-primary);
+  background-color: var(--bg-surface);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18), inset 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+[data-theme='light'] .ktech-input-box:focus-within {
+  background-color: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3.5px rgba(2, 132, 199, 0.15);
+}
+
+.ktech-input-box .field-icon-left {
+  position: absolute;
+  left: 12px;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  transition: color 0.15s ease;
+}
+
+.ktech-input-box:focus-within .field-icon-left {
+  color: var(--brand-primary);
+}
+
+.ktech-input-box input,
+.ktech-input-box select,
+.ktech-input-box textarea {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px 0 34px;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: var(--text-main);
+  font-size: 12.5px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  box-shadow: none !important;
+}
+
+[data-theme='light'] .ktech-input-box input,
+[data-theme='light'] .ktech-input-box select,
+[data-theme='light'] .ktech-input-box textarea {
+  color: #0f172a;
+}
+
+.ktech-input-box input.no-icon {
+  padding-left: 10px;
+}
+
+.ktech-input-box input::placeholder,
+.ktech-input-box textarea::placeholder {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.ktech-input-box .field-action-right {
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  transition: color 0.15s ease;
+}
+
+.ktech-input-box .field-action-right:hover {
+  color: var(--text-main);
+}
+
+/* Dedicated Segmented PIN Digits */
+.pin-segmented-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pin-digit-cell {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background-color: var(--bg-input);
+  border: 1.5px solid var(--border-color);
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 800;
+  text-align: center;
+  outline: none;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme='light'] .pin-digit-cell {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.pin-digit-cell:hover {
+  border-color: var(--border-color-light);
+}
+
+.pin-digit-cell:focus {
+  border-color: var(--brand-primary);
+  background-color: var(--bg-surface);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
+  transform: translateY(-1px);
+}
+
+[data-theme='light'] .pin-digit-cell:focus {
+  background-color: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+/* Setup Card Sectioning */
+.setup-group-card {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  margin-bottom: 10px;
+  transition: border-color 0.15s ease;
+}
+
+[data-theme='light'] .setup-group-card {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+}
+
+.setup-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--brand-primary);
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+[data-theme='light'] .setup-group-header {
+  border-bottom-color: #f1f5f9;
 }
 
 /* Search Containers & Inputs (Prevents awkward nested focus rings) */

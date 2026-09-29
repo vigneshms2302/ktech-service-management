@@ -19,6 +19,10 @@ export function getActiveSession(): UserSession | null {
   return activeSession;
 }
 
+export function setActiveSession(session: UserSession | null): void {
+  activeSession = session;
+}
+
 export function registerAuthIpc(): void {
   // Login with Username & Password
   ipcMain.handle('auth:login', async (_event, { username, password }) => {

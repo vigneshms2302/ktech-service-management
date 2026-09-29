@@ -21,21 +21,29 @@ import { useShop } from '../../context/ShopContext.tsx';
 import { useTheme } from '../../context/ThemeContext.tsx';
 
 export const LoginPage: React.FC = () => {
-  const { login, pinLogin } = useAuth();
+  const { login, pinLogin, userList } = useAuth();
   const { shopSettings } = useShop();
   const { theme, toggleTheme } = useTheme();
 
   const isLight = theme === 'light';
 
   const [activeMode, setActiveMode] = useState<'PIN' | 'PASSWORD'>('PIN');
-  const [selectedUser, setSelectedUser] = useState<string>('USR_OWNER');
+  const [selectedUser, setSelectedUser] = useState<string>(() => userList[0]?.id || '');
   const [pinCode, setPinCode] = useState<string>('');
-  const [username, setUsername] = useState<string>('admin');
-  const [password, setPassword] = useState<string>('admin123');
+  const [username, setUsername] = useState<string>(() => userList[0]?.username || '');
+  const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
+
+  // Keep selected user updated if userList loads
+  useEffect(() => {
+    if (userList.length > 0 && !selectedUser) {
+      setSelectedUser(userList[0].id);
+      setUsername(userList[0].username);
+    }
+  }, [userList, selectedUser]);
 
   // Update live clock every second
   useEffect(() => {
@@ -137,16 +145,11 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const selectQuickUser = (userId: string, defaultPin: string, defaultUsername: string) => {
+  const selectQuickUser = (userId: string, targetUsername: string) => {
     setSelectedUser(userId);
     setPinCode('');
-    setUsername(defaultUsername);
+    setUsername(targetUsername);
     setError(null);
-
-    // Auto-fill demonstration PIN if clicked
-    if (activeMode === 'PIN') {
-      setPinCode(defaultPin);
-    }
   };
 
   const getRoleColor = (roleId?: string) => {
@@ -537,22 +540,16 @@ export const LoginPage: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {/* Staff Profiles Carousel/Grid */}
                 <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-                  {[
-                    { id: 'USR_OWNER', name: 'K. Vignesh', role: 'Owner / Admin', pin: '1234', username: 'admin', roleId: 'ROLE_OWNER' },
-                    { id: 'USR_RECEPTION', name: 'Anitha M.', role: 'Front Desk', pin: '1111', username: 'reception', roleId: 'ROLE_RECEPTION' },
-                    { id: 'USR_TECH1', name: 'Rajesh K.', role: 'Senior Tech', pin: '2222', username: 'tech1', roleId: 'ROLE_TECHNICIAN' },
-                    { id: 'USR_TECH2', name: 'Suresh P.', role: 'Chip Tech', pin: '3333', username: 'tech2', roleId: 'ROLE_TECHNICIAN' },
-                    { id: 'USR_ACCOUNTS', name: 'Priya S.', role: 'Accounts', pin: '4444', username: 'accounts', roleId: 'ROLE_ACCOUNTS' },
-                  ].map((usr) => {
+                  {userList.filter((u) => u.isActive !== false).map((usr) => {
                     const isSelected = selectedUser === usr.id;
                     const rColor = getRoleColor(usr.roleId);
                     return (
                       <button
                         key={usr.id}
                         type="button"
-                        onClick={() => selectQuickUser(usr.id, usr.pin, usr.username)}
+                        onClick={() => selectQuickUser(usr.id, usr.username)}
                         style={{
-                          flex: '1 0 76px',
+                          flex: '1 0 84px',
                           padding: '8px 6px',
                           borderRadius: '10px',
                           backgroundColor: isSelected
@@ -586,10 +583,10 @@ export const LoginPage: React.FC = () => {
                             color: '#ffffff',
                           }}
                         >
-                          {usr.name.charAt(0)}
+                          {usr.fullName.charAt(0)}
                         </div>
-                        <div style={{ fontSize: '11px', fontWeight: 700, textAlign: 'center', whiteSpace: 'nowrap' }}>
-                          {usr.name}
+                        <div style={{ fontSize: '11px', fontWeight: 700, textAlign: 'center', whiteSpace: 'nowrap', maxWidth: '78px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {usr.fullName}
                         </div>
                         <div
                           style={{
@@ -602,7 +599,7 @@ export const LoginPage: React.FC = () => {
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          PIN: {usr.pin}
+                          {usr.roleName || usr.roleId.replace('ROLE_', '')}
                         </div>
                       </button>
                     );
@@ -709,108 +706,47 @@ export const LoginPage: React.FC = () => {
             {/* MODE 2: CLASSIC USERNAME & PASSWORD LOGIN */}
             {activeMode === 'PASSWORD' && (
               <form onSubmit={handlePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: isLight ? '#475569' : '#94a3b8', textTransform: 'uppercase', marginBottom: '6px' }}>
-                    Username / Staff ID
+                <div className="ktech-field">
+                  <label className="ktech-label">
+                    <span>Username / Staff ID</span>
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <User size={15} style={{ position: 'absolute', left: '12px', top: '12px', color: isLight ? '#94a3b8' : '#64748b' }} />
+                  <div className="ktech-input-box">
+                    <div className="field-icon-left">
+                      <User size={16} />
+                    </div>
                     <input
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="e.g. admin, reception, tech1, tech2"
+                      placeholder="e.g. admin"
                       required
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px 10px 36px',
-                        backgroundColor: isLight ? '#ffffff' : 'rgba(11, 17, 30, 0.8)',
-                        border: isLight ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.12)',
-                        borderRadius: '8px',
-                        color: isLight ? '#0f172a' : '#f8fafc',
-                        fontSize: '13px',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                      }}
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: isLight ? '#475569' : '#94a3b8', textTransform: 'uppercase', marginBottom: '6px' }}>
-                    Password
+                <div className="ktech-field">
+                  <label className="ktech-label">
+                    <span>Password</span>
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <Lock size={15} style={{ position: 'absolute', left: '12px', top: '12px', color: isLight ? '#94a3b8' : '#64748b' }} />
+                  <div className="ktech-input-box">
+                    <div className="field-icon-left">
+                      <Lock size={16} />
+                    </div>
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       required
-                      style={{
-                        width: '100%',
-                        padding: '10px 40px 10px 36px',
-                        backgroundColor: isLight ? '#ffffff' : 'rgba(11, 17, 30, 0.8)',
-                        border: isLight ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.12)',
-                        borderRadius: '8px',
-                        color: isLight ? '#0f172a' : '#f8fafc',
-                        fontSize: '13px',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                      }}
                     />
                     <button
                       type="button"
+                      className="field-action-right"
                       onClick={() => setShowPassword(!showPassword)}
-                      style={{
-                        position: 'absolute',
-                        right: '12px',
-                        top: '10px',
-                        background: 'transparent',
-                        border: 'none',
-                        color: isLight ? '#94a3b8' : '#64748b',
-                        cursor: 'pointer',
-                      }}
+                      tabIndex={-1}
                     >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
-                  </div>
-                </div>
-
-                {/* Quick Account Preset Buttons */}
-                <div>
-                  <div style={{ fontSize: '10.5px', color: isLight ? '#64748b' : '#64748b', fontWeight: 600, marginBottom: '6px' }}>
-                    Quick Demo Presets:
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {[
-                      { label: '👑 Admin (admin123)', u: 'admin', p: 'admin123' },
-                      { label: '💼 Reception', u: 'reception', p: 'reception123' },
-                      { label: '🛠️ Tech 1', u: 'tech1', p: 'tech123' },
-                    ].map((pre, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          setUsername(pre.u);
-                          setPassword(pre.p);
-                          setError(null);
-                        }}
-                        style={{
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          backgroundColor: isLight ? '#f1f5f9' : 'rgba(255, 255, 255, 0.05)',
-                          border: isLight ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.1)',
-                          color: isLight ? '#334155' : '#94a3b8',
-                          fontSize: '10.5px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {pre.label}
-                      </button>
-                    ))}
                   </div>
                 </div>
 

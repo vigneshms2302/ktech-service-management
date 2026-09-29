@@ -12,6 +12,8 @@ import {
   Sparkles,
   ArrowUpCircle,
   AlertCircle,
+  AlertTriangle,
+  Trash2,
   Info,
   ShieldCheck,
   RotateCw,
@@ -45,7 +47,8 @@ const ROLES = [
 
 export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, onClose }) => {
   const { shopSettings, updateShopSettings } = useShop();
-  const { refreshUsers } = useAuth();
+  const { refreshUsers, logout, checkSetupStatus } = useAuth();
+  const [isResetting, setIsResetting] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'shop' | 'staff' | 'backup' | 'updates'>('shop');
 
@@ -875,6 +878,70 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* DANGER ZONE: FACTORY RESET & INITIAL ONBOARDING */}
+              <div style={{ padding: '16px', backgroundColor: 'rgba(239, 68, 68, 0.05)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.25)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#f87171', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <AlertTriangle size={15} /> Factory Reset & Out-Of-The-Box Setup
+                </div>
+                <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  Wipe all mock/demo customer records, dummy service jobs, inventory, invoices, and login credentials to reset K-Connect into a brand-new, clean workstation ready for initial owner configuration.
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const confirmation = window.confirm(
+                        '⚠️ COMPLETE FACTORY RESET:\n\nThis will permanently delete all demo repair jobs, dummy customers, inventory, invoices, and login credentials to restore a completely fresh out-of-the-box system.\n\nAre you sure you want to proceed?'
+                      );
+                      if (!confirmation) return;
+
+                      const secondConfirm = window.prompt('Type "RESET" to confirm permanent database wipe:');
+                      if (secondConfirm !== 'RESET') {
+                        alert('Reset cancelled.');
+                        return;
+                      }
+
+                      setIsResetting(true);
+                      try {
+                        if (window.electronAPI?.system?.factoryReset) {
+                          const res = await window.electronAPI.system.factoryReset();
+                          if (res.success) {
+                            localStorage.clear();
+                            await logout();
+                            await checkSetupStatus();
+                            onClose();
+                            alert('Database reset complete! Launching Out-of-Box Initial Setup Wizard.');
+                          } else {
+                            alert(res.error || 'Failed to execute factory reset');
+                          }
+                        }
+                      } catch (err: unknown) {
+                        alert((err as Error).message || 'Factory reset error');
+                      } finally {
+                        setIsResetting(false);
+                      }
+                    }}
+                    disabled={isResetting}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                      color: '#f87171',
+                      border: '1px solid rgba(239, 68, 68, 0.4)',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: isResetting ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <Trash2 size={13} />
+                    <span>{isResetting ? 'Wiping Database...' : 'Erase All Data & Re-run Setup Wizard'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}

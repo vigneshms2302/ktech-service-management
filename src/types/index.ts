@@ -17,6 +17,9 @@ export interface UserProfile {
   fullName: string;
   roleId: string;
   roleName: string;
+  isActive?: boolean;
+  phone?: string | null;
+  pinCode?: string;
 }
 
 export interface SystemHealth {
@@ -409,6 +412,38 @@ export interface ElectronAPI {
     toggleUserStatus: (params: { id: string; isActive: boolean }) => Promise<IPCResponse<void>>;
   };
   system: {
+    isSetupComplete: () => Promise<IPCResponse<{ isComplete: boolean; userCount: number }>>;
+    completeSetup: (payload: {
+      owner: {
+        fullName: string;
+        username: string;
+        password: string;
+        pinCode: string;
+        phone?: string;
+        email?: string;
+      };
+      shop: {
+        shopName: string;
+        tagline?: string;
+        phone: string;
+        email?: string;
+        address: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
+        gstin?: string;
+        upiId?: string;
+      };
+      technicians?: Array<{
+        fullName: string;
+        username: string;
+        password?: string;
+        pinCode?: string;
+        phone?: string;
+        roleId: string;
+      }>;
+    }) => Promise<IPCResponse<{ user: UserSession }>>;
+    factoryReset: () => Promise<IPCResponse<void>>;
     getHealth: () => Promise<IPCResponse<SystemHealth>>;
     getAuditLogs: (params: { limit?: number }) => Promise<IPCResponse<AuditLogEntry[]>>;
     createBackup: (params: { backupType?: 'AUTO' | 'MANUAL' | 'PRE_RESTORE'; targetDir?: string }) => Promise<IPCResponse<{ backupId: string; backupPath: string; fileSizeBytes: number }>>;

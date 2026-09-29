@@ -4,6 +4,7 @@ import type { UserSession, UserProfile } from '../types/index.ts';
 interface AuthContextType {
   currentUser: UserSession | null;
   isLoading: boolean;
+  isSetupComplete: boolean;
   userList: UserProfile[];
   login: (credentials: { username: string; password: string }) => Promise<{ success: boolean; error?: string }>;
   pinLogin: (pinCode: string) => Promise<{ success: boolean; error?: string }>;
@@ -12,6 +13,7 @@ interface AuthContextType {
   hasAnyPermission: (permCodes: string[]) => boolean;
   refreshUserList: () => Promise<void>;
   refreshUsers: () => Promise<void>;
+  checkSetupStatus: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,7 +21,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSetupComplete, setIsSetupComplete] = useState<boolean>(true);
   const [userList, setUserList] = useState<UserProfile[]>([]);
+
+  const checkSetupStatus = async (): Promise<boolean> => {
+    try {
+      if (window.electronAPI?.system?.isSetupComplete) {
+        const res = await window.electronAPI.system.isSetupComplete();
+        if (res.success && res.data) {
+          setIsSetupComplete(res.data.isComplete);
+          return res.data.isComplete;
+        }
+      }
+      return true;
+    } catch {
+      return true;
+    }
+  };
 
   const refreshUserList = async () => {
     if (window.electronAPI?.auth?.listUsers) {
@@ -33,13 +51,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initAuth = async () => {
       try {
-        if (window.electronAPI?.auth?.getCurrentUser) {
-          const res = await window.electronAPI.auth.getCurrentUser();
-          if (res.success && res.data) {
-            setCurrentUser(res.data);
+        const setupDone = await checkSetupStatus();
+        if (setupDone) {
+          if (window.electronAPI?.auth?.getCurrentUser) {
+            const res = await window.electronAPI.auth.getCurrentUser();
+            if (res.success && res.data) {
+              setCurrentUser(res.data);
+            }
           }
+          await refreshUserList();
         }
-        await refreshUserList();
       } catch (err) {
         console.error('Failed to initialize auth:', err);
       } finally {
@@ -125,6 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         currentUser,
         isLoading,
+        isSetupComplete,
         userList,
         login,
         pinLogin,
@@ -133,6 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         hasAnyPermission,
         refreshUserList,
         refreshUsers: refreshUserList,
+        checkSetupStatus,
       }}
     >
       {children}

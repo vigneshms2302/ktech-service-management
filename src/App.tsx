@@ -19,10 +19,11 @@ import { LoginModal } from './components/auth/LoginModal.tsx';
 import { PinModal } from './components/auth/PinModal.tsx';
 import { ShopSettingsModal } from './components/settings/ShopSettingsModal.tsx';
 import { LoginPage } from './components/auth/LoginPage.tsx';
+import { SetupWizard } from './components/setup/SetupWizard.tsx';
 import { useAuth } from './context/AuthContext.tsx';
 
 export const App: React.FC = () => {
-  const { currentUser, isLoading } = useAuth();
+  const { currentUser, isLoading, isSetupComplete, checkSetupStatus } = useAuth();
   const [activeTab, setActiveTab] = useState<NavTabId>('dashboard');
 
   // Deep Link States
@@ -104,7 +105,18 @@ export const App: React.FC = () => {
     );
   }
 
-  // Show Dedicated Premium Login Page if user is not authenticated
+  // 1. If First-Time Setup is not completed, display Setup & Onboarding Wizard
+  if (!isSetupComplete) {
+    return (
+      <SetupWizard
+        onSetupComplete={async () => {
+          await checkSetupStatus();
+        }}
+      />
+    );
+  }
+
+  // 2. Show Dedicated Premium Login Page if user is not authenticated
   if (!currentUser) {
     return <LoginPage />;
   }
