@@ -39,6 +39,29 @@ export const App: React.FC = () => {
   const [isPinOpen, setIsPinOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [licenseError, setLicenseError] = useState<string | null>(null);
+
+  // Check Workstation Seat License on startup
+  const checkLicense = async () => {
+    try {
+      if (window.electronAPI?.system?.getWorkstationLicenseStatus) {
+        const res = await window.electronAPI.system.getWorkstationLicenseStatus();
+        if (res.success && res.data) {
+          if (!res.data.isAllowed) {
+            setLicenseError(res.data.reason || 'Workstation seat limit exceeded for this shop installation.');
+          } else {
+            setLicenseError(null);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Workstation license check error:', err);
+    }
+  };
+
+  useEffect(() => {
+    checkLicense();
+  }, []);
 
   // Global Keyboard Shortcuts
   useEffect(() => {
@@ -101,6 +124,100 @@ export const App: React.FC = () => {
         }}
       >
         Initializing KTech Service Management Desktop Engine...
+      </div>
+    );
+  }
+
+  // Workstation License Seat Lockout Screen
+  if (licenseError) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          backgroundColor: '#090d16',
+          color: '#f9fafb',
+          padding: '24px',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '500px',
+            width: '100%',
+            backgroundColor: '#111827',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            borderRadius: '16px',
+            padding: '32px',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)',
+            textAlign: 'center',
+          }}
+        >
+          <div
+            style={{
+              width: '56px',
+              height: '56px',
+              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+              color: '#ef4444',
+              fontSize: '24px',
+              fontWeight: 800,
+            }}
+          >
+            !
+          </div>
+
+          <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#f9fafb', marginBottom: '8px' }}>
+            Workstation Seat Limit Exceeded
+          </h2>
+
+          <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.6, marginBottom: '20px' }}>
+            {licenseError}
+          </p>
+
+          <div
+            style={{
+              padding: '12px',
+              backgroundColor: 'rgba(15, 23, 42, 0.6)',
+              borderRadius: '8px',
+              border: '1px solid #1f2937',
+              fontSize: '11px',
+              color: '#94a3b8',
+              marginBottom: '20px',
+              textAlign: 'left',
+            }}
+          >
+            <strong>How to resolve:</strong>
+            <ul style={{ paddingLeft: '16px', marginTop: '6px' }}>
+              <li>Open K-Connect on an authorized workstation.</li>
+              <li>Go to <strong>Shop Settings &rarr; Security & Remote Support</strong>.</li>
+              <li>Deactivate an unused or decommissioned computer to free up a license seat.</li>
+              <li>Or contact KTech Computers Support to upgrade your seat package.</li>
+            </ul>
+          </div>
+
+          <button
+            onClick={checkLicense}
+            style={{
+              width: '100%',
+              padding: '10px 16px',
+              backgroundColor: '#3b82f6',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Retry Verification
+          </button>
+        </div>
       </div>
     );
   }

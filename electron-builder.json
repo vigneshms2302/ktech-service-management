@@ -11,9 +11,12 @@
   "directories": {
     "output": "release"
   },
+  "asar": true,
   "files": [
     "dist/**/*",
-    "dist-electron/**/*"
+    "dist-electron/**/*",
+    "!**/*.map",
+    "!**/tests/**"
   ],
   "win": {
     "target": [

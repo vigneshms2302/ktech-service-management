@@ -17,7 +17,7 @@ describe('SQLite Relational Database & Migrations', () => {
     await seedDatabase();
   });
 
-  it('should create and verify exactly 45 relational tables', async () => {
+  it('should create and verify exactly 46 relational tables', async () => {
     const client = getClient();
     const result = await client.execute(`
       SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;
@@ -26,9 +26,9 @@ describe('SQLite Relational Database & Migrations', () => {
     const tableNames = result.rows.map((r) => (r as unknown as { name: string }).name);
     console.log(`Verified ${tableNames.length} SQLite tables:`, tableNames);
 
-    expect(tableNames.length).toBe(45);
+    expect(tableNames.length).toBe(46);
 
-    // Verify key tables across all 10 domain subsystems
+    // Verify key tables across all domain subsystems
     expect(tableNames).toContain('users');
     expect(tableNames).toContain('roles');
     expect(tableNames).toContain('permissions');
@@ -74,6 +74,7 @@ describe('SQLite Relational Database & Migrations', () => {
     expect(tableNames).toContain('warranty_jobs');
     expect(tableNames).toContain('communication_templates');
     expect(tableNames).toContain('communication_messages');
+    expect(tableNames).toContain('licensed_workstations');
   });
 
   it('should seed default roles and staff users', async () => {

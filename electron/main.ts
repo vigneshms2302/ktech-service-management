@@ -1,8 +1,10 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import { setDatabasePath, initializeSchema } from './db/database.ts';
+import { setDatabasePath, initializeSchema, getClient } from './db/database.ts';
 import { seedDatabase } from './db/seed.ts';
+import { initializeLogger, logger } from './utils/logger.ts';
+import { initializeInAppFirewall } from './security/firewall.ts';
 import { registerAuthIpc } from './ipc/authIpc.ts';
 import { registerSystemIpc } from './ipc/systemIpc.ts';
 import { registerVaultIpc } from './ipc/vaultIpc.ts';
@@ -25,12 +27,16 @@ process.env.VITE_PUBLIC = app.isPackaged
 let mainWindow: BrowserWindow | null = null;
 
 async function bootstrap(): Promise<void> {
-  // Set DB and storage path to D: drive in production if available, else OS application data folder
+  // 1. Initialize Unified Enterprise Logger & Exception Listeners
+  initializeLogger();
+  logger.info('Bootstrap', 'Starting KTech Service Management application bootstrap...');
+
+  // 2. Set DB and storage path to D: drive in production if available, else OS application data folder
   if (app.isPackaged || !process.env.KTECH_DEV_LOCAL_DB) {
     const userDataPath = app.getPath('userData');
     let dataBasePath = userDataPath;
 
-    // Prioritize D:\ drive if present on Windows
+    // Prioritize D:\ drive if present on Windows for enterprise storage separation
     if (process.platform === 'win32' && fs.existsSync('D:\\')) {
       dataBasePath = path.join('D:\\', 'K-Connect', 'Data');
 
@@ -42,27 +48,37 @@ async function bootstrap(): Promise<void> {
         try {
           fs.mkdirSync(path.dirname(targetDbPath), { recursive: true });
           fs.copyFileSync(legacyDbPath, targetDbPath);
-          console.log('[KTech DB] Migrated legacy database from AppData to D:\\ drive successfully.');
+          logger.info('Bootstrap', 'Migrated legacy database from AppData to D:\\ drive successfully.');
         } catch (copyErr) {
-          console.warn('[KTech DB] Could not migrate legacy database:', copyErr);
+          logger.warn('Bootstrap', 'Could not migrate legacy database:', { error: String(copyErr) });
         }
       }
     }
 
     const prodDbPath = path.join(dataBasePath, 'database', 'ktech.sqlite');
     setDatabasePath(prodDbPath);
+    logger.info('Bootstrap', `Resolved active database path: ${prodDbPath}`);
   }
 
-  // Initialize SQLite tables & seed default data
+  // 3. Initialize SQLite tables & seed default data
   try {
     await initializeSchema();
-    await seedDatabase();
-    console.log('[KTech DB] Database initialized and seeded successfully.');
+    await seedDatabase(false);
+
+    // Clean up any stale legacy demo actors and sample jobs from prior development runs
+    const client = getClient();
+    await client.execute(`DELETE FROM users WHERE id IN ('USR_OWNER', 'USR_RECEPTION', 'USR_TECH1', 'USR_TECH2', 'USR_ACCOUNTS');`);
+    await client.execute(`DELETE FROM customers WHERE id = 'CUST-001';`);
+    await client.execute(`DELETE FROM devices WHERE id = 'DEV-001';`);
+    await client.execute(`DELETE FROM service_jobs WHERE id = 'JOB-001';`);
+    await client.execute(`DELETE FROM job_status_history WHERE id IN ('JSH-001', 'JSH-002');`);
+
+    logger.info('Database', 'SQLite Database initialized and verified cleanly.');
   } catch (error) {
-    console.error('[KTech DB] Database initialization failed:', error);
+    logger.error('Database', 'Database initialization encountered error:', error);
   }
 
-  // Register IPC Controllers
+  // 4. Register All Modular IPC Handlers
   registerAuthIpc();
   registerSystemIpc();
   registerVaultIpc();
@@ -76,6 +92,7 @@ async function bootstrap(): Promise<void> {
   registerCommunicationIpc();
   registerReportsIpc();
   registerUpdaterIpc();
+  logger.info('Bootstrap', 'All IPC controllers registered.');
 }
 
 function createWindow(): void {
@@ -93,11 +110,28 @@ function createWindow(): void {
       sandbox: false,
       webSecurity: true,
       spellcheck: true,
+      devTools: !app.isPackaged, // Anti-Reverse Engineering: Disable DevTools in production
     },
   });
 
   // Remove default menu for clean internal app feel
   mainWindow.setMenuBarVisibility(false);
+
+  // Security: Prevent rogue new window spawns and open authorized links in OS browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://wa.me/') || url.startsWith('https://api.whatsapp.com/')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  // Anti-Debugging: Lock out DevTools in production builds
+  if (app.isPackaged) {
+    mainWindow.webContents.on('devtools-opened', () => {
+      mainWindow?.webContents.closeDevTools();
+      logger.warn('Security', 'Unauthorized attempt to open DevTools in production build blocked.');
+    });
+  }
 
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
@@ -112,6 +146,7 @@ function createWindow(): void {
 
 app.whenReady().then(async () => {
   await bootstrap();
+  initializeInAppFirewall();
   createWindow();
   checkForUpdatesOnStartup();
 
@@ -123,6 +158,7 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+  logger.info('AppLifecycle', 'Application windows closed. Terminating runtime.');
   if (process.platform !== 'darwin') {
     app.quit();
   }

@@ -17,10 +17,14 @@ import {
   Info,
   ShieldCheck,
   RotateCw,
+  Activity,
+  Shield,
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext.tsx';
 import { useAuth } from '../../context/AuthContext.tsx';
 import type { UpdateStatusPayload } from '../../types/index.ts';
+import { DiagnosticsTab } from './DiagnosticsTab.tsx';
+import { RemoteSupportTab } from './RemoteSupportTab.tsx';
 
 interface ShopSettingsModalProps {
   isOpen: boolean;
@@ -50,7 +54,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
   const { refreshUsers, logout, checkSetupStatus } = useAuth();
   const [isResetting, setIsResetting] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'shop' | 'staff' | 'backup' | 'updates'>('shop');
+  const [activeTab, setActiveTab] = useState<'shop' | 'staff' | 'backup' | 'updates' | 'diagnostics' | 'security'>('shop');
 
   // Shop details form state
   const [shopName, setShopName] = useState(shopSettings.shopName);
@@ -503,6 +507,48 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                 }}
               />
             )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('diagnostics')}
+            style={{
+              padding: '8px 12px',
+              border: 'none',
+              borderBottom: activeTab === 'diagnostics' ? '2px solid var(--brand-primary)' : '2px solid transparent',
+              background: 'transparent',
+              color: activeTab === 'diagnostics' ? 'var(--brand-primary)' : 'var(--text-muted)',
+              fontWeight: activeTab === 'diagnostics' ? 700 : 500,
+              fontSize: '12px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              flexShrink: 0,
+            }}
+          >
+            <Activity size={14} />
+            <span>Diagnostics & 7-Day Logs</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('security')}
+            style={{
+              padding: '8px 12px',
+              border: 'none',
+              borderBottom: activeTab === 'security' ? '2px solid var(--brand-primary)' : '2px solid transparent',
+              background: 'transparent',
+              color: activeTab === 'security' ? 'var(--brand-primary)' : 'var(--text-muted)',
+              fontWeight: activeTab === 'security' ? 700 : 500,
+              fontSize: '12px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              flexShrink: 0,
+            }}
+          >
+            <Shield size={14} />
+            <span>Security & Remote Support</span>
           </button>
         </div>
 
@@ -1192,6 +1238,12 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
               </div>
             </div>
           )}
+
+          {/* TAB 5: ENTERPRISE DIAGNOSTICS & 7-DAY LOGS */}
+          {activeTab === 'diagnostics' && <DiagnosticsTab />}
+
+          {/* TAB 6: SECURITY, REMOTE SUPPORT & FIREWALL */}
+          {activeTab === 'security' && <RemoteSupportTab />}
         </div>
       </div>
     </div>

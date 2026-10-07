@@ -74,6 +74,74 @@ const electronAPI = {
       ipcRenderer.invoke('system:getSettings'),
     updateSetting: (params: { key: string; value: string }): Promise<IPCResponse> =>
       ipcRenderer.invoke('system:updateSetting', params),
+    getDiagnosticsInfo: (): Promise<IPCResponse<{
+      database: Record<string, unknown>;
+      logs: { retentionDays: number; logFiles: unknown[]; totalLogsCount: number };
+    }>> => ipcRenderer.invoke('system:getDiagnosticsInfo'),
+    exportDiagnostics: (payload?: { customOutputDir?: string }): Promise<{
+      success: boolean;
+      archivePath?: string;
+      archiveSizeBytes?: number;
+      fileCount?: number;
+      error?: string;
+    }> => ipcRenderer.invoke('system:exportDiagnostics', payload),
+    getRecentLogs: (options?: { level?: string; limit?: number; date?: string }): Promise<IPCResponse<string[]>> =>
+      ipcRenderer.invoke('system:getRecentLogs', options),
+    getLogFiles: (): Promise<IPCResponse<Array<{ fileName: string; filePath: string; sizeBytes: number; lastModified: string; dateStr: string }>>> =>
+      ipcRenderer.invoke('system:getLogFiles'),
+    setLogRetention: (params: { days: number }): Promise<IPCResponse<{ retentionDays: number }>> =>
+      ipcRenderer.invoke('system:setLogRetention', params),
+    generateSupportChallenge: (): Promise<IPCResponse<{ challengeCode: string; machineId: string; expiresAt: string; validForMinutes: number }>> =>
+      ipcRenderer.invoke('system:generateSupportChallenge'),
+    activateSupportSession: (payload: { challengeCode: string; responseToken: string; operatorName?: string }): Promise<{
+      success: boolean;
+      message: string;
+      session?: { isActive: boolean; operatorId?: string; expiresAt?: string; remainingMinutes?: number; unlockedFeatures: string[] };
+    }> => ipcRenderer.invoke('system:activateSupportSession', payload),
+    getSupportSessionStatus: (): Promise<IPCResponse<{
+      isActive: boolean;
+      operatorId?: string;
+      expiresAt?: string;
+      remainingMinutes?: number;
+      unlockedFeatures: string[];
+    }>> => ipcRenderer.invoke('system:getSupportSessionStatus'),
+    endSupportSession: (): Promise<IPCResponse> =>
+      ipcRenderer.invoke('system:endSupportSession'),
+    executeSupportMaintenance: (payload: { action: 'REINDEX' | 'VACUUM' | 'INTEGRITY_FIX' | 'CLEAN_ORPHANS' }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('system:executeSupportMaintenance', payload),
+    getFirewallStatus: (): Promise<IPCResponse<{
+      defaultRules: Array<{ domain: string; purpose: string; allowSubdomains: boolean }>;
+      customDomains: string[];
+      isActive: boolean;
+    }>> => ipcRenderer.invoke('system:getFirewallStatus'),
+    addFirewallDomain: (params: { domain: string }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('system:addFirewallDomain', params),
+    getWorkstationLicenseStatus: (): Promise<IPCResponse<{
+      isAllowed: boolean;
+      currentMachineId: string;
+      currentHostname: string;
+      activeCount: number;
+      maxSeats: number;
+      isCurrentRegistered: boolean;
+      workstations: Array<{
+        id: string;
+        machineId: string;
+        hostname: string;
+        platform: string;
+        registeredAt: string;
+        lastActiveAt: string;
+        isActive: boolean;
+        ipAddress?: string;
+        isCurrentMachine: boolean;
+      }>;
+      reason?: string;
+    }>> => ipcRenderer.invoke('system:getWorkstationLicenseStatus'),
+    deactivateWorkstation: (params: { machineId: string }): Promise<{ success: boolean; message?: string; error?: string }> =>
+      ipcRenderer.invoke('system:deactivateWorkstation', params),
+    reactivateWorkstation: (params: { machineId: string }): Promise<{ success: boolean; message?: string; error?: string }> =>
+      ipcRenderer.invoke('system:reactivateWorkstation', params),
+    setWorkstationSeatLimit: (params: { maxSeats: number }): Promise<IPCResponse<{ maxSeats: number }>> =>
+      ipcRenderer.invoke('system:setWorkstationSeatLimit', params),
   },
 
   // Secure Vault

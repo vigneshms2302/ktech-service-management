@@ -449,6 +449,64 @@ export interface ElectronAPI {
     createBackup: (params: { backupType?: 'AUTO' | 'MANUAL' | 'PRE_RESTORE'; targetDir?: string }) => Promise<IPCResponse<{ backupId: string; backupPath: string; fileSizeBytes: number }>>;
     getSettings: () => Promise<IPCResponse<Record<string, string>>>;
     updateSetting: (params: { key: string; value: string }) => Promise<IPCResponse<void>>;
+    getDiagnosticsInfo: () => Promise<IPCResponse<{
+      database: Record<string, unknown>;
+      logs: { retentionDays: number; logFiles: Array<{ fileName: string; filePath: string; sizeBytes: number; lastModified: string; dateStr: string }>; totalLogsCount: number };
+    }>>;
+    exportDiagnostics: (payload?: { customOutputDir?: string }) => Promise<{
+      success: boolean;
+      archivePath?: string;
+      archiveSizeBytes?: number;
+      fileCount?: number;
+      error?: string;
+    }>;
+    getRecentLogs: (options?: { level?: string; limit?: number; date?: string }) => Promise<IPCResponse<string[]>>;
+    getLogFiles: () => Promise<IPCResponse<Array<{ fileName: string; filePath: string; sizeBytes: number; lastModified: string; dateStr: string }>>>;
+    setLogRetention: (params: { days: number }) => Promise<IPCResponse<{ retentionDays: number }>>;
+    generateSupportChallenge: () => Promise<IPCResponse<{ challengeCode: string; machineId: string; expiresAt: string; validForMinutes: number }>>;
+    activateSupportSession: (payload: { challengeCode: string; responseToken: string; operatorName?: string }) => Promise<{
+      success: boolean;
+      message: string;
+      session?: { isActive: boolean; operatorId?: string; expiresAt?: string; remainingMinutes?: number; unlockedFeatures: string[] };
+    }>;
+    getSupportSessionStatus: () => Promise<IPCResponse<{
+      isActive: boolean;
+      operatorId?: string;
+      expiresAt?: string;
+      remainingMinutes?: number;
+      unlockedFeatures: string[];
+    }>>;
+    endSupportSession: () => Promise<IPCResponse<void>>;
+    executeSupportMaintenance: (payload: { action: 'REINDEX' | 'VACUUM' | 'INTEGRITY_FIX' | 'CLEAN_ORPHANS' }) => Promise<IPCResponse<unknown>>;
+    getFirewallStatus: () => Promise<IPCResponse<{
+      defaultRules: Array<{ domain: string; purpose: string; allowSubdomains: boolean }>;
+      customDomains: string[];
+      isActive: boolean;
+    }>>;
+    addFirewallDomain: (params: { domain: string }) => Promise<IPCResponse<void>>;
+    getWorkstationLicenseStatus: () => Promise<IPCResponse<{
+      isAllowed: boolean;
+      currentMachineId: string;
+      currentHostname: string;
+      activeCount: number;
+      maxSeats: number;
+      isCurrentRegistered: boolean;
+      workstations: Array<{
+        id: string;
+        machineId: string;
+        hostname: string;
+        platform: string;
+        registeredAt: string;
+        lastActiveAt: string;
+        isActive: boolean;
+        ipAddress?: string;
+        isCurrentMachine: boolean;
+      }>;
+      reason?: string;
+    }>>;
+    deactivateWorkstation: (params: { machineId: string }) => Promise<{ success: boolean; message?: string; error?: string }>;
+    reactivateWorkstation: (params: { machineId: string }) => Promise<{ success: boolean; message?: string; error?: string }>;
+    setWorkstationSeatLimit: (params: { maxSeats: number }) => Promise<IPCResponse<{ maxSeats: number }>>;
   };
   vault: {
     unlockPasscode: (params: { deviceId: string }) => Promise<IPCResponse<{ passcode: string }>>;

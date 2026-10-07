@@ -24,7 +24,6 @@ import {
   Check,
   Store,
   Cpu,
-  BadgeCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { useShop } from '../../context/ShopContext.tsx';
@@ -1040,20 +1039,14 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
                     Counter PIN: <strong style={{ fontFamily: 'var(--font-mono)', letterSpacing: '2px', color: '#0284c7' }}>{getOwnerPin()}</strong>
                   </div>
                   <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    Additional Staff: <strong>{staffList.length} member(s)</strong>
+                    Staff Configured: <strong>{staffList.length} member(s)</strong>
                   </div>
-
-                  {/* System Checks */}
-                  <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: isLight ? '1px solid #f1f5f9' : '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', color: '#10b981' }}>
-                      <BadgeCheck size={12} />
-                      <span>Zero Dummy Data • Fresh Database Initialized</span>
+                  {(ownerPhone || ownerEmail) && (
+                    <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '6px', paddingTop: '6px', borderTop: isLight ? '1px solid #f1f5f9' : '1px solid rgba(255, 255, 255, 0.08)' }}>
+                      {ownerPhone && <span>📞 {ownerPhone} </span>}
+                      {ownerEmail && <span>✉️ {ownerEmail}</span>}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', color: '#10b981' }}>
-                      <BadgeCheck size={12} />
-                      <span>AES-256-GCM Cryptographic Vault Ready</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>

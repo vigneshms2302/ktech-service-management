@@ -3,6 +3,22 @@ import { getClient, logAudit, createDatabaseBackup, getDatabasePath } from '../d
 import { getActiveSession, setActiveSession, type UserSession } from './authIpc.ts';
 import { seedDatabase } from '../db/seed.ts';
 import { hashPassword } from '../security/crypto.ts';
+import { logger, listLogFiles, readRecentLogs, setLogRetentionDays, getLogRetentionDays } from '../utils/logger.ts';
+import { getDatabaseDiagnostics, createDiagnosticZipBundle } from '../utils/diagnosticPackager.ts';
+import {
+  generateSupportChallenge,
+  activateSupportSession,
+  getSupportSessionStatus,
+  terminateSupportSession,
+  executeSupportMaintenance,
+} from '../security/supportSession.ts';
+import { getFirewallRules, addAllowedDomain } from '../security/firewall.ts';
+import {
+  verifyAndRegisterWorkstation,
+  deactivateWorkstation,
+  reactivateWorkstation,
+  setMaxWorkstationSeats,
+} from '../security/workstationLicense.ts';
 import fs from 'node:fs';
 
 export function registerSystemIpc(): void {
@@ -65,17 +81,59 @@ export function registerSystemIpc(): void {
       const ownerPasswordHash = hashPassword(payload.owner.password.trim());
       const ownerPin = payload.owner.pinCode.trim();
 
-      // 1. Create or Update Owner User
+      // 0. Comprehensive Day-Zero Wipe: Clear all transaction tables so workstation is 100% clean
+      const tablesToClean = [
+        'audit_logs',
+        'backups',
+        'communication_messages',
+        'customer_addresses',
+        'data_recovery_jobs',
+        'device_photos',
+        'inventory_transactions',
+        'inventory_items',
+        'invoice_items',
+        'invoices',
+        'job_attachments',
+        'job_checklists',
+        'job_diagnosis',
+        'job_inspections',
+        'job_notes',
+        'job_parts',
+        'job_repair_activities',
+        'job_services',
+        'job_status_history',
+        'job_tests',
+        'payments',
+        'pc_build_items',
+        'pc_builds',
+        'product_sale_items',
+        'product_sales',
+        'products',
+        'quotation_approvals',
+        'quotation_items',
+        'quotations',
+        'salvage_parts',
+        'salvage_devices',
+        'service_jobs',
+        'devices',
+        'customers',
+        'warranties',
+        'warranty_jobs',
+        'users',
+      ];
+
+      for (const tbl of tablesToClean) {
+        try {
+          await client.execute(`DELETE FROM ${tbl};`);
+        } catch {
+          // Table might not exist in some migrations
+        }
+      }
+
+      // 1. Create Master Owner User
       await client.execute({
         sql: `INSERT INTO users (id, username, password_hash, pin_code, full_name, role_id, phone, commission_pct, is_active)
-              VALUES (?, ?, ?, ?, ?, 'ROLE_OWNER', ?, 0.0, 1)
-              ON CONFLICT(username) DO UPDATE SET
-                password_hash = excluded.password_hash,
-                pin_code = excluded.pin_code,
-                full_name = excluded.full_name,
-                phone = excluded.phone,
-                role_id = 'ROLE_OWNER',
-                is_active = 1`,
+              VALUES (?, ?, ?, ?, ?, 'ROLE_OWNER', ?, 0.0, 1)`,
         args: [
           ownerId,
           payload.owner.username.trim().toLowerCase(),
@@ -389,4 +447,205 @@ export function registerSystemIpc(): void {
       return { success: false, error: (error as Error).message };
     }
   });
+
+  // --- Dynamic Enterprise Logging & Diagnostics Handlers ---
+
+  // Get Live Diagnostics & Health Information
+  ipcMain.handle('system:getDiagnosticsInfo', async () => {
+    try {
+      const dbDiag = await getDatabaseDiagnostics();
+      const logFiles = listLogFiles();
+      const retentionDays = getLogRetentionDays();
+
+      return {
+        success: true,
+        data: {
+          database: dbDiag,
+          logs: {
+            retentionDays,
+            logFiles,
+            totalLogsCount: logFiles.length,
+          },
+        },
+      };
+    } catch (error: unknown) {
+      logger.error('SystemIPC', 'Failed to retrieve diagnostics info', error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Export 7-Day Compressed Diagnostic Zip Bundle
+  ipcMain.handle('system:exportDiagnostics', async (_event, payload?: { customOutputDir?: string }) => {
+    try {
+      const result = await createDiagnosticZipBundle(payload?.customOutputDir);
+      return result;
+    } catch (error: unknown) {
+      logger.error('SystemIPC', 'Failed exporting diagnostics bundle', error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Read Recent Logs for In-App Live Log Viewer
+  ipcMain.handle('system:getRecentLogs', async (_event, options?: { level?: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'AUDIT' | 'EXCEPTION'; limit?: number; date?: string }) => {
+    try {
+      const logs = readRecentLogs(options);
+      return { success: true, data: logs };
+    } catch (error: unknown) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // List all available log files on disk
+  ipcMain.handle('system:getLogFiles', async () => {
+    try {
+      const files = listLogFiles();
+      return { success: true, data: files };
+    } catch (error: unknown) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Set Log Retention Threshold (in Days)
+  ipcMain.handle('system:setLogRetention', async (_event, { days }: { days: number }) => {
+    try {
+      setLogRetentionDays(days);
+      const client = getClient();
+      await client.execute({
+        sql: `INSERT INTO settings (key, value, updated_at) VALUES ('system.log_retention_days', ?, CURRENT_TIMESTAMP)
+              ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP;`,
+        args: [String(days)],
+      });
+      return { success: true, data: { retentionDays: days } };
+    } catch (error: unknown) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // --- Consent-Based Cryptographic Remote Support Handlers ---
+
+  // Generate 15-Minute Support Challenge Code
+  ipcMain.handle('system:generateSupportChallenge', async () => {
+    try {
+      const challenge = generateSupportChallenge();
+      return { success: true, data: challenge };
+    } catch (error: unknown) {
+      logger.error('SystemIPC', 'Failed to generate support challenge', error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Activate Support Session with Authorization Token
+  ipcMain.handle('system:activateSupportSession', async (_event, payload: {
+    challengeCode: string;
+    responseToken: string;
+    operatorName?: string;
+  }) => {
+    try {
+      const result = await activateSupportSession(payload);
+      return result;
+    } catch (error: unknown) {
+      logger.error('SystemIPC', 'Failed to activate support session', error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Get Current Support Session Status
+  ipcMain.handle('system:getSupportSessionStatus', async () => {
+    try {
+      const status = getSupportSessionStatus();
+      return { success: true, data: status };
+    } catch (error: unknown) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Terminate Elevated Support Session
+  ipcMain.handle('system:endSupportSession', async () => {
+    try {
+      await terminateSupportSession();
+      return { success: true };
+    } catch (error: unknown) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Execute Deep Maintenance Action in Support Mode
+  ipcMain.handle('system:executeSupportMaintenance', async (_event, payload: {
+    action: 'REINDEX' | 'VACUUM' | 'INTEGRITY_FIX' | 'CLEAN_ORPHANS';
+  }) => {
+    try {
+      const result = await executeSupportMaintenance(payload.action);
+      return { success: true, data: result };
+    } catch (error: unknown) {
+      logger.error('SystemIPC', 'Maintenance execution failed', error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // --- In-App Network Firewall Handlers ---
+
+  // Get Firewall Rules and Status
+  ipcMain.handle('system:getFirewallStatus', async () => {
+    try {
+      const status = getFirewallRules();
+      return { success: true, data: status };
+    } catch (error: unknown) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Add Dynamic Allowed Domain
+  ipcMain.handle('system:addFirewallDomain', async (_event, { domain }: { domain: string }) => {
+    try {
+      addAllowedDomain(domain);
+      return { success: true };
+    } catch (error: unknown) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // --- Workstation Node & Machine Seat Licensing Handlers ---
+
+  // Check Current Workstation License Status & Register Node
+  ipcMain.handle('system:getWorkstationLicenseStatus', async () => {
+    try {
+      const status = await verifyAndRegisterWorkstation();
+      return { success: true, data: status };
+    } catch (error: unknown) {
+      logger.error('SystemIPC', 'Failed to check workstation license status', error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Deactivate Workstation Node (Free up a seat)
+  ipcMain.handle('system:deactivateWorkstation', async (_event, { machineId }: { machineId: string }) => {
+    try {
+      const result = await deactivateWorkstation(machineId);
+      return result;
+    } catch (error: unknown) {
+      logger.error('SystemIPC', 'Failed to deactivate workstation', error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Reactivate Workstation Node
+  ipcMain.handle('system:reactivateWorkstation', async (_event, { machineId }: { machineId: string }) => {
+    try {
+      const result = await reactivateWorkstation(machineId);
+      return result;
+    } catch (error: unknown) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Set Workstation Seat Limit (e.g. from 4 to 8)
+  ipcMain.handle('system:setWorkstationSeatLimit', async (_event, { maxSeats }: { maxSeats: number }) => {
+    try {
+      await setMaxWorkstationSeats(maxSeats);
+      return { success: true, data: { maxSeats } };
+    } catch (error: unknown) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
 }
+

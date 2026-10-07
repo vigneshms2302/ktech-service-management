@@ -723,6 +723,18 @@ export async function initializeSchema(): Promise<void> {
       last_error TEXT,
       sent_at TEXT,
       created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+    );`,
+
+    // 46. licensed_workstations
+    `CREATE TABLE IF NOT EXISTS licensed_workstations (
+      id TEXT PRIMARY KEY,
+      machine_id TEXT NOT NULL UNIQUE,
+      hostname TEXT NOT NULL,
+      platform TEXT NOT NULL,
+      registered_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+      last_active_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+      is_active INTEGER NOT NULL DEFAULT 1,
+      ip_address TEXT
     );`
   ];
 

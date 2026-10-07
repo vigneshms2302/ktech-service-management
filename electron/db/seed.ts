@@ -1,13 +1,16 @@
 import { getClient } from './database.ts';
 import { hashPassword, encryptSecret } from '../security/crypto.ts';
 
-export async function seedDatabase(includeTestFixtures = process.env.NODE_ENV === 'test'): Promise<void> {
+export async function seedDatabase(includeTestFixtures = Boolean(process.env.VITEST || process.env.NODE_ENV === 'test')): Promise<void> {
   const client = getClient();
 
   // Check if roles already exist
   const existingRoles = await client.execute('SELECT COUNT(*) as count FROM roles;');
   const roleCount = Number((existingRoles.rows[0] as unknown as { count: number }).count);
   if (roleCount > 0) {
+    if (includeTestFixtures) {
+      await seedTestFixtures(client);
+    }
     return; // Already seeded
   }
 
@@ -187,51 +190,60 @@ export async function seedDatabase(includeTestFixtures = process.env.NODE_ENV ==
     args: [`sequence.job_counter_${currentYear}`],
   });
 
-  // 8. TEST FIXTURES ONLY: Seed test actors & sample fixtures during automated vitest execution
+  // 8. TEST FIXTURES ONLY (In Vitest tests)
   if (includeTestFixtures) {
-    const defaultUsers = [
-      { id: 'USR_OWNER', username: 'admin', passwordHash: hashPassword('admin123'), pinCode: '1234', fullName: 'K. Vignesh (Owner)', roleId: 'ROLE_OWNER', phone: '+91 98765 00001', commissionPct: 0.0 },
-      { id: 'USR_RECEPTION', username: 'reception', passwordHash: hashPassword('reception123'), pinCode: '1111', fullName: 'Anitha M. (Front Desk)', roleId: 'ROLE_RECEPTION', phone: '+91 98765 00002', commissionPct: 0.0 },
-      { id: 'USR_TECH1', username: 'tech1', passwordHash: hashPassword('tech123'), pinCode: '2222', fullName: 'Rajesh Kumar (Senior Tech)', roleId: 'ROLE_TECHNICIAN', phone: '+91 98765 00003', commissionPct: 15.0 },
-      { id: 'USR_TECH2', username: 'tech2', passwordHash: hashPassword('tech123'), pinCode: '3333', fullName: 'Suresh P. (Chip-Level Specialist)', roleId: 'ROLE_TECHNICIAN', phone: '+91 98765 00004', commissionPct: 20.0 },
-      { id: 'USR_ACCOUNTS', username: 'accounts', passwordHash: hashPassword('accounts123'), pinCode: '4444', fullName: 'Priya S. (Accounts Manager)', roleId: 'ROLE_ACCOUNTS', phone: '+91 98765 00005', commissionPct: 0.0 },
-    ];
+    await seedTestFixtures(client);
+  }
+}
 
-    for (const u of defaultUsers) {
-      await client.execute({
-        sql: `INSERT INTO users (id, username, password_hash, pin_code, full_name, role_id, phone, commission_pct) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: [u.id, u.username, u.passwordHash, u.pinCode, u.fullName, u.roleId, u.phone, u.commissionPct],
-      });
-    }
+async function seedTestFixtures(client: ReturnType<typeof getClient>): Promise<void> {
+  const currentYear = new Date().getFullYear();
+  const userCountRes = await client.execute('SELECT COUNT(*) as count FROM users;');
+  const userCount = Number((userCountRes.rows[0] as unknown as { count: number })?.count || 0);
+  if (userCount > 0) return;
 
-    await client.execute(`
-      INSERT INTO customers (id, customer_code, full_name, primary_phone, email, customer_type, notes)
-      VALUES ('CUST-001', 'CUST-10001', 'Karthik Ramanathan', '+91 98430 11223', 'karthik.r@gmail.com', 'INDIVIDUAL', 'Regular client')
-    `);
+  const defaultUsers = [
+    { id: 'USR_OWNER', username: 'admin', passwordHash: hashPassword('admin123'), pinCode: '1234', fullName: 'K. Vignesh (Owner)', roleId: 'ROLE_OWNER', phone: '+91 98765 00001', commissionPct: 0.0 },
+    { id: 'USR_RECEPTION', username: 'reception', passwordHash: hashPassword('reception123'), pinCode: '1111', fullName: 'Anitha M. (Front Desk)', roleId: 'ROLE_RECEPTION', phone: '+91 98765 00002', commissionPct: 0.0 },
+    { id: 'USR_TECH1', username: 'tech1', passwordHash: hashPassword('tech123'), pinCode: '2222', fullName: 'Rajesh Kumar (Senior Tech)', roleId: 'ROLE_TECHNICIAN', phone: '+91 98765 00003', commissionPct: 15.0 },
+    { id: 'USR_TECH2', username: 'tech2', passwordHash: hashPassword('tech123'), pinCode: '3333', fullName: 'Suresh P. (Chip-Level Specialist)', roleId: 'ROLE_TECHNICIAN', phone: '+91 98765 00004', commissionPct: 20.0 },
+    { id: 'USR_ACCOUNTS', username: 'accounts', passwordHash: hashPassword('accounts123'), pinCode: '4444', fullName: 'Priya S. (Accounts Manager)', roleId: 'ROLE_ACCOUNTS', phone: '+91 98765 00005', commissionPct: 0.0 },
+  ];
 
+  for (const u of defaultUsers) {
     await client.execute({
-      sql: `INSERT INTO devices (id, customer_id, equipment_type, brand, model_name, serial_number, encrypted_security_passcode, specs_summary)
-            VALUES ('DEV-001', 'CUST-001', 'LAPTOP', 'Lenovo', 'ThinkPad T14 Gen 2', 'PF39AB12', ?, 'Intel Core i7-1165G7, 16GB RAM, 512GB NVMe')`,
-      args: [encryptSecret('user@2026')],
-    });
-
-    await client.execute(`
-      INSERT INTO service_jobs (id, job_number, customer_id, device_id, service_category, current_status, priority, assigned_technician_id, reported_issue, accessories_received, estimated_cost, advance_deposit, created_by)
-      VALUES ('JOB-001', 'JOB-2026-00001', 'CUST-001', 'DEV-001', 'CHIP_LEVEL', 'UNDER_INSPECTION', 'NORMAL', 'USR_TECH1', 'No power, battery light blinks orange 3 times and turns off', '["CHARGER", "BAG"]', 3500.0, 500.0, 'USR_RECEPTION')
-    `);
-
-    await client.execute(`
-      INSERT INTO job_status_history (id, job_id, previous_status, new_status, changed_by, reason_or_notes)
-      VALUES ('JSH-001', 'JOB-001', NULL, 'RECEIVED', 'USR_RECEPTION', 'Intake completed at counter')
-    `);
-    await client.execute(`
-      INSERT INTO job_status_history (id, job_id, previous_status, new_status, changed_by, reason_or_notes)
-      VALUES ('JSH-002', 'JOB-001', 'RECEIVED', 'UNDER_INSPECTION', 'USR_TECH1', 'Technician started mother board diagnostic check')
-    `);
-
-    await client.execute({
-      sql: `INSERT INTO settings (key, value, category) VALUES (?, '1', 'SEQUENCE') ON CONFLICT(key) DO UPDATE SET value = '1'`,
-      args: [`sequence.job_counter_${currentYear}`],
+      sql: `INSERT INTO users (id, username, password_hash, pin_code, full_name, role_id, phone, commission_pct) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [u.id, u.username, u.passwordHash, u.pinCode, u.fullName, u.roleId, u.phone, u.commissionPct],
     });
   }
+
+  await client.execute(`
+    INSERT INTO customers (id, customer_code, full_name, primary_phone, email, customer_type, notes)
+    VALUES ('CUST-001', 'CUST-10001', 'Karthik Ramanathan', '+91 98430 11223', 'karthik.r@gmail.com', 'INDIVIDUAL', 'Regular client')
+  `);
+
+  await client.execute({
+    sql: `INSERT INTO devices (id, customer_id, equipment_type, brand, model_name, serial_number, encrypted_security_passcode, specs_summary)
+          VALUES ('DEV-001', 'CUST-001', 'LAPTOP', 'Lenovo', 'ThinkPad T14 Gen 2', 'PF39AB12', ?, 'Intel Core i7-1165G7, 16GB RAM, 512GB NVMe')`,
+    args: [encryptSecret('user@2026')],
+  });
+
+  await client.execute(`
+    INSERT INTO service_jobs (id, job_number, customer_id, device_id, service_category, current_status, priority, assigned_technician_id, reported_issue, accessories_received, estimated_cost, advance_deposit, created_by)
+    VALUES ('JOB-001', 'JOB-2026-00001', 'CUST-001', 'DEV-001', 'CHIP_LEVEL', 'UNDER_INSPECTION', 'NORMAL', 'USR_TECH1', 'No power, battery light blinks orange 3 times and turns off', '["CHARGER", "BAG"]', 3500.0, 500.0, 'USR_RECEPTION')
+  `);
+
+  await client.execute(`
+    INSERT INTO job_status_history (id, job_id, previous_status, new_status, changed_by, reason_or_notes)
+    VALUES ('JSH-001', 'JOB-001', NULL, 'RECEIVED', 'USR_RECEPTION', 'Intake completed at counter')
+  `);
+  await client.execute(`
+    INSERT INTO job_status_history (id, job_id, previous_status, new_status, changed_by, reason_or_notes)
+    VALUES ('JSH-002', 'JOB-001', 'RECEIVED', 'UNDER_INSPECTION', 'USR_TECH1', 'Technician started mother board diagnostic check')
+  `);
+
+  await client.execute({
+    sql: `INSERT INTO settings (key, value, category) VALUES (?, '1', 'SEQUENCE') ON CONFLICT(key) DO UPDATE SET value = '1'`,
+    args: [`sequence.job_counter_${currentYear}`],
+  });
 }

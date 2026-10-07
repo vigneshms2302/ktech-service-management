@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KTech Support Engineer — Master Challenge Unlock Portal</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card: #111827;
+      --card-border: #1f2937;
+      --accent: #a855f7;
+      --accent-hover: #9333ea;
+      --text: #f9fafb;
+      --text-muted: #9ca3af;
+      --success: #22c55e;
+      --error: #ef4444;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .portal-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      max-width: 520px;
+      width: 100%;
+      padding: 32px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    }
+    .brand-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #a855f7, #6366f1);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 20px;
+      color: #fff;
+    }
+    h1 {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .free-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--success);
+      padding: 2px 8px;
+      border-radius: 12px;
+      margin-top: 8px;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .info-box {
+      background: rgba(168, 85, 247, 0.08);
+      border: 1px solid rgba(168, 85, 247, 0.25);
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #e9d5ff;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      background: #0d1322;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 15px;
+      font-family: "Consolas", "Courier New", monospace;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+    }
+    button.btn-primary {
+      width: 100%;
+      padding: 12px;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button.btn-primary:hover {
+      background: var(--accent-hover);
+    }
+    .result-section {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--card-border);
+      display: none;
+    }
+    .token-box {
+      background: #0d1322;
+      border: 1px dashed var(--accent);
+      padding: 14px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+    }
+    .token-value {
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 17px;
+      font-weight: 800;
+      color: #c084fc;
+      letter-spacing: 2px;
+    }
+    .copy-btn {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .copy-btn:hover {
+      background: #1f2937;
+    }
+    .instructions {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 14px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="portal-card">
+    <div class="brand-header">
+      <div class="brand-icon">K</div>
+      <div>
+        <h1>KTech Support Command Portal</h1>
+        <div class="subtitle">Zero-Cost Offline Cryptographic Session Generator</div>
+        <span class="free-badge">100% Offline & Free (No Hosting Needed)</span>
+      </div>
+    </div>
+
+    <div class="info-box">
+      When a customer calls or messages you for support, ask them to click <strong>"Generate Support Code"</strong> inside their K-Connect app. Paste the 8-character code below to issue a 2-hour single-use unlock token.
+    </div>
+
+    <form id="tokenForm">
+      <div class="form-group">
+        <label for="challengeInput">Customer Challenge Code</label>
+        <input 
+          type="text" 
+          id="challengeInput" 
+          placeholder="e.g. KT-98A4-B2C1" 
+          maxlength="20" 
+          required 
+          autocomplete="off"
+        >
+      </div>
+
+      <button type="submit" class="btn-primary">Generate 2-Hour Unlock Token</button>
+    </form>
+
+    <div class="result-section" id="resultSection">
+      <label>Authorization Token (Provide this to client):</label>
+      <div class="token-box">
+        <span class="token-value" id="tokenDisplay"></span>
+        <button class="copy-btn" id="copyBtn" type="button">Copy</button>
+      </div>
+
+      <div class="instructions">
+        <strong>Session Duration:</strong> This token grants 120 minutes of elevated diagnostic and maintenance privileges (SQLite vacuum, index rebuild, orphan cleanup). All actions are permanently audited.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPPORT_SALT = 'ktech-remote-support-challenge-epoch-2026';
+
+    async function computeHmacSha256(secret, message) {
+      const enc = new TextEncoder();
+      const keyData = enc.encode(secret);
+      const msgData = enc.encode(message);
+
+      const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+
+      const signature = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+      const hashArray = Array.from(new Uint8Array(signature));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
+
+    document.getElementById('tokenForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const rawInput = document.getElementById('challengeInput').value.trim().toUpperCase();
+      if (!rawInput) return;
+
+      const digest = await computeHmacSha256(SUPPORT_SALT, rawInput);
+      const token = `SUP-${digest.substring(0, 4)}-${digest.substring(4, 8)}-${digest.substring(8, 12)}`;
+
+      document.getElementById('tokenDisplay').textContent = token;
+      document.getElementById('resultSection').style.display = 'block';
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      const tokenText = document.getElementById('tokenDisplay').textContent;
+      if (tokenText) {
+        navigator.clipboard.writeText(tokenText);
+        const btn = document.getElementById('copyBtn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2500);
+      }
+    });
+  </script>
+</body>
+</html>
