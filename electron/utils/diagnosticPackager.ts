@@ -220,7 +220,7 @@ export async function createDiagnosticZipBundle(customOutputDir?: string): Promi
     const systemMetadata = {
       app: {
         name: 'KTech Service Management',
-        version: '1.1.0',
+        version: '1.2.0',
         environment: process.env.NODE_ENV || 'production',
       },
       system: {
