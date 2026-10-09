@@ -446,14 +446,14 @@ export interface ElectronAPI {
     factoryReset: () => Promise<IPCResponse<void>>;
     getHealth: () => Promise<IPCResponse<SystemHealth>>;
     getAuditLogs: (params: { limit?: number }) => Promise<IPCResponse<AuditLogEntry[]>>;
-    createBackup: (params: { backupType?: 'AUTO' | 'MANUAL' | 'PRE_RESTORE'; targetDir?: string }) => Promise<IPCResponse<{ backupId: string; backupPath: string; fileSizeBytes: number }>>;
+    createBackup: (params?: { backupType?: 'AUTO' | 'MANUAL' | 'PRE_RESTORE'; targetDir?: string; openFolder?: boolean }) => Promise<IPCResponse<{ backupId: string; backupPath: string; fileSizeBytes: number }>>;
     getSettings: () => Promise<IPCResponse<Record<string, string>>>;
     updateSetting: (params: { key: string; value: string }) => Promise<IPCResponse<void>>;
     getDiagnosticsInfo: () => Promise<IPCResponse<{
       database: Record<string, unknown>;
       logs: { retentionDays: number; logFiles: Array<{ fileName: string; filePath: string; sizeBytes: number; lastModified: string; dateStr: string }>; totalLogsCount: number };
     }>>;
-    exportDiagnostics: (payload?: { customOutputDir?: string }) => Promise<{
+    exportDiagnostics: (payload?: { customOutputDir?: string; openFolder?: boolean }) => Promise<{
       success: boolean;
       archivePath?: string;
       archiveSizeBytes?: number;
@@ -507,6 +507,8 @@ export interface ElectronAPI {
     deactivateWorkstation: (params: { machineId: string }) => Promise<{ success: boolean; message?: string; error?: string }>;
     reactivateWorkstation: (params: { machineId: string }) => Promise<{ success: boolean; message?: string; error?: string }>;
     setWorkstationSeatLimit: (params: { maxSeats: number }) => Promise<IPCResponse<{ maxSeats: number }>>;
+    showItemInFolder: (params: { path: string }) => Promise<IPCResponse>;
+    openPath: (params: { path: string }) => Promise<IPCResponse>;
   };
   vault: {
     unlockPasscode: (params: { deviceId: string }) => Promise<IPCResponse<{ passcode: string }>>;

@@ -9,6 +9,8 @@ import {
   Calendar,
   Layers,
   Terminal,
+  FolderOpen,
+  ExternalLink,
 } from 'lucide-react';
 
 export const DiagnosticsTab: React.FC = () => {
@@ -81,8 +83,11 @@ export const DiagnosticsTab: React.FC = () => {
     setExportResult(null);
     try {
       if (window.electronAPI?.system?.exportDiagnostics) {
-        const res = await window.electronAPI.system.exportDiagnostics();
+        const res = await window.electronAPI.system.exportDiagnostics({ openFolder: true });
         setExportResult(res);
+        if (res.success && res.archivePath) {
+          window.electronAPI?.system?.showItemInFolder?.({ path: res.archivePath });
+        }
       }
     } catch (err: unknown) {
       setExportResult({ success: false, error: (err as Error).message });
@@ -175,30 +180,92 @@ export const DiagnosticsTab: React.FC = () => {
       {exportResult && (
         <div
           style={{
-            padding: '10px 14px',
+            padding: '12px 14px',
             borderRadius: '6px',
             fontSize: '12px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '10px',
             backgroundColor: exportResult.success ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
             border: `1px solid ${exportResult.success ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
             color: exportResult.success ? '#22c55e' : '#ef4444',
           }}
         >
-          {exportResult.success ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-          <div style={{ flex: 1 }}>
-            {exportResult.success ? (
-              <>
-                <strong>Diagnostics Bundle Created:</strong> {exportResult.archivePath} (
-                {formatBytes(exportResult.archiveSizeBytes)})
-              </>
-            ) : (
-              <>
-                <strong>Failed to export bundle:</strong> {exportResult.error}
-              </>
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '240px' }}>
+            {exportResult.success ? <CheckCircle2 size={18} style={{ flexShrink: 0 }} /> : <AlertTriangle size={18} style={{ flexShrink: 0 }} />}
+            <div>
+              {exportResult.success ? (
+                <>
+                  <div><strong>Diagnostics Bundle Created:</strong> ({formatBytes(exportResult.archiveSizeBytes)})</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-dim)', wordBreak: 'break-all', marginTop: '2px' }}>
+                    {exportResult.archivePath}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <strong>Failed to export bundle:</strong> {exportResult.error}
+                </>
+              )}
+            </div>
           </div>
+
+          {exportResult.success && exportResult.archivePath && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (exportResult.archivePath) {
+                    window.electronAPI?.system?.showItemInFolder?.({ path: exportResult.archivePath });
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '6px 12px',
+                  backgroundColor: '#16a34a',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+                title="Open Windows File Explorer and highlight this file"
+              >
+                <FolderOpen size={13} />
+                <span>Open Folder</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (exportResult.archivePath) {
+                    window.electronAPI?.system?.openPath?.({ path: exportResult.archivePath });
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '6px 12px',
+                  backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                  color: '#22c55e',
+                  border: '1px solid rgba(34, 197, 94, 0.4)',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+                title="Open the zip file directly with default application"
+              >
+                <ExternalLink size={13} />
+                <span>Open Zip</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -68,7 +68,7 @@ const electronAPI = {
       ipcRenderer.invoke('system:getHealth'),
     getAuditLogs: (params: { limit?: number }): Promise<IPCResponse> =>
       ipcRenderer.invoke('system:getAuditLogs', params),
-    createBackup: (params: { backupType?: 'AUTO' | 'MANUAL' | 'PRE_RESTORE'; targetDir?: string }): Promise<IPCResponse> =>
+    createBackup: (params?: { backupType?: 'AUTO' | 'MANUAL' | 'PRE_RESTORE'; targetDir?: string; openFolder?: boolean }): Promise<IPCResponse<{ backupId: string; backupPath: string; fileSizeBytes: number }>> =>
       ipcRenderer.invoke('system:createBackup', params),
     getSettings: (): Promise<IPCResponse> =>
       ipcRenderer.invoke('system:getSettings'),
@@ -78,7 +78,7 @@ const electronAPI = {
       database: Record<string, unknown>;
       logs: { retentionDays: number; logFiles: unknown[]; totalLogsCount: number };
     }>> => ipcRenderer.invoke('system:getDiagnosticsInfo'),
-    exportDiagnostics: (payload?: { customOutputDir?: string }): Promise<{
+    exportDiagnostics: (payload?: { customOutputDir?: string; openFolder?: boolean }): Promise<{
       success: boolean;
       archivePath?: string;
       archiveSizeBytes?: number;
@@ -142,6 +142,10 @@ const electronAPI = {
       ipcRenderer.invoke('system:reactivateWorkstation', params),
     setWorkstationSeatLimit: (params: { maxSeats: number }): Promise<IPCResponse<{ maxSeats: number }>> =>
       ipcRenderer.invoke('system:setWorkstationSeatLimit', params),
+    showItemInFolder: (params: { path: string }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('system:showItemInFolder', params),
+    openPath: (params: { path: string }): Promise<IPCResponse> =>
+      ipcRenderer.invoke('system:openPath', params),
   },
 
   // Secure Vault

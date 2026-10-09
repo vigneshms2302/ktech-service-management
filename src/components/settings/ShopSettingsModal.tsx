@@ -19,6 +19,8 @@ import {
   RotateCw,
   Activity,
   Shield,
+  FolderOpen,
+  ExternalLink,
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext.tsx';
 import { useAuth } from '../../context/AuthContext.tsx';
@@ -257,10 +259,13 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
     setBackupResult(null);
     try {
       if (window.electronAPI?.system?.createBackup) {
-        const res = await window.electronAPI.system.createBackup({ backupType: 'MANUAL' });
+        const res = await window.electronAPI.system.createBackup({ backupType: 'MANUAL', openFolder: true });
         if (res.success && res.data) {
           const sizeKb = (res.data.fileSizeBytes / 1024).toFixed(1);
           setBackupResult({ path: res.data.backupPath, size: `${sizeKb} KB` });
+          if (res.data.backupPath) {
+            window.electronAPI?.system?.showItemInFolder?.({ path: res.data.backupPath });
+          }
         } else {
           alert(res.error || 'Backup creation failed');
         }
@@ -917,10 +922,78 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                 </div>
 
                 {backupResult && (
-                  <div style={{ padding: '10px', borderRadius: '6px', backgroundColor: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.3)', fontSize: '11px', color: 'var(--color-success)' }}>
-                    <strong>Backup Created Successfully!</strong> ({backupResult.size})
-                    <div style={{ marginTop: '2px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-dim)', wordBreak: 'break-all' }}>
-                      {backupResult.path}
+                  <div style={{
+                    padding: '12px 14px',
+                    borderRadius: '6px',
+                    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                    fontSize: '11px',
+                    color: 'var(--color-success)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                  }}>
+                    <div style={{ flex: 1, minWidth: '220px' }}>
+                      <strong>Backup Created Successfully!</strong> ({backupResult.size})
+                      <div style={{ marginTop: '2px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-dim)', wordBreak: 'break-all' }}>
+                        {backupResult.path}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (backupResult.path) {
+                            window.electronAPI?.system?.showItemInFolder?.({ path: backupResult.path });
+                          }
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          padding: '6px 12px',
+                          backgroundColor: '#16a34a',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                        title="Open Windows File Explorer and highlight this backup"
+                      >
+                        <FolderOpen size={13} />
+                        <span>Open Folder</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (backupResult.path) {
+                            window.electronAPI?.system?.openPath?.({ path: backupResult.path });
+                          }
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          padding: '6px 12px',
+                          backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                          color: '#22c55e',
+                          border: '1px solid rgba(34, 197, 94, 0.4)',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                        title="Open file with default application"
+                      >
+                        <ExternalLink size={13} />
+                        <span>Open File</span>
+                      </button>
                     </div>
                   </div>
                 )}

@@ -1,4 +1,5 @@
-import { ipcMain } from 'electron';
+import { ipcMain, shell } from 'electron';
+import path from 'node:path';
 import { getClient, logAudit, createDatabaseBackup, getDatabasePath } from '../db/database.ts';
 import { getActiveSession, setActiveSession, type UserSession } from './authIpc.ts';
 import { seedDatabase } from '../db/seed.ts';
@@ -381,7 +382,7 @@ export function registerSystemIpc(): void {
   });
 
   // Create Standalone Database Backup
-  ipcMain.handle('system:createBackup', async (_event, { backupType = 'MANUAL', targetDir }) => {
+  ipcMain.handle('system:createBackup', async (_event, { backupType = 'MANUAL', targetDir, openFolder = true }: { backupType?: 'MANUAL' | 'AUTO' | 'PRE_RESTORE'; targetDir?: string; openFolder?: boolean } = {}) => {
     try {
       const session = getActiveSession();
       const result = await createDatabaseBackup(backupType, targetDir);
@@ -392,6 +393,14 @@ export function registerSystemIpc(): void {
           sizeBytes: result.fileSizeBytes,
           type: backupType,
         });
+      }
+
+      if (openFolder && result.backupPath) {
+        try {
+          shell.showItemInFolder(result.backupPath);
+        } catch (shellErr) {
+          logger.warn('SystemIPC', 'Could not open backup folder in shell', { error: String(shellErr) });
+        }
       }
 
       return { success: true, data: result };
@@ -475,9 +484,18 @@ export function registerSystemIpc(): void {
   });
 
   // Export 7-Day Compressed Diagnostic Zip Bundle
-  ipcMain.handle('system:exportDiagnostics', async (_event, payload?: { customOutputDir?: string }) => {
+  ipcMain.handle('system:exportDiagnostics', async (_event, payload?: { customOutputDir?: string; openFolder?: boolean }) => {
     try {
       const result = await createDiagnosticZipBundle(payload?.customOutputDir);
+      if (result.success && result.archivePath) {
+        if (payload?.openFolder !== false) {
+          try {
+            shell.showItemInFolder(result.archivePath);
+          } catch (shellErr) {
+            logger.warn('SystemIPC', 'Could not open diagnostics folder in shell', { error: String(shellErr) });
+          }
+        }
+      }
       return result;
     } catch (error: unknown) {
       logger.error('SystemIPC', 'Failed exporting diagnostics bundle', error);
@@ -647,5 +665,38 @@ export function registerSystemIpc(): void {
       return { success: false, error: (error as Error).message };
     }
   });
+
+  // Open and reveal file in Windows File Explorer
+  ipcMain.handle('system:showItemInFolder', async (_event, { path: targetPath }: { path: string }) => {
+    try {
+      if (fs.existsSync(targetPath)) {
+        shell.showItemInFolder(targetPath);
+        return { success: true };
+      } else {
+        const dir = path.dirname(targetPath);
+        if (fs.existsSync(dir)) {
+          await shell.openPath(dir);
+          return { success: true };
+        }
+        return { success: false, error: 'File or directory does not exist' };
+      }
+    } catch (err: unknown) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
+
+  // Launch file or directory with default OS handler
+  ipcMain.handle('system:openPath', async (_event, { path: targetPath }: { path: string }) => {
+    try {
+      const errMsg = await shell.openPath(targetPath);
+      if (errMsg) {
+        return { success: false, error: errMsg };
+      }
+      return { success: true };
+    } catch (err: unknown) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
 }
+
 
