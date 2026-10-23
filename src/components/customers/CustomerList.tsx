@@ -31,7 +31,12 @@ export const CustomerList: React.FC<CustomerListProps> = ({
       if (window.electronAPI?.customers?.list) {
         const res = await window.electronAPI.customers.list({ search: searchQuery, limit: 100 });
         if (res.success && res.data) {
-          setCustomers(res.data.customers);
+          const custList = Array.isArray(res.data.customers)
+            ? res.data.customers
+            : Array.isArray(res.data)
+            ? res.data
+            : [];
+          setCustomers(custList);
         }
       }
     } finally {
@@ -144,14 +149,14 @@ export const CustomerList: React.FC<CustomerListProps> = ({
             </tr>
           </thead>
           <tbody>
-            {customers.length === 0 ? (
+            {(customers || []).length === 0 ? (
               <tr>
                 <td colSpan={10} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>
                   {isLoading ? 'Searching customer database...' : 'No customer records found matching your search.'}
                 </td>
               </tr>
             ) : (
-              customers.map((c) => (
+              (customers || []).map((c) => (
                 <tr
                   key={c.id}
                   style={{ cursor: 'pointer' }}

@@ -32,7 +32,12 @@ export const JobList: React.FC<JobListProps> = ({ onSelectJob, onNewJob }) => {
           limit: 100,
         });
         if (res.success && res.data) {
-          setJobs(res.data.jobs);
+          const jobsList = Array.isArray(res.data.jobs)
+            ? res.data.jobs
+            : Array.isArray(res.data)
+            ? res.data
+            : [];
+          setJobs(jobsList);
         }
       }
     } finally {
@@ -214,14 +219,14 @@ export const JobList: React.FC<JobListProps> = ({ onSelectJob, onNewJob }) => {
             </tr>
           </thead>
           <tbody>
-            {jobs.length === 0 ? (
+            {(jobs || []).length === 0 ? (
               <tr>
                 <td colSpan={10} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>
                   {isLoading ? 'Loading service jobs...' : 'No service jobs matching the selected criteria.'}
                 </td>
               </tr>
             ) : (
-              jobs.map((job) => (
+              (jobs || []).map((job) => (
                 <tr
                   key={job.id}
                   style={{ cursor: 'pointer' }}

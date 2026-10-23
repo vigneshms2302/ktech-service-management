@@ -108,7 +108,9 @@ export const EquipmentProfile: React.FC<EquipmentProfileProps> = ({
     );
   }
 
-  const { device, jobs, photos } = data;
+  const device = data.device;
+  const jobs = Array.isArray(data.jobs) ? data.jobs : [];
+  const photos = Array.isArray(data.photos) ? data.photos : [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', padding: '20px' }}>

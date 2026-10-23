@@ -115,8 +115,13 @@ export const InventoryWorkspace: React.FC = () => {
         });
 
         if (res.success && res.data) {
-          setItems(res.data.items as InventoryItem[]);
-          setMetrics(res.data.metrics);
+          const itemsList = Array.isArray(res.data.items)
+            ? res.data.items
+            : Array.isArray(res.data)
+            ? res.data
+            : [];
+          setItems(itemsList as InventoryItem[]);
+          if (res.data.metrics) setMetrics(res.data.metrics);
         }
       }
 
@@ -527,14 +532,14 @@ export const InventoryWorkspace: React.FC = () => {
                       Loading inventory master...
                     </td>
                   </tr>
-                ) : items.length === 0 ? (
+                ) : (items || []).length === 0 ? (
                   <tr>
                     <td colSpan={8} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-dim)' }}>
                       No inventory items found.
                     </td>
                   </tr>
                 ) : (
-                  items.map((item) => (
+                  (items || []).map((item) => (
                     <tr key={item.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                       <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--brand-primary)' }}>
                         {item.sku}

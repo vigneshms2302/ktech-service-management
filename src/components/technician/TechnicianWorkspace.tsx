@@ -102,7 +102,12 @@ export const TechnicianWorkspace: React.FC<TechnicianWorkspaceProps> = ({ onOpen
       });
 
       if (res?.success && res.data) {
-        setJobs(res.data.jobs);
+        const jobsList = Array.isArray(res.data.jobs)
+          ? res.data.jobs
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+        setJobs(jobsList);
       } else {
         setError(res?.error || 'Failed to load technician jobs');
       }
@@ -454,7 +459,7 @@ export const TechnicianWorkspace: React.FC<TechnicianWorkspaceProps> = ({ onOpen
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
             Loading technician workstation tickets...
           </div>
-        ) : jobs.length === 0 ? (
+        ) : (jobs || []).length === 0 ? (
           <div
             style={{
               padding: '40px',

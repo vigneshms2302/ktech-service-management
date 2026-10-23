@@ -82,7 +82,11 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
     );
   }
 
-  const { customer, address, devices, jobs } = profile;
+  const customer = profile.customer;
+  const address = profile.address;
+  const devices = Array.isArray(profile.devices) ? profile.devices : [];
+  const jobs = Array.isArray(profile.jobs) ? profile.jobs : [];
+  const invoicesList = Array.isArray(customerInvoices) ? customerInvoices : [];
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -308,7 +312,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
             fontSize: '12px',
           }}
         >
-          Invoices & Billing ({customerInvoices.length})
+          Invoices & Billing ({invoicesList.length})
         </button>
       </div>
 
@@ -478,7 +482,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
       {/* Tab 3: Customer Invoices & Bills */}
       {activeTab === 'invoices' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          {customerInvoices.length === 0 ? (
+          {invoicesList.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '36px' }}>
               <Receipt size={32} color="var(--text-dim)" style={{ margin: '0 auto 10px' }} />
               <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No invoices or bills generated for this customer yet.</p>
@@ -498,7 +502,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {customerInvoices.map((inv) => (
+                {invoicesList.map((inv) => (
                   <tr key={inv.id as string}>
                     <td>
                       <strong style={{ color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
