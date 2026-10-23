@@ -16,10 +16,11 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
+    "esModuleInterop": true,
     "paths": {
       "@/*": ["src/*"],
       "@electron/*": ["electron/*"]
     }
   },
-  "include": ["src", "electron", "tests"]
+  "include": ["src", "electron", "tests", "server", "api"]
 }

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { ServiceJobSummary } from '../../types/index.ts';
 import { useShop } from '../../context/ShopContext.tsx';
+import { saasApi } from '../../api/client.ts';
 
 interface ExecutiveDashboardProps {
   onNewJob: () => void;
@@ -36,32 +37,36 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
 
   const [recentJobs, setRecentJobs] = useState<ServiceJobSummary[]>([]);
   const [pendingQuotes, setPendingQuotes] = useState<Array<Record<string, unknown>>>([]);
-  const [failureBreakdown, setFailureBreakdown] = useState<Array<{ equipment_type: string; job_count: number }>>([]);
+  const [failureBreakdown] = useState<Array<{ equipment_type: string; job_count: number }>>([]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [hoveredDataPoint, setHoveredDataPoint] = useState<{ day: string; revenue: number; jobs: number } | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true);
     try {
-      if (window.electronAPI?.reports?.getOverview) {
-        const oRes = await window.electronAPI.reports.getOverview();
+      // Load overview from SaaS API
+      try {
+        const oRes = await saasApi.reports.getOverview();
         if (oRes.success && oRes.data) setOverview(oRes.data);
-      }
+      } catch (_) { /* overview optional */ }
 
-      if (window.electronAPI?.jobs?.list) {
-        const jRes = await window.electronAPI.jobs.list({ limit: 6 });
-        if (jRes.success && jRes.data) setRecentJobs(jRes.data.jobs);
-      }
+      // Load recent jobs
+      try {
+        const jRes = await saasApi.jobs.list({ limit: 6 });
+        if (jRes.success && Array.isArray(jRes.data)) {
+          setRecentJobs(jRes.data);
+        } else if (jRes.success && jRes.data?.jobs) {
+          setRecentJobs(jRes.data.jobs);
+        }
+      } catch (_) { /* jobs optional */ }
 
-      if (window.electronAPI?.billing?.listQuotations) {
-        const qRes = await window.electronAPI.billing.listQuotations({ status: 'PENDING' });
+      // Pending quotes via billing API
+      try {
+        const qRes = await saasApi.billing.listQuotations({ status: 'PENDING' });
         if (qRes.success && qRes.data) setPendingQuotes(qRes.data);
-      }
+      } catch (_) { /* quotes optional */ }
 
-      if (window.electronAPI?.reports?.getEquipmentFailureBreakdown) {
-        const fRes = await window.electronAPI.reports.getEquipmentFailureBreakdown();
-        if (fRes.success && fRes.data) setFailureBreakdown(fRes.data);
-      }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
@@ -127,43 +132,136 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
   let accumulatedOffset = 0;
 
   return (
-    <div style={{ padding: '20px', height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-      {/* 1. Header Banner & Instant Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.3px', margin: 0 }}>
-            {shopSettings.shopName ? `${shopSettings.shopName} Operations Center` : 'KTech Operations Center'}
-          </h1>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '3px' }}>
-            Live daily register • Repair pitstops • Financial collections • WhatsApp ready
-          </p>
+    <div style={{ padding: '24px', height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* 1. ChatGPT Style Greeting & Prompt Cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#10a37f', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Operational Command
+              </span>
+            </div>
+            <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.5px', margin: 0 }}>
+              {shopSettings.shopName ? `${shopSettings.shopName} Dashboard` : 'KTech Operations Hub'}
+            </h1>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              Multi-workstation cloud sync active • Real-time repair pipelines & financial telemetry
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={fetchDashboardData}
+              disabled={isLoading}
+              style={{ padding: '8px 14px', borderRadius: '9999px' }}
+            >
+              <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
+              <span>Sync Cloud</span>
+            </button>
+
+            <button
+              className="btn btn-primary"
+              onClick={onNewJob}
+              style={{
+                padding: '8px 18px',
+                fontSize: '13px',
+                fontWeight: 600,
+                borderRadius: '9999px',
+                boxShadow: '0 4px 14px rgba(16, 163, 127, 0.35)',
+              }}
+            >
+              <Plus size={16} />
+              <span>New Job Card</span>
+            </button>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            className="btn btn-secondary"
-            onClick={fetchDashboardData}
-            disabled={isLoading}
-            style={{ padding: '7px 12px' }}
-          >
-            <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
-            <span>Refresh</span>
-          </button>
-
-          <button
-            className="btn btn-primary"
-            onClick={onNewJob}
-            style={{
-              padding: '8px 18px',
-              fontSize: '13px',
-              fontWeight: 700,
-              backgroundColor: 'var(--brand-primary)',
-              boxShadow: '0 3px 12px rgba(2, 132, 199, 0.4)',
-            }}
-          >
-            <Plus size={16} />
-            <span>New Job Card</span>
-          </button>
+        {/* ChatGPT Home Screen Quick-Prompt Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+          {[
+            {
+              title: 'Check-in Repair',
+              subtitle: '13-stage diagnostic intake & customer memo',
+              action: onNewJob,
+              icon: Wrench,
+            },
+            {
+              title: 'Track Device Status',
+              subtitle: 'Live look-up by phone, serial # or QR code',
+              action: () => onNavigateTab('jobs'),
+              icon: Clock,
+            },
+            {
+              title: 'Quick GST Invoice',
+              subtitle: 'Generate 18% GST or 0% non-GST tax bills',
+              action: () => onNavigateTab('billing'),
+              icon: Receipt,
+            },
+            {
+              title: 'Inventory & Stock',
+              subtitle: 'Salvage donor motherboards & chip harvesting',
+              action: () => onNavigateTab('inventory'),
+              icon: Package,
+            },
+          ].map((item, idx) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={idx}
+                onClick={item.action}
+                style={{
+                  padding: '14px 16px',
+                  borderRadius: '16px',
+                  backgroundColor: 'var(--bg-card)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-main)',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  transition: 'background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-surface-hover)';
+                  (e.currentTarget as HTMLElement).style.borderColor = 'rgba(16, 163, 127, 0.4)';
+                  (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-card)';
+                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-color)';
+                  (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                }}
+              >
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '10px',
+                    backgroundColor: 'rgba(16, 163, 127, 0.12)',
+                    color: '#10a37f',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Icon size={16} />
+                </div>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)' }}>
+                    {item.title}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px', lineHeight: 1.3 }}>
+                    {item.subtitle}
+                  </div>
+                </div>
+                <ArrowRight size={14} color="var(--text-dim)" style={{ marginTop: '2px' }} />
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -312,8 +410,8 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
             <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ width: '100%', height: '170px' }}>
               <defs>
                 <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.45" />
-                  <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.0" />
+                  <stop offset="0%" stopColor="#10a37f" stopOpacity="0.45" />
+                  <stop offset="100%" stopColor="#10a37f" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
 
@@ -332,7 +430,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
 
               {/* Area & Line */}
               <path d={areaD} fill="url(#areaGradient)" />
-              <path d={pathD} fill="none" stroke="#0ea5e9" strokeWidth="3" strokeLinecap="round" />
+              <path d={pathD} fill="none" stroke="#10a37f" strokeWidth="3" strokeLinecap="round" />
 
               {/* Data Points */}
               {points.map((p, idx) => (
@@ -341,7 +439,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
                     cx={p.x}
                     cy={p.y}
                     r={hoveredDataPoint?.day === p.day ? 6 : 4}
-                    fill="#0ea5e9"
+                    fill="#10a37f"
                     stroke="#ffffff"
                     strokeWidth="2"
                   />
@@ -503,7 +601,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
                   <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
                       <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
-                        {f.equipment_type.replace(/_/g, ' ')}
+                        {(f.equipment_type || 'HARDWARE').replace(/_/g, ' ')}
                       </span>
                       <span style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
                         {f.job_count} devices
@@ -578,12 +676,12 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
                     </td>
                     <td>
                       <span className={`badge ${j.currentStatus === 'READY_FOR_DELIVERY' || j.currentStatus === 'DELIVERED' ? 'badge-success' : j.currentStatus === 'UNDER_REPAIR' ? 'badge-info' : 'badge-warning'}`}>
-                        {j.currentStatus.replace(/_/g, ' ')}
+                        {(j.currentStatus || 'RECEIVED').replace(/_/g, ' ')}
                       </span>
                     </td>
                     <td>
                       <span className={`badge ${j.priority === 'CRITICAL' || j.priority === 'URGENT' ? 'badge-danger' : 'badge-neutral'}`}>
-                        {j.priority}
+                        {j.priority || 'NORMAL'}
                       </span>
                     </td>
                     <td>

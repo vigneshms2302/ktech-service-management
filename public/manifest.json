@@ -1,0 +1,36 @@
+{
+  "short_name": "K-Connect",
+  "name": "K-Connect - Repair & Service Cloud OS",
+  "description": "ChatGPT-style Cloud SaaS Service Management Platform for Computer & Electronics Repair Businesses",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#171717",
+  "theme_color": "#212121",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "categories": ["business", "productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "New Job Card",
+      "short_name": "New Job",
+      "description": "Quick intake for incoming repair device",
+      "url": "/?action=new-job",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Track Repair",
+      "short_name": "Track",
+      "description": "Look up repair status",
+      "url": "/track",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    }
+  ]
+}

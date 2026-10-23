@@ -6,7 +6,7 @@ interface AuthContextType {
   isLoading: boolean;
   isSetupComplete: boolean;
   userList: UserProfile[];
-  login: (credentials: { username: string; password: string }) => Promise<{ success: boolean; error?: string }>;
+  login: (credentials: { username: string; password: string; shopSlug?: string; isSuperAdmin?: boolean }) => Promise<{ success: boolean; error?: string }>;
   pinLogin: (pinCode: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   hasPermission: (permCode: string) => boolean;
@@ -21,22 +21,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSetupComplete, setIsSetupComplete] = useState<boolean>(true);
+  const isSetupComplete = true;
   const [userList, setUserList] = useState<UserProfile[]>([]);
 
   const checkSetupStatus = async (): Promise<boolean> => {
-    try {
-      if (window.electronAPI?.system?.isSetupComplete) {
-        const res = await window.electronAPI.system.isSetupComplete();
-        if (res.success && res.data) {
-          setIsSetupComplete(res.data.isComplete);
-          return res.data.isComplete;
-        }
-      }
-      return true;
-    } catch {
-      return true;
-    }
+    return true; // Cloud SaaS is always ready out of the box
   };
 
   const refreshUserList = async () => {
@@ -51,15 +40,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const setupDone = await checkSetupStatus();
-        if (setupDone) {
-          if (window.electronAPI?.auth?.getCurrentUser) {
-            const res = await window.electronAPI.auth.getCurrentUser();
-            if (res.success && res.data) {
-              setCurrentUser(res.data);
-            }
+        if (window.electronAPI?.auth?.getCurrentUser) {
+          const res = await window.electronAPI.auth.getCurrentUser();
+          if (res.success && res.data) {
+            setCurrentUser(res.data);
+            await refreshUserList();
           }
-          await refreshUserList();
         }
       } catch (err) {
         console.error('Failed to initialize auth:', err);
@@ -89,7 +75,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
     activityEvents.forEach((evt) => window.addEventListener(evt, resetInactivityTimer, { passive: true }));
 
-    // Start initial timer
     resetInactivityTimer();
 
     return () => {
@@ -98,13 +83,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [currentUser]);
 
-  const login = async (credentials: { username: string; password: string }) => {
+  const login = async (credentials: { username: string; password: string; shopSlug?: string; isSuperAdmin?: boolean }) => {
     if (!window.electronAPI?.auth?.login) {
-      return { success: false, error: 'Electron API unavailable' };
+      return { success: false, error: 'Auth API unavailable' };
     }
     const res = await window.electronAPI.auth.login(credentials);
     if (res.success && res.data) {
       setCurrentUser(res.data);
+      await refreshUserList();
       return { success: true };
     }
     return { success: false, error: res.error || 'Invalid credentials' };

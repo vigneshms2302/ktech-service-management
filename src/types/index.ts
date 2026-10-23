@@ -1,4 +1,4 @@
-export type RoleId = 'ROLE_OWNER' | 'ROLE_RECEPTION' | 'ROLE_TECHNICIAN' | 'ROLE_ACCOUNTS';
+export type RoleId = 'ROLE_SUPER_ADMIN' | 'ROLE_OWNER' | 'ROLE_RECEPTION' | 'ROLE_TECHNICIAN' | 'ROLE_ACCOUNTS';
 
 export interface UserSession {
   id: string;

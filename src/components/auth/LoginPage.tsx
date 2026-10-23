@@ -1,43 +1,37 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Shield,
-  KeyRound,
   Lock,
   User,
   Eye,
   EyeOff,
-  Receipt,
-  MessageSquare,
-  Package,
-  Wrench,
   AlertCircle,
-  Clock,
-  Zap,
-  Sun,
   Moon,
+  Sun,
+  ArrowLeft,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
-import { useShop } from '../../context/ShopContext.tsx';
 import { useTheme } from '../../context/ThemeContext.tsx';
+import { getShopSlug, setShopSlug } from '../../api/client.ts';
 
 export const LoginPage: React.FC = () => {
   const { login, pinLogin, userList } = useAuth();
-  const { shopSettings } = useShop();
   const { theme, toggleTheme } = useTheme();
 
   const isLight = theme === 'light';
 
-  const [activeMode, setActiveMode] = useState<'PIN' | 'PASSWORD'>('PIN');
+  const [activeMode, setActiveMode] = useState<'PASSWORD' | 'PIN'>('PASSWORD');
+  const [shopSlug, setShopSlugState] = useState<string>(() => getShopSlug());
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
   const [selectedUser, setSelectedUser] = useState<string>(() => userList[0]?.id || '');
   const [pinCode, setPinCode] = useState<string>('');
-  const [username, setUsername] = useState<string>(() => userList[0]?.username || '');
+  const [username, setUsername] = useState<string>('admin');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [currentTime, setCurrentTime] = useState<Date>(new Date());
 
-  // Keep selected user updated if userList loads
   useEffect(() => {
     if (userList.length > 0 && !selectedUser) {
       setSelectedUser(userList[0].id);
@@ -45,34 +39,22 @@ export const LoginPage: React.FC = () => {
     }
   }, [userList, selectedUser]);
 
-  // Update live clock every second
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Keyboard support for PIN entry when in PIN mode
+  // Keyboard PIN handler
   useEffect(() => {
     if (activeMode !== 'PIN') return;
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (/^[0-9]$/.test(e.key)) {
-        if (pinCode.length < 6) {
-          handlePinDigit(e.key);
-        }
+        if (pinCode.length < 6) handlePinDigit(e.key);
       } else if (e.key === 'Backspace') {
         setPinCode((prev) => prev.slice(0, -1));
         setError(null);
-      } else if (e.key === 'Enter') {
-        if (pinCode.length >= 4) {
-          handlePinSubmit();
-        }
+      } else if (e.key === 'Enter' && pinCode.length >= 4) {
+        executePinAuth(pinCode);
       } else if (e.key === 'Escape') {
         setPinCode('');
         setError(null);
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeMode, pinCode, selectedUser]);
@@ -82,21 +64,7 @@ export const LoginPage: React.FC = () => {
     setError(null);
     const newPin = pinCode + digit;
     setPinCode(newPin);
-
-    // Auto submit if 4 digits matching standard user PINs
-    if (newPin.length === 4) {
-      executePinAuth(newPin);
-    }
-  };
-
-  const handlePinDelete = () => {
-    setPinCode((prev) => prev.slice(0, -1));
-    setError(null);
-  };
-
-  const handlePinClear = () => {
-    setPinCode('');
-    setError(null);
+    if (newPin.length === 4) executePinAuth(newPin);
   };
 
   const executePinAuth = async (pin: string) => {
@@ -105,7 +73,7 @@ export const LoginPage: React.FC = () => {
     try {
       const res = await pinLogin(pin);
       if (!res.success) {
-        setError(res.error || 'Incorrect PIN code entered');
+        setError(res.error || 'Incorrect PIN');
         setPinCode('');
       }
     } catch (err: unknown) {
@@ -116,688 +84,481 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handlePinSubmit = () => {
-    if (pinCode.length < 4) {
-      setError('Please enter at least 4 digits');
-      return;
-    }
-    executePinAuth(pinCode);
-  };
-
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
       setError('Please enter both username and password');
       return;
     }
-
     setIsLoading(true);
     setError(null);
     try {
-      const res = await login({ username: username.trim(), password });
+      setShopSlug(shopSlug.trim().toLowerCase());
+      const res = await login({
+        username: username.trim(),
+        password,
+        shopSlug: isSuperAdmin ? undefined : shopSlug.trim().toLowerCase(),
+        isSuperAdmin,
+      });
       if (!res.success) {
-        setError(res.error || 'Invalid username or password');
+        setError(res.error || 'Invalid credentials');
       }
     } catch (err: unknown) {
-      setError((err as Error).message || 'Authentication error');
+      setError((err as Error).message || 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const selectQuickUser = (userId: string, targetUsername: string) => {
-    setSelectedUser(userId);
-    setPinCode('');
-    setUsername(targetUsername);
-    setError(null);
-  };
-
-  const getRoleColor = (roleId?: string) => {
-    switch (roleId) {
-      case 'ROLE_OWNER':
-        return {
-          bg: isLight ? 'rgba(168, 85, 247, 0.12)' : 'rgba(168, 85, 247, 0.15)',
-          text: isLight ? '#7e22ce' : '#c084fc',
-          border: '#a855f7',
-        };
-      case 'ROLE_RECEPTION':
-        return {
-          bg: isLight ? 'rgba(59, 130, 246, 0.12)' : 'rgba(59, 130, 246, 0.15)',
-          text: isLight ? '#1d4ed8' : '#60a5fa',
-          border: '#3b82f6',
-        };
-      case 'ROLE_TECHNICIAN':
-        return {
-          bg: isLight ? 'rgba(245, 158, 11, 0.12)' : 'rgba(245, 158, 11, 0.15)',
-          text: isLight ? '#b45309' : '#fbbf24',
-          border: '#f59e0b',
-        };
-      case 'ROLE_ACCOUNTS':
-        return {
-          bg: isLight ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.15)',
-          text: isLight ? '#047857' : '#34d399',
-          border: '#10b981',
-        };
-      default:
-        return {
-          bg: isLight ? 'rgba(100, 116, 139, 0.12)' : 'rgba(148, 163, 184, 0.15)',
-          text: isLight ? '#334155' : '#94a3b8',
-          border: '#64748b',
-        };
-    }
-  };
+  const bg = isLight ? '#ffffff' : '#0a0a0a';
+  const cardBg = isLight ? '#ffffff' : '#111111';
+  const borderCol = isLight ? '#e5e7eb' : '#222222';
+  const textMain = isLight ? '#111827' : '#f9fafb';
+  const textMuted = isLight ? '#6b7280' : '#9ca3af';
+  const inputBg = isLight ? '#f9fafb' : '#1a1a1a';
+  const inputBorder = isLight ? '#d1d5db' : '#2a2a2a';
 
   return (
     <div
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: isLight ? '#f1f5f9' : '#070b14',
-        backgroundImage: isLight
-          ? 'radial-gradient(ellipse 80% 80% at 50% -20%, rgba(2, 132, 199, 0.15), rgba(241, 245, 249, 0))'
-          : 'radial-gradient(ellipse 80% 80% at 50% -20%, rgba(2, 132, 199, 0.18), rgba(255, 255, 255, 0))',
-        color: isLight ? '#0f172a' : '#f8fafc',
-        fontFamily: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        backgroundColor: bg,
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px',
-        zIndex: 9999,
-        overflowY: 'auto',
-        transition: 'background-color 0.25s ease, color 0.25s ease',
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       }}
     >
-      {/* Background Decorative Grid Pattern */}
-      <div
+      {/* Theme Toggle - top right */}
+      <button
+        type="button"
+        onClick={toggleTheme}
         style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: isLight
-            ? 'radial-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px), radial-gradient(rgba(2, 132, 199, 0.05) 1px, transparent 1px)'
-            : 'radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), radial-gradient(rgba(2, 132, 199, 0.04) 1px, transparent 1px)',
-          backgroundSize: '32px 32px',
-          backgroundPosition: '0 0, 16px 16px',
-          pointerEvents: 'none',
-          opacity: isLight ? 0.8 : 0.7,
-        }}
-      />
-
-      <div
-        style={{
-          position: 'relative',
-          width: '100%',
-          maxWidth: '1050px',
-          backgroundColor: isLight ? 'rgba(255, 255, 255, 0.94)' : 'rgba(15, 23, 42, 0.82)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: isLight ? '1px solid rgba(2, 132, 199, 0.22)' : '1px solid rgba(56, 189, 248, 0.2)',
-          borderRadius: '20px',
-          boxShadow: isLight
-            ? '0 20px 50px -10px rgba(15, 23, 42, 0.12), 0 0 35px -5px rgba(2, 132, 199, 0.15)'
-            : '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 40px -10px rgba(2, 132, 199, 0.25)',
-          display: 'grid',
-          gridTemplateColumns: '1.1fr 1fr',
-          overflow: 'hidden',
-          minHeight: '620px',
-          transition: 'all 0.25s ease',
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          width: '36px',
+          height: '36px',
+          borderRadius: '8px',
+          border: `1px solid ${borderCol}`,
+          backgroundColor: cardBg,
+          color: textMuted,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
         }}
       >
-        {/* Floating Theme Toggle Switch in top-right of container */}
-        <button
-          type="button"
-          onClick={toggleTheme}
-          title={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+        {isLight ? <Moon size={15} /> : <Sun size={15} />}
+      </button>
+
+      {/* Logo + Brand */}
+      <div style={{ marginBottom: '32px', textAlign: 'center' }}>
+        <div
           style={{
-            position: 'absolute',
-            top: '16px',
-            right: '16px',
-            zIndex: 10,
-            width: '34px',
-            height: '34px',
-            borderRadius: '10px',
-            border: isLight ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.12)',
-            backgroundColor: isLight ? '#f8fafc' : 'rgba(15, 23, 42, 0.8)',
-            color: isLight ? '#0284c7' : '#fbbf24',
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            backgroundColor: '#10a37f',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: isLight ? '0 2px 6px rgba(0, 0, 0, 0.06)' : '0 2px 8px rgba(0, 0, 0, 0.4)',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.08)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
+            margin: '0 auto 14px',
+            boxShadow: '0 0 0 4px rgba(16, 163, 127, 0.15)',
           }}
         >
-          {isLight ? <Moon size={16} /> : <Sun size={16} />}
-        </button>
+          <img src="/icon.svg" alt="K-Connect" style={{ width: '28px', height: '28px', filter: 'brightness(0) invert(1)' }} />
+        </div>
+        <h1 style={{ fontSize: '22px', fontWeight: 700, color: textMain, margin: 0, letterSpacing: '-0.4px' }}>
+          K-Connect
+        </h1>
+        <p style={{ fontSize: '13px', color: textMuted, margin: '4px 0 0' }}>
+          Service Management Platform
+        </p>
+      </div>
 
-        {/* LEFT COLUMN: BRAND HERO & SYSTEM CAPABILITIES */}
+      {/* Login Card */}
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '400px',
+          backgroundColor: cardBg,
+          border: `1px solid ${borderCol}`,
+          borderRadius: '16px',
+          padding: '28px',
+          boxShadow: isLight
+            ? '0 4px 24px rgba(0,0,0,0.06)'
+            : '0 4px 40px rgba(0,0,0,0.5)',
+        }}
+      >
+        {/* Tab Switcher */}
         <div
           style={{
-            padding: '40px',
-            backgroundColor: isLight ? 'rgba(248, 250, 252, 0.88)' : 'rgba(11, 19, 38, 0.65)',
-            borderRight: isLight ? '1px solid rgba(226, 232, 240, 0.9)' : '1px solid rgba(255, 255, 255, 0.07)',
             display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            position: 'relative',
+            borderRadius: '10px',
+            backgroundColor: isLight ? '#f3f4f6' : '#1a1a1a',
+            padding: '3px',
+            marginBottom: '20px',
+            gap: '2px',
           }}
         >
-          <div>
-            {/* Top Brand Tag */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-              <div
-                style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 8px 16px -4px rgba(2, 132, 199, 0.5)',
-                  fontWeight: 900,
-                  fontSize: '22px',
-                  color: '#ffffff',
-                  letterSpacing: '-1px',
-                }}
-              >
-                K
-              </div>
-              <div>
-                <div style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '0.5px', color: isLight ? '#0f172a' : '#ffffff' }}>
-                  K-CONNECT
-                </div>
-                <div style={{ fontSize: '11px', color: isLight ? '#0284c7' : '#38bdf8', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                  Service & Business Management OS
-                </div>
-              </div>
-            </div>
-
-            {/* Shop Title Info */}
-            <div
+          {(['PASSWORD', 'PIN'] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => { setActiveMode(mode); setError(null); }}
               style={{
-                padding: '14px 16px',
-                borderRadius: '12px',
-                backgroundColor: isLight ? 'rgba(2, 132, 199, 0.06)' : 'rgba(2, 132, 199, 0.08)',
-                border: isLight ? '1px solid rgba(2, 132, 199, 0.2)' : '1px solid rgba(2, 132, 199, 0.2)',
-                marginBottom: '28px',
+                flex: 1,
+                padding: '7px 0',
+                borderRadius: '8px',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                backgroundColor: activeMode === mode
+                  ? (isLight ? '#ffffff' : '#2a2a2a')
+                  : 'transparent',
+                color: activeMode === mode ? textMain : textMuted,
+                boxShadow: activeMode === mode
+                  ? (isLight ? '0 1px 3px rgba(0,0,0,0.08)' : 'none')
+                  : 'none',
               }}
             >
-              <div style={{ fontSize: '10.5px', color: isLight ? '#64748b' : '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-                Licensed To Workstation
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: 800, color: isLight ? '#0f172a' : '#f8fafc', marginTop: '2px' }}>
-                {shopSettings.shopName || 'KTech Computers'}
-              </div>
-              <div style={{ fontSize: '11.5px', color: isLight ? '#475569' : '#64748b', marginTop: '3px', lineHeight: 1.4 }}>
-                {shopSettings.address || 'Gandhi Road, Service Center'} {shopSettings.phone ? `• ${shopSettings.phone}` : ''}
-              </div>
-            </div>
-
-            {/* Feature Highlights Showcase */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: isLight ? '#475569' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                Integrated Workstation Capabilities
-              </div>
-
-              {[
-                {
-                  icon: Wrench,
-                  title: 'Intake & Diagnostics Engine',
-                  desc: 'Hardware checklists, root cause logs & passcode vault',
-                  color: isLight ? '#0284c7' : '#38bdf8',
-                  bg: isLight ? 'rgba(2, 132, 199, 0.08)' : 'rgba(255, 255, 255, 0.04)',
-                },
-                {
-                  icon: Receipt,
-                  title: 'GST Billing & Advance Memos',
-                  desc: 'Instant 0% Non-GST / 18% GST switching & cash receipts',
-                  color: isLight ? '#059669' : '#10b981',
-                  bg: isLight ? 'rgba(5, 150, 105, 0.08)' : 'rgba(255, 255, 255, 0.04)',
-                },
-                {
-                  icon: MessageSquare,
-                  title: '1-Click WhatsApp Communications',
-                  desc: 'Intake receipts, estimate approvals & delivery alerts',
-                  color: isLight ? '#16a34a' : '#22c55e',
-                  bg: isLight ? 'rgba(22, 163, 74, 0.08)' : 'rgba(255, 255, 255, 0.04)',
-                },
-                {
-                  icon: Package,
-                  title: 'Component Harvest & Donor Inventory',
-                  desc: 'Chip-level parts tracking & automated job allocations',
-                  color: isLight ? '#d97706' : '#f59e0b',
-                  bg: isLight ? 'rgba(217, 119, 6, 0.08)' : 'rgba(255, 255, 255, 0.04)',
-                },
-              ].map((feat, idx) => {
-                const Icon = feat.icon;
-                return (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                    <div
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '8px',
-                        backgroundColor: feat.bg,
-                        border: isLight ? '1px solid rgba(0, 0, 0, 0.06)' : '1px solid rgba(255, 255, 255, 0.08)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Icon size={16} color={feat.color} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '12.5px', fontWeight: 700, color: isLight ? '#1e293b' : '#e2e8f0' }}>{feat.title}</div>
-                      <div style={{ fontSize: '11px', color: isLight ? '#64748b' : '#94a3b8', lineHeight: 1.35 }}>{feat.desc}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Bottom Live System Indicator */}
-          <div
-            style={{
-              paddingTop: '20px',
-              borderTop: isLight ? '1px solid rgba(226, 232, 240, 0.9)' : '1px solid rgba(255, 255, 255, 0.07)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              fontSize: '11px',
-              color: isLight ? '#64748b' : '#64748b',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span
-                style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: '#10b981',
-                  boxShadow: '0 0 8px #10b981',
-                }}
-              />
-              <span style={{ fontWeight: 600, color: isLight ? '#334155' : '#94a3b8' }}>Embedded SQLite Active</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isLight ? '#334155' : '#94a3b8', fontFamily: 'monospace' }}>
-              <Clock size={12} />
-              {currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </div>
-          </div>
+              {mode === 'PASSWORD' ? 'Password' : 'Quick PIN'}
+            </button>
+          ))}
         </div>
 
-        {/* RIGHT COLUMN: INTERACTIVE AUTHENTICATION PANEL */}
-        <div
-          style={{
-            padding: '36px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            backgroundColor: isLight ? 'rgba(255, 255, 255, 0.65)' : 'rgba(15, 23, 42, 0.45)',
-          }}
-        >
-          <div>
-            {/* Header & Mode Segmented Pill */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', paddingRight: '40px' }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: isLight ? '#0f172a' : '#ffffff' }}>Terminal Access</h2>
-                <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: isLight ? '#475569' : '#94a3b8' }}>
-                  {activeMode === 'PIN' ? 'Select staff profile & enter numeric PIN' : 'Enter account username and password'}
-                </p>
-              </div>
+        {/* Error Banner */}
+        {error && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 12px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              color: '#ef4444',
+              fontSize: '12.5px',
+              marginBottom: '16px',
+            }}
+          >
+            <AlertCircle size={14} />
+            <span>{error}</span>
+          </div>
+        )}
 
-              {/* Mode Switcher */}
-              <div
+        {/* PASSWORD FORM */}
+        {activeMode === 'PASSWORD' && (
+          <form onSubmit={handlePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+            {/* Admin mode toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '12px', color: textMuted }}>
+                {isSuperAdmin ? '🛡️ Vendor Admin' : '🏬 Shop Login'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSuperAdmin(!isSuperAdmin);
+                  setUsername(!isSuperAdmin ? 'superadmin' : 'admin');
+                  setPassword('');
+                  setError(null);
+                }}
                 style={{
-                  display: 'inline-flex',
-                  padding: '3px',
-                  backgroundColor: isLight ? '#f1f5f9' : 'rgba(15, 23, 42, 0.8)',
-                  borderRadius: '8px',
-                  border: isLight ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.1)',
+                  background: 'none',
+                  border: 'none',
+                  color: '#10a37f',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  padding: 0,
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveMode('PIN');
-                    setError(null);
-                  }}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontSize: '11px',
-                    fontWeight: activeMode === 'PIN' ? 700 : 500,
-                    backgroundColor: activeMode === 'PIN' ? '#0284c7' : 'transparent',
-                    color: activeMode === 'PIN' ? '#ffffff' : (isLight ? '#475569' : '#94a3b8'),
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <Zap size={12} /> Quick PIN
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveMode('PASSWORD');
-                    setError(null);
-                  }}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontSize: '11px',
-                    fontWeight: activeMode === 'PASSWORD' ? 700 : 500,
-                    backgroundColor: activeMode === 'PASSWORD' ? '#0284c7' : 'transparent',
-                    color: activeMode === 'PASSWORD' ? '#ffffff' : (isLight ? '#475569' : '#94a3b8'),
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <KeyRound size={12} /> Password
-                </button>
-              </div>
+                {isSuperAdmin ? 'Switch to Shop' : 'Vendor Admin'}
+              </button>
             </div>
 
-            {/* Error Banner */}
-            {error && (
+            {/* Shop Slug */}
+            {!isSuperAdmin && (
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: textMuted, marginBottom: '6px' }}>
+                  Shop ID
+                </label>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    backgroundColor: inputBg,
+                    border: `1px solid ${inputBorder}`,
+                    borderRadius: '10px',
+                    padding: '0 12px',
+                    height: '42px',
+                  }}
+                >
+                  <span style={{ color: '#10a37f', fontWeight: 700, fontSize: '14px', marginRight: '4px' }}>@</span>
+                  <input
+                    type="text"
+                    value={shopSlug}
+                    onChange={(e) => setShopSlugState(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                    placeholder="yourshop"
+                    required
+                    style={{
+                      flex: 1,
+                      height: '100%',
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      color: textMain,
+                      fontSize: '13.5px',
+                      fontFamily: 'monospace',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Username */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: textMuted, marginBottom: '6px' }}>
+                {isSuperAdmin ? 'Admin Username' : 'Username'}
+              </label>
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  backgroundColor: inputBg,
+                  border: `1px solid ${inputBorder}`,
+                  borderRadius: '10px',
+                  padding: '0 12px',
+                  height: '42px',
                   gap: '8px',
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  backgroundColor: isLight ? '#fef2f2' : 'rgba(239, 68, 68, 0.15)',
-                  border: isLight ? '1px solid #fecaca' : '1px solid rgba(239, 68, 68, 0.3)',
-                  color: isLight ? '#dc2626' : '#f87171',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  marginBottom: '16px',
                 }}
               >
-                <AlertCircle size={15} />
-                <span>{error}</span>
+                <User size={15} color={textMuted} />
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="admin"
+                  required
+                  autoComplete="username"
+                  style={{
+                    flex: 1,
+                    height: '100%',
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    color: textMain,
+                    fontSize: '13.5px',
+                  }}
+                />
               </div>
-            )}
+            </div>
 
-            {/* MODE 1: RAPID STAFF PROFILES + PIN KEYPAD */}
-            {activeMode === 'PIN' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {/* Staff Profiles Carousel/Grid */}
-                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-                  {userList.filter((u) => u.isActive !== false).map((usr) => {
-                    const isSelected = selectedUser === usr.id;
-                    const rColor = getRoleColor(usr.roleId);
-                    return (
-                      <button
-                        key={usr.id}
-                        type="button"
-                        onClick={() => selectQuickUser(usr.id, usr.username)}
-                        style={{
-                          flex: '1 0 84px',
-                          padding: '8px 6px',
-                          borderRadius: '10px',
-                          backgroundColor: isSelected
-                            ? (isLight ? 'rgba(2, 132, 199, 0.12)' : 'rgba(2, 132, 199, 0.2)')
-                            : (isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.03)'),
-                          border: isSelected
-                            ? '1.5px solid #0284c7'
-                            : (isLight ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.08)'),
-                          color: isLight ? '#0f172a' : '#ffffff',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: '4px',
-                          transition: 'all 0.15s ease',
-                          transform: isSelected ? 'scale(1.02)' : 'none',
-                          boxShadow: isLight && isSelected ? '0 2px 8px rgba(2, 132, 199, 0.2)' : 'none',
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '50%',
-                            backgroundColor: rColor.border,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '11px',
-                            fontWeight: 800,
-                            color: '#ffffff',
-                          }}
-                        >
-                          {usr.fullName.charAt(0)}
-                        </div>
-                        <div style={{ fontSize: '11px', fontWeight: 700, textAlign: 'center', whiteSpace: 'nowrap', maxWidth: '78px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {usr.fullName}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: '9px',
-                            padding: '1px 4px',
-                            borderRadius: '4px',
-                            backgroundColor: rColor.bg,
-                            color: rColor.text,
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {usr.roleName || usr.roleId.replace('ROLE_', '')}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* PIN Dots Indicator */}
-                <div
+            {/* Password */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: textMuted, marginBottom: '6px' }}>
+                Password
+              </label>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  backgroundColor: inputBg,
+                  border: `1px solid ${inputBorder}`,
+                  borderRadius: '10px',
+                  padding: '0 12px',
+                  height: '42px',
+                  gap: '8px',
+                }}
+              >
+                <Lock size={15} color={textMuted} />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  autoComplete="current-password"
                   style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '8px 0',
+                    flex: 1,
+                    height: '100%',
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    color: textMain,
+                    fontSize: '13.5px',
                   }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ background: 'none', border: 'none', color: textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                 >
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    {[0, 1, 2, 3].map((idx) => {
-                      const isFilled = pinCode.length > idx;
-                      return (
-                        <div
-                          key={idx}
-                          style={{
-                            width: '14px',
-                            height: '14px',
-                            borderRadius: '50%',
-                            border: isFilled
-                              ? '2px solid #0284c7'
-                              : (isLight ? '2px solid #cbd5e1' : '2px solid rgba(255, 255, 255, 0.2)'),
-                            backgroundColor: isFilled
-                              ? (isLight ? '#0284c7' : '#38bdf8')
-                              : (isLight ? '#e2e8f0' : 'transparent'),
-                            boxShadow: isFilled
-                              ? (isLight ? '0 0 8px rgba(2, 132, 199, 0.5)' : '0 0 10px #38bdf8')
-                              : 'none',
-                            transition: 'all 0.15s ease',
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                  <div style={{ fontSize: '11px', color: isLight ? '#475569' : '#64748b', marginTop: '6px' }}>
-                    {isLoading ? 'Authenticating...' : 'Type PIN on physical keyboard or click below'}
-                  </div>
-                </div>
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
 
-                {/* Numeric Keypad */}
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: '8px',
-                    maxWidth: '280px',
-                    margin: '0 auto',
-                    width: '100%',
-                  }}
-                >
-                  {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map((k) => (
+            <button
+              type="submit"
+              disabled={isLoading}
+              style={{
+                width: '100%',
+                padding: '11px',
+                borderRadius: '10px',
+                backgroundColor: '#10a37f',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                opacity: isLoading ? 0.7 : 1,
+                marginTop: '4px',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {isLoading ? 'Signing in...' : 'Sign in'}
+            </button>
+          </form>
+        )}
+
+        {/* PIN MODE */}
+        {activeMode === 'PIN' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+            {/* User selector */}
+            {userList.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px', width: '100%', overflowX: 'auto', paddingBottom: '2px' }}>
+                {userList.map((usr) => {
+                  const isSelected = selectedUser === usr.id;
+                  return (
                     <button
-                      key={k}
+                      key={usr.id}
                       type="button"
                       onClick={() => {
-                        if (k === 'C') handlePinClear();
-                        else if (k === '⌫') handlePinDelete();
-                        else handlePinDigit(k);
+                        setSelectedUser(usr.id);
+                        setUsername(usr.username);
+                        setPinCode('');
+                        setError(null);
                       }}
-                      disabled={isLoading}
                       style={{
-                        padding: '12px 0',
-                        fontSize: k === 'C' || k === '⌫' ? '13px' : '16px',
-                        fontWeight: 700,
-                        borderRadius: '8px',
-                        backgroundColor:
-                          k === 'C'
-                            ? (isLight ? '#fef2f2' : 'rgba(239, 68, 68, 0.15)')
-                            : k === '⌫'
-                            ? (isLight ? '#f1f5f9' : 'rgba(255, 255, 255, 0.08)')
-                            : (isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.05)'),
-                        border:
-                          k === 'C'
-                            ? (isLight ? '1px solid #fecaca' : '1px solid rgba(239, 68, 68, 0.3)')
-                            : (isLight ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.08)'),
-                        color:
-                          k === 'C'
-                            ? (isLight ? '#dc2626' : '#f87171')
-                            : (isLight ? '#0f172a' : '#f8fafc'),
+                        flex: '1 0 auto',
+                        padding: '8px 10px',
+                        borderRadius: '10px',
+                        border: isSelected
+                          ? '1.5px solid #10a37f'
+                          : `1px solid ${inputBorder}`,
+                        backgroundColor: isSelected
+                          ? 'rgba(16, 163, 127, 0.1)'
+                          : inputBg,
+                        color: textMain,
                         cursor: 'pointer',
-                        transition: 'all 0.1s ease',
-                        boxShadow: isLight
-                          ? '0 2px 4px rgba(15, 23, 42, 0.05)'
-                          : '0 2px 4px rgba(0, 0, 0, 0.2)',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '5px',
+                        transition: 'all 0.12s ease',
                       }}
-                      onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.96)')}
-                      onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
                     >
-                      {k}
+                      <div
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          backgroundColor: isSelected ? '#10a37f' : (isLight ? '#e5e7eb' : '#333'),
+                          color: isSelected ? '#fff' : textMain,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {usr.fullName.charAt(0)}
+                      </div>
+                      <span style={{ whiteSpace: 'nowrap' }}>{usr.fullName.split(' ')[0]}</span>
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             )}
 
-            {/* MODE 2: CLASSIC USERNAME & PASSWORD LOGIN */}
-            {activeMode === 'PASSWORD' && (
-              <form onSubmit={handlePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div className="ktech-field">
-                  <label className="ktech-label">
-                    <span>Username / Staff ID</span>
-                  </label>
-                  <div className="ktech-input-box">
-                    <div className="field-icon-left">
-                      <User size={16} />
-                    </div>
-                    <input
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="e.g. admin"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="ktech-field">
-                  <label className="ktech-label">
-                    <span>Password</span>
-                  </label>
-                  <div className="ktech-input-box">
-                    <div className="field-icon-left">
-                      <Lock size={16} />
-                    </div>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="field-action-right"
-                      onClick={() => setShowPassword(!showPassword)}
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
+            {/* PIN dots */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {[0, 1, 2, 3].map((idx) => (
+                <div
+                  key={idx}
                   style={{
-                    marginTop: '8px',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    backgroundColor: '#0284c7',
-                    backgroundImage: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                    color: '#ffffff',
-                    border: 'none',
-                    fontSize: '13px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    backgroundColor: pinCode.length > idx ? '#10a37f' : (isLight ? '#d1d5db' : '#333'),
                     transition: 'all 0.15s ease',
                   }}
-                >
-                  <Shield size={16} />
-                  <span>{isLoading ? 'Verifying Credentials...' : 'Sign In to Terminal'}</span>
-                </button>
-              </form>
-            )}
-          </div>
+                />
+              ))}
+            </div>
 
-          {/* Footer Copyright & Security Notice */}
-          <div
-            style={{
-              paddingTop: '16px',
-              borderTop: isLight ? '1px solid rgba(226, 232, 240, 0.9)' : '1px solid rgba(255, 255, 255, 0.07)',
-              fontSize: '10.5px',
-              color: isLight ? '#64748b' : '#64748b',
-              textAlign: 'center',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-            }}
-          >
-            <Shield size={12} color="#10b981" />
-            <span>Encrypted Session • Scrypt Key Derivation Active</span>
+            {/* Keypad */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', width: '100%', maxWidth: '260px' }}>
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => {
+                    if (k === 'C') { setPinCode(''); setError(null); }
+                    else if (k === '⌫') { setPinCode((p) => p.slice(0, -1)); setError(null); }
+                    else handlePinDigit(k);
+                  }}
+                  style={{
+                    height: '48px',
+                    borderRadius: '10px',
+                    border: `1px solid ${inputBorder}`,
+                    backgroundColor: inputBg,
+                    color: textMain,
+                    fontSize: '18px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'background-color 0.1s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = isLight ? '#e5e7eb' : '#2a2a2a')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = inputBg)}
+                >
+                  {k}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
+
+      {/* Navigation links */}
+      <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', fontSize: '13px' }}>
+        <div>
+          <span style={{ color: textMuted }}>New repair shop? </span>
+          <Link to="/signup" style={{ color: '#10a37f', fontWeight: 600, textDecoration: 'none' }}>
+            Start 14-day free trial &rarr;
+          </Link>
+        </div>
+        <Link to="/" style={{ color: textMuted, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+          <ArrowLeft size={13} /> Back to K-Connect SaaS Website
+        </Link>
+      </div>
+
+      {/* Footer */}
+      <p style={{ marginTop: '16px', fontSize: '12px', color: textMuted, display: 'flex', alignItems: 'center', gap: '5px' }}>
+        <Shield size={12} color="#10a37f" />
+        Secure • Multi-tenant Cloud • 256-bit Encrypted
+      </p>
     </div>
   );
 };
