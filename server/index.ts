@@ -108,36 +108,48 @@ import { getStorageProvider } from './storage/storageAdapter.ts';
 app.use('/storage', express.static(path.join(process.cwd(), 'storage')));
 
 // ── Guard against unconfigured database in Serverless ─────────────
-app.use('/api', (req, res, next) => {
-  if (req.path === '/health' || req.path === '/health/') {
+app.use((req, res, next) => {
+  if (
+    req.path === '/api/health' ||
+    req.path === '/health' ||
+    req.path === '/api/health/' ||
+    req.path === '/health/'
+  ) {
     return next();
   }
   const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
   if (isServerless && (!process.env.DATABASE_URL || process.env.DATABASE_URL.trim() === '')) {
-    return res.status(503).json({
-      success: false,
-      error: 'Cloud database not configured yet. Please configure DATABASE_URL and DATABASE_AUTH_TOKEN in Vercel Project Settings > Environment Variables.',
-    });
+    if (
+      req.path.startsWith('/api') ||
+      req.path.startsWith('/auth') ||
+      req.path.startsWith('/jobs') ||
+      req.path.startsWith('/customers')
+    ) {
+      return res.status(503).json({
+        success: false,
+        error: 'Cloud database not configured yet. Please configure DATABASE_URL and DATABASE_AUTH_TOKEN in Vercel Project Settings > Environment Variables.',
+      });
+    }
   }
   next();
 });
 
-// ── API Routes ────────────────────────────────────────────────────
-app.use('/api/auth', authRouter);
-app.use('/api/admin', adminRouter);
-app.use('/api/jobs', jobsRouter);
-app.use('/api/customers', customersRouter);
-app.use('/api/billing', billingRouter);
-app.use('/api/inventory', inventoryRouter);
-app.use('/api/reports', reportsRouter);
-app.use('/api/public', publicRouter);
-app.use('/api/subscription', subscriptionRouter);
-app.use('/api/devices', devicesRouter);
-app.use('/api/shops', shopsRouter);
-app.use('/api/storage', storageRouter);
+// ── API Routes (Dual-compatible with /api prefix and direct / prefix) ─
+app.use(['/api/auth', '/auth'], authRouter);
+app.use(['/api/admin', '/admin'], adminRouter);
+app.use(['/api/jobs', '/jobs'], jobsRouter);
+app.use(['/api/customers', '/customers'], customersRouter);
+app.use(['/api/billing', '/billing'], billingRouter);
+app.use(['/api/inventory', '/inventory'], inventoryRouter);
+app.use(['/api/reports', '/reports'], reportsRouter);
+app.use(['/api/public', '/public'], publicRouter);
+app.use(['/api/subscription', '/subscription'], subscriptionRouter);
+app.use(['/api/devices', '/devices'], devicesRouter);
+app.use(['/api/shops', '/shops'], shopsRouter);
+app.use(['/api/storage', '/storage'], storageRouter);
 
-// ── Health Check (Real active dependency verification) ───────────
-app.get('/api/health', async (_req, res) => {
+// ── Health Check (Dual-compatible with /api/health and /health) ──
+app.get(['/api/health', '/health'], async (_req, res) => {
   try {
     const isDbConfigured = Boolean(process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== '');
     const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);

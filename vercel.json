@@ -5,16 +5,16 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/api",
-      "destination": "/api/index.ts"
+      "source": "/api/(.*)",
+      "destination": "/api"
     },
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index.ts"
+      "source": "/api",
+      "destination": "/api"
     },
     {
       "source": "/storage/(.*)",
-      "destination": "/api/index.ts"
+      "destination": "/api"
     },
     {
       "source": "/(.*)",

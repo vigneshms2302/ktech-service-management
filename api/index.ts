@@ -32,30 +32,13 @@ async function bootstrap(): Promise<void> {
   return initPromise;
 }
 
-/**
- * Vercel Serverless Function entry point.
- * Wraps the production Express backend and safely manages serverless lifecycle.
- */
-export default async function handler(req: any, res: any) {
-  try {
-    if (!isInitialized) {
-      await bootstrap();
-    }
-
-    return await new Promise<void>((resolve, reject) => {
-      res.on('finish', resolve);
-      res.on('close', resolve);
-      res.on('error', reject);
-      (app as any)(req, res);
-    });
-  } catch (err: unknown) {
-    console.error('[Vercel Handler Crash Guard]', err);
-    if (!res.headersSent) {
-      res.status(500).json({
-        success: false,
-        error: 'An internal server error occurred in the serverless handler.',
-        details: err instanceof Error ? err.message : String(err),
-      });
-    }
+// Ensure database schema is bootstrapped on first serverless request
+app.use(async (_req, _res, next) => {
+  if (!isInitialized) {
+    await bootstrap();
   }
-}
+  next();
+});
+
+// Directly export the Express app for Vercel Serverless Function runtime
+export default app;
