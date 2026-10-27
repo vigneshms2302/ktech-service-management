@@ -107,6 +107,21 @@ import { getStorageProvider } from './storage/storageAdapter.ts';
 // ── Static Files ──────────────────────────────────────────────────
 app.use('/storage', express.static(path.join(process.cwd(), 'storage')));
 
+// ── Guard against unconfigured database in Serverless ─────────────
+app.use('/api', (req, res, next) => {
+  if (req.path === '/health' || req.path === '/health/') {
+    return next();
+  }
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  if (isServerless && (!process.env.DATABASE_URL || process.env.DATABASE_URL.trim() === '')) {
+    return res.status(503).json({
+      success: false,
+      error: 'Cloud database not configured yet. Please configure DATABASE_URL and DATABASE_AUTH_TOKEN in Vercel Project Settings > Environment Variables.',
+    });
+  }
+  next();
+});
+
 // ── API Routes ────────────────────────────────────────────────────
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
@@ -124,13 +139,38 @@ app.use('/api/storage', storageRouter);
 // ── Health Check (Real active dependency verification) ───────────
 app.get('/api/health', async (_req, res) => {
   try {
+    const isDbConfigured = Boolean(process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== '');
+    const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+    const storageProvider = getStorageProvider();
+    const storageHealthy = await storageProvider.isHealthy();
+
+    if (isServerless && !isDbConfigured) {
+      return res.status(200).json({
+        status: 'READY_AWAITING_DB',
+        service: 'K-Connect Cloud SaaS Engine',
+        version: process.env.npm_package_version || '2.0.0',
+        environment: config.NODE_ENV,
+        timestamp: new Date().toISOString(),
+        message: 'K-Connect Cloud backend is live on Vercel! Database is awaiting configuration in Vercel settings.',
+        dependencies: {
+          database: {
+            status: 'NOT_CONFIGURED',
+            provider: 'NONE',
+            instructions: 'Please configure DATABASE_URL (Turso) and DATABASE_AUTH_TOKEN in Vercel Project Settings > Environment Variables.',
+          },
+          storage: {
+            status: storageHealthy ? 'CONNECTED' : 'LOCAL_FALLBACK',
+            provider: storageProvider.name,
+          },
+        },
+      });
+    }
+
     const client = getClient();
     const dbStart = Date.now();
     await client.execute('SELECT 1 as ping;');
     const dbLatencyMs = Date.now() - dbStart;
-
-    const storageProvider = getStorageProvider();
-    const storageHealthy = await storageProvider.isHealthy();
 
     const dbUrl = process.env.DATABASE_URL || '';
     const isTursoCloud = dbUrl.startsWith('libsql:') || dbUrl.includes('.turso.io');

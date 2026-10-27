@@ -10,6 +10,11 @@ async function bootstrap(): Promise<void> {
   if (!initPromise) {
     initPromise = (async () => {
       try {
+        if (!process.env.DATABASE_URL || process.env.DATABASE_URL.trim() === '') {
+          console.warn('[Vercel Serverless] DATABASE_URL is not configured yet. Skipping DB schema bootstrap.');
+          isInitialized = true;
+          return;
+        }
         console.log('[Vercel Serverless] Bootstrapping SaaS schema & seed data...');
         await initializeMultiTenantSchema();
         await seedInitialPlatform();

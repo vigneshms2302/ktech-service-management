@@ -2,6 +2,12 @@ import { getClient } from './database.ts';
 import { hashPassword } from '../middleware/auth.ts';
 
 export async function seedInitialPlatform(): Promise<void> {
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  if (isServerless && (!process.env.DATABASE_URL || process.env.DATABASE_URL.trim() === '')) {
+    console.warn('[Seed] Skipping initial platform seed: DATABASE_URL is not configured.');
+    return;
+  }
+
   const client = getClient();
 
   // 1. Seed Roles & Permissions

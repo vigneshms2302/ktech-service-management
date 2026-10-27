@@ -1,12 +1,39 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import { createClient, type Client } from '@libsql/client';
+import type { Client } from '@libsql/client';
 import { drizzle, type LibSQLDatabase } from 'drizzle-orm/libsql';
 import * as schema from './schema/index.ts';
 
 let clientInstance: Client | null = null;
 let dbInstance: LibSQLDatabase<typeof schema> | null = null;
 let resolvedDbPath = '';
+
+/**
+ * Creates a LibSQL client instance.
+ * For cloud/remote URLs (libsql:// or https://), uses pure-JS '@libsql/client/web'
+ * to completely eliminate native C++ binary requirements on Vercel Serverless.
+ * For local file: URLs, dynamically uses '@libsql/client' (Node/desktop/vitest).
+ */
+export function createLibsqlClient(url: string, authToken?: string): Client {
+  const isRemote =
+    url.startsWith('libsql:') ||
+    url.startsWith('https:') ||
+    url.startsWith('http:') ||
+    url.startsWith('wss:') ||
+    url.startsWith('ws:');
+
+  if (isRemote) {
+    // Pure JS Web client - uses fetch(), 100% serverless safe!
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { createClient } = require('@libsql/client/web');
+    return createClient({ url, authToken });
+  }
+
+  // Local file SQLite (used for local development, desktop app, and automated tests)
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { createClient } = require('@libsql/client');
+  return createClient({ url, authToken });
+}
 
 /**
  * Returns the resolved database path.
@@ -66,13 +93,12 @@ export function getDb(): LibSQLDatabase<typeof schema> {
 
   ensureStorageDirectories();
   const dbUrl = process.env.DATABASE_URL;
-  const isProd = process.env.NODE_ENV === 'production';
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
-  if (isProd && !dbUrl) {
-    console.warn(
-      '[Database Warning] DATABASE_URL environment variable is not configured in production mode! ' +
-      'Connecting to temporary local SQLite file in /tmp. Data will not persist across cold starts. ' +
-      'Configure DATABASE_URL (e.g. libsql://your-db.turso.io) and DATABASE_AUTH_TOKEN in Vercel project settings for permanent persistence.'
+  if (isServerless && (!dbUrl || dbUrl.trim() === '')) {
+    throw new Error(
+      'DATABASE_NOT_CONFIGURED: DATABASE_URL environment variable is required in Vercel serverless environment. ' +
+      'Please configure DATABASE_URL (e.g. libsql://your-db.turso.io) and DATABASE_AUTH_TOKEN in Vercel Project Settings.'
     );
   }
 
@@ -80,10 +106,10 @@ export function getDb(): LibSQLDatabase<typeof schema> {
   const normalizedPath = dbPath.replace(/\\/g, '/');
   const fileUrl = normalizedPath.startsWith('/') ? `file:${normalizedPath}` : `file:/${normalizedPath}`;
 
-  clientInstance = createClient({
-    url: dbUrl || fileUrl,
-    authToken: process.env.DATABASE_AUTH_TOKEN || undefined,
-  });
+  clientInstance = createLibsqlClient(
+    dbUrl || fileUrl,
+    process.env.DATABASE_AUTH_TOKEN || undefined
+  );
 
   dbInstance = drizzle(clientInstance, { schema });
   return dbInstance;
@@ -105,6 +131,12 @@ export function getClient(): Client {
  * Executes multi-tenant DDL script to create all SaaS tables.
  */
 export async function initializeMultiTenantSchema(): Promise<void> {
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  if (isServerless && (!process.env.DATABASE_URL || process.env.DATABASE_URL.trim() === '')) {
+    console.warn('[Database] Skipping schema bootstrap: DATABASE_URL is not configured.');
+    return;
+  }
+
   const client = getClient();
 
   await client.execute('PRAGMA foreign_keys = ON;');
