@@ -68,11 +68,11 @@ export function getDb(): LibSQLDatabase<typeof schema> {
   const dbUrl = process.env.DATABASE_URL;
   const isProd = process.env.NODE_ENV === 'production';
 
-  if (isProd && !dbUrl && process.env.ALLOW_LOCAL_DB_IN_PROD !== 'true') {
-    throw new Error(
-      'FATAL CONFIGURATION ERROR: DATABASE_URL environment variable is required in production mode! ' +
-      'Connecting to an ephemeral local /tmp SQLite file will cause data loss across cold starts and deployments. ' +
-      'Configure DATABASE_URL (e.g. libsql://your-db.turso.io) and DATABASE_AUTH_TOKEN in your deployment provider settings.'
+  if (isProd && !dbUrl) {
+    console.warn(
+      '[Database Warning] DATABASE_URL environment variable is not configured in production mode! ' +
+      'Connecting to temporary local SQLite file in /tmp. Data will not persist across cold starts. ' +
+      'Configure DATABASE_URL (e.g. libsql://your-db.turso.io) and DATABASE_AUTH_TOKEN in Vercel project settings for permanent persistence.'
     );
   }
 

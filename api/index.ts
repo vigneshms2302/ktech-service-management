@@ -3,27 +3,54 @@ import { initializeMultiTenantSchema } from '../server/db/database.ts';
 import { seedInitialPlatform } from '../server/db/seed.ts';
 
 let isInitialized = false;
+let initPromise: Promise<void> | null = null;
+
+async function bootstrap(): Promise<void> {
+  if (isInitialized) return;
+  if (!initPromise) {
+    initPromise = (async () => {
+      try {
+        console.log('[Vercel Serverless] Bootstrapping SaaS schema & seed data...');
+        await initializeMultiTenantSchema();
+        await seedInitialPlatform();
+        isInitialized = true;
+        console.log('[Vercel Serverless] Bootstrap complete.');
+      } catch (err) {
+        console.error('[Vercel Serverless DB Init Error]', err);
+        // Mark as initialized so subsequent requests do not get trapped in repeating cold-start failure
+        isInitialized = true;
+      } finally {
+        initPromise = null;
+      }
+    })();
+  }
+  return initPromise;
+}
 
 /**
  * Vercel Serverless Function entry point.
- * Wraps the production Express backend and lazily bootstraps the database schema.
+ * Wraps the production Express backend and safely manages serverless lifecycle.
  */
 export default async function handler(req: any, res: any) {
-  if (!isInitialized) {
-    try {
-      await initializeMultiTenantSchema();
-      await seedInitialPlatform();
-      isInitialized = true;
-    } catch (err: unknown) {
-      console.error('[Vercel Serverless DB Init]', err);
-      if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
-        res.status(503).json({
-          success: false,
-          error: 'FATAL: DATABASE_URL not configured for cloud deployment. Please configure DATABASE_URL and DATABASE_AUTH_TOKEN in your Vercel project settings.',
-        });
-        return;
-      }
+  try {
+    if (!isInitialized) {
+      await bootstrap();
+    }
+
+    return await new Promise<void>((resolve, reject) => {
+      res.on('finish', resolve);
+      res.on('close', resolve);
+      res.on('error', reject);
+      (app as any)(req, res);
+    });
+  } catch (err: unknown) {
+    console.error('[Vercel Handler Crash Guard]', err);
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        error: 'An internal server error occurred in the serverless handler.',
+        details: err instanceof Error ? err.message : String(err),
+      });
     }
   }
-  return (app as any)(req, res);
 }

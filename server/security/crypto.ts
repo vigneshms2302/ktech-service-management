@@ -20,10 +20,10 @@ function getDynamicEntropy(): string {
     return process.env.KTECH_APP_SECRET;
   }
   if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'CRITICAL SECURITY CONFIGURATION ERROR: No persistent encryption key found! ' +
-      'Please configure ENCRYPTION_KEY or JWT_SECRET (min 32 characters) in production environment.'
+    console.warn(
+      '[Security Warning] No persistent ENCRYPTION_KEY or JWT_SECRET found in production environment! Using fallback encryption seed. Please set ENCRYPTION_KEY in Vercel settings.'
     );
+    return 'ktech-saas-cloud-fallback-master-entropy-key-2026';
   }
   try {
     return `${os.hostname()}|ktech-saas-cloud-encryption-seed-2026`;

@@ -19,6 +19,7 @@ import { devicesRouter } from './routes/devices.ts';
 import { shopsRouter } from './routes/shops.ts';
 
 export const app = express();
+app.set('trust proxy', 1);
 
 // ── Security Headers ──────────────────────────────────────────────
 app.use(
@@ -40,7 +41,10 @@ app.use(
 export function isOriginAllowed(origin: string | undefined, nodeEnv: string, allowedOrigins: string[]): boolean {
   if (!origin) return true;
   if (nodeEnv !== 'production') return true;
-  return allowedOrigins.includes(origin);
+  if (allowedOrigins.includes(origin)) return true;
+  // Automatically permit all Vercel deployment and preview URLs
+  if (/^https:\/\/[a-zA-Z0-9_\-.]+\.vercel\.app$/.test(origin)) return true;
+  return false;
 }
 
 app.use(
