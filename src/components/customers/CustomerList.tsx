@@ -54,7 +54,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', padding: '20px' }}>
+    <div className="w-full flex flex-col pb-6">
       {/* Page Header */}
       <div
         style={{

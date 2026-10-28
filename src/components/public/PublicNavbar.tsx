@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Wrench, Menu, X, ArrowRight, Sun, Moon, LayoutDashboard } from 'lucide-react';
+import { Menu, X, ArrowRight, Sun, Moon, LayoutDashboard } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext.tsx';
 import { useAuth } from '../../context/AuthContext.tsx';
 
@@ -23,114 +23,43 @@ export const PublicNavbar: React.FC = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.85)' : 'rgba(10, 10, 10, 0.85)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: `1px solid ${isLight ? '#e5e7eb' : '#222222'}`,
-        transition: 'background-color 0.2s ease',
-      }}
-    >
-      <div
-        style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '0 20px',
-          height: '68px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        {/* Brand Logo */}
+    <header className="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#212121]/80 backdrop-blur-md border-b border-[#e5e5e5] dark:border-[#2f2f2f] transition-colors duration-200">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        {/* Brand Logo - Minimal ChatGPT Style */}
         <Link
           to="/"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            textDecoration: 'none',
-            color: 'inherit',
-          }}
+          className="flex items-center gap-2.5 text-inherit no-underline group"
         >
-          <div
-            style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #10a37f, #059669)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              boxShadow: '0 4px 12px rgba(16, 163, 127, 0.25)',
-            }}
-          >
-            <Wrench size={20} />
-          </div>
-          <div>
-            <span
-              style={{
-                fontSize: '18px',
-                fontWeight: 800,
-                letterSpacing: '-0.3px',
-                color: isLight ? '#111827' : '#ffffff',
-              }}
+          <div className="w-8 h-8 rounded-lg bg-[#0d0d0d] dark:bg-white flex items-center justify-center text-white dark:text-[#0d0d0d] transition-transform duration-150 group-hover:scale-105">
+            <svg
+              className="w-5 h-5 fill-current"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
             >
+              <path d="M12 2L14.39 8.26L21 9.27L16.27 13.88L17.38 20.46L12 17.63L6.62 20.46L7.73 13.88L3 9.27L9.61 8.26L12 2Z" />
+            </svg>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-base font-semibold tracking-tight text-[#0d0d0d] dark:text-[#ececec]">
               K-Connect
             </span>
-            <span
-              style={{
-                marginLeft: '6px',
-                fontSize: '10.5px',
-                fontWeight: 700,
-                padding: '2px 6px',
-                borderRadius: '6px',
-                backgroundColor: 'rgba(16, 163, 127, 0.15)',
-                color: '#10a37f',
-                letterSpacing: '0.4px',
-                textTransform: 'uppercase',
-              }}
-            >
-              Cloud SaaS
+            <span className="hidden sm:inline-block text-[10px] font-medium tracking-wide uppercase px-2 py-0.5 rounded-full border border-[#e5e5e5] dark:border-[#2f2f2f] text-[#676767] dark:text-[#b4b4b4]">
+              Repair OS
             </span>
           </div>
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-          className="desktop-nav"
-        >
+        <nav className="hidden md:flex items-center gap-1">
           {navLinks.map((link) => (
             <Link
               key={link.path}
               to={link.path}
-              style={{
-                padding: '8px 14px',
-                fontSize: '13.5px',
-                fontWeight: isActive(link.path) ? 600 : 500,
-                color: isActive(link.path)
-                  ? '#10a37f'
-                  : isLight
-                  ? '#4b5563'
-                  : '#a1a1aa',
-                textDecoration: 'none',
-                borderRadius: '8px',
-                transition: 'color 0.15s ease, background-color 0.15s ease',
-                backgroundColor: isActive(link.path)
-                  ? isLight
-                    ? '#f0fdf4'
-                    : 'rgba(16, 163, 127, 0.1)'
-                  : 'transparent',
-              }}
+              className={`px-3 py-1.5 text-sm rounded-lg transition-colors duration-150 no-underline ${
+                isActive(link.path)
+                  ? 'text-[#0d0d0d] dark:text-white font-medium bg-black/5 dark:bg-white/10'
+                  : 'text-[#676767] dark:text-[#b4b4b4] hover:text-[#0d0d0d] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 font-normal'
+              }`}
             >
               {link.label}
             </Link>
@@ -138,23 +67,13 @@ export const PublicNavbar: React.FC = () => {
         </nav>
 
         {/* Action CTAs */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Theme Toggle */}
           <button
             type="button"
             onClick={toggleTheme}
             title="Toggle theme"
-            style={{
-              background: 'none',
-              border: `1px solid ${isLight ? '#e5e7eb' : '#2a2a2a'}`,
-              borderRadius: '8px',
-              padding: '8px',
-              cursor: 'pointer',
-              color: isLight ? '#4b5563' : '#a1a1aa',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            className="p-2 rounded-full text-[#676767] dark:text-[#b4b4b4] hover:text-[#0d0d0d] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
           >
             {isLight ? <Moon size={16} /> : <Sun size={16} />}
           </button>
@@ -163,146 +82,74 @@ export const PublicNavbar: React.FC = () => {
           {currentUser ? (
             <Link
               to={currentUser.roleId === 'ROLE_SUPER_ADMIN' ? '/admin' : '/app'}
-              style={{
-                padding: '9px 18px',
-                fontSize: '13.5px',
-                fontWeight: 600,
-                color: '#ffffff',
-                backgroundColor: '#10a37f',
-                textDecoration: 'none',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '7px',
-                boxShadow: '0 4px 14px rgba(16, 163, 127, 0.3)',
-              }}
+              className="px-4 py-2 text-sm font-medium bg-[#0d0d0d] hover:bg-[#262626] text-white dark:bg-[#ececec] dark:hover:bg-white dark:text-[#0d0d0d] rounded-full flex items-center gap-2 transition-colors no-underline"
             >
-              <LayoutDashboard size={15} />
-              {currentUser.roleId === 'ROLE_SUPER_ADMIN' ? 'Admin Panel' : 'Go to Workspace'}
-              <ArrowRight size={14} />
+              <LayoutDashboard size={14} />
+              <span>{currentUser.roleId === 'ROLE_SUPER_ADMIN' ? 'Admin Panel' : 'Go to Workspace'}</span>
+              <ArrowRight size={13} />
             </Link>
           ) : (
-            <>
-              {/* Login Link */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* ChatGPT Ghost Secondary: Sign In */}
               <Link
                 to="/login"
-                style={{
-                  padding: '8px 16px',
-                  fontSize: '13.5px',
-                  fontWeight: 600,
-                  color: isLight ? '#111827' : '#f9fafb',
-                  textDecoration: 'none',
-                  borderRadius: '8px',
-                  border: `1px solid ${isLight ? '#d1d5db' : '#333333'}`,
-                  transition: 'background-color 0.15s ease',
-                }}
+                className="px-3.5 py-2 text-sm font-medium text-[#0d0d0d] dark:text-[#ececec] hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors no-underline"
               >
                 Sign In
               </Link>
 
-              {/* 14-Day Free Trial CTA */}
+              {/* ChatGPT Solid Primary: Start Free Trial */}
               <Link
                 to="/signup"
-                style={{
-                  padding: '9px 18px',
-                  fontSize: '13.5px',
-                  fontWeight: 600,
-                  color: '#ffffff',
-                  backgroundColor: '#10a37f',
-                  textDecoration: 'none',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 4px 14px rgba(16, 163, 127, 0.3)',
-                  transition: 'opacity 0.15s ease, transform 0.15s ease',
-                }}
+                className="px-4 py-2 text-sm font-medium bg-[#0d0d0d] hover:bg-[#262626] text-white dark:bg-[#ececec] dark:hover:bg-white dark:text-[#0d0d0d] rounded-full flex items-center gap-1.5 transition-colors no-underline shadow-none"
               >
-                Start Free Trial <ArrowRight size={15} />
+                <span>Start Free Trial</span>
+                <ArrowRight size={13} />
               </Link>
-            </>
+            </div>
           )}
 
           {/* Mobile Menu Hamburger */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            style={{
-              display: 'none',
-              background: 'none',
-              border: 'none',
-              padding: '8px',
-              color: 'inherit',
-              cursor: 'pointer',
-            }}
-            className="mobile-hamburger"
+            className="md:hidden p-2 text-[#0d0d0d] dark:text-[#ececec] hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
+            aria-label="Toggle Navigation Menu"
           >
-            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
       </div>
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div
-          style={{
-            padding: '16px 20px',
-            backgroundColor: isLight ? '#ffffff' : '#111111',
-            borderTop: `1px solid ${isLight ? '#e5e7eb' : '#222222'}`,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-          }}
-        >
+        <div className="md:hidden px-4 pt-2 pb-5 bg-white dark:bg-[#212121] border-t border-[#e5e5e5] dark:border-[#2f2f2f] flex flex-col gap-1 transition-colors">
           {navLinks.map((link) => (
             <Link
               key={link.path}
               to={link.path}
               onClick={() => setMobileMenuOpen(false)}
-              style={{
-                padding: '10px 14px',
-                fontSize: '14px',
-                fontWeight: 500,
-                color: isActive(link.path) ? '#10a37f' : 'inherit',
-                textDecoration: 'none',
-                borderRadius: '8px',
-              }}
+              className={`px-3 py-2 text-sm rounded-lg transition-colors no-underline ${
+                isActive(link.path)
+                  ? 'text-[#0d0d0d] dark:text-white font-medium bg-black/5 dark:bg-white/10'
+                  : 'text-[#676767] dark:text-[#b4b4b4] hover:text-[#0d0d0d] dark:hover:text-white'
+              }`}
             >
               {link.label}
             </Link>
           ))}
-          <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+          <div className="flex gap-2 mt-3 pt-3 border-t border-[#e5e5e5] dark:border-[#2f2f2f]">
             <Link
               to="/login"
               onClick={() => setMobileMenuOpen(false)}
-              style={{
-                flex: 1,
-                padding: '10px',
-                textAlign: 'center',
-                borderRadius: '8px',
-                border: `1px solid ${isLight ? '#d1d5db' : '#333333'}`,
-                textDecoration: 'none',
-                color: 'inherit',
-                fontWeight: 600,
-                fontSize: '13.5px',
-              }}
+              className="flex-1 py-2 text-center text-sm font-medium text-[#0d0d0d] dark:text-[#ececec] border border-[#e5e5e5] dark:border-[#2f2f2f] rounded-xl hover:bg-gray-100 dark:hover:bg-[#2f2f2f] transition-colors no-underline"
             >
               Sign In
             </Link>
             <Link
               to="/signup"
               onClick={() => setMobileMenuOpen(false)}
-              style={{
-                flex: 1,
-                padding: '10px',
-                textAlign: 'center',
-                borderRadius: '8px',
-                backgroundColor: '#10a37f',
-                color: '#ffffff',
-                textDecoration: 'none',
-                fontWeight: 600,
-                fontSize: '13.5px',
-              }}
+              className="flex-1 py-2 text-center text-sm font-medium bg-[#0d0d0d] text-white dark:bg-white dark:text-[#0d0d0d] rounded-xl hover:bg-[#262626] dark:hover:bg-gray-200 transition-colors no-underline"
             >
               Start Trial
             </Link>

@@ -15,10 +15,13 @@ export interface ServerConfig {
 export function validateConfig(): ServerConfig {
   const nodeEnv = (process.env.NODE_ENV || 'development') as 'development' | 'production' | 'test';
   const port = parseInt(process.env.PORT || '5000', 10);
-
   const jwtSecret = process.env.JWT_SECRET;
+
   if (!jwtSecret || jwtSecret.trim() === '') {
-    if (nodeEnv === 'production') {
+    if (nodeEnv === 'production' && !process.env.VERCEL) {
+      throw new Error('JWT_SECRET environment variable is required in production mode for security.');
+    }
+    if (process.env.VERCEL) {
       console.warn(
         '[Config Warning] JWT_SECRET environment variable is not configured in Vercel project settings! Using fallback key for preview. Please set JWT_SECRET for production.'
       );

@@ -74,7 +74,7 @@ export const JobList: React.FC<JobListProps> = ({ onSelectJob, onNewJob }) => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', padding: '20px' }}>
+    <div className="w-full flex flex-col pb-6">
       {/* Header */}
       <div
         style={{

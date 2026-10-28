@@ -165,146 +165,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      <aside
-        style={{
-          width: '260px',
-          backgroundColor: 'var(--bg-sidebar)',
-          borderRight: '1px solid var(--border-color)',
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          userSelect: 'none',
-          flexShrink: 0,
-          transition: 'width 0.2s ease',
-        }}
-      >
+      <aside className="w-[260px] h-full bg-[#f9f9f9] dark:bg-[#171717] border-r border-[#e5e5e5] dark:border-[#2f2f2f] flex flex-col shrink-0 select-none transition-colors duration-200">
         {/* Brand Header */}
-        <div
-          style={{
-            padding: '16px 14px 12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '10px',
-                backgroundColor: '#171717',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                boxShadow: '0 2px 8px rgba(16, 163, 127, 0.2)',
-              }}
-            >
-              <img src="/icon.svg" alt="K-Connect" style={{ width: '22px', height: '22px' }} />
+        <div className="p-3.5 pb-2 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <div className="w-8 h-8 rounded-lg bg-[#0d0d0d] dark:bg-white text-white dark:text-[#0d0d0d] flex items-center justify-center shrink-0">
+              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                <path d="M12 2L14.39 8.26L21 9.27L16.27 13.88L17.38 20.46L12 17.63L6.62 20.46L7.73 13.88L3 9.27L9.61 8.26L12 2Z" />
+              </svg>
             </div>
-            <div style={{ overflow: 'hidden' }}>
-              <div
-                style={{
-                  fontWeight: 800,
-                  fontSize: '14px',
-                  color: 'var(--text-main)',
-                  lineHeight: 1.2,
-                  letterSpacing: '-0.3px',
-                }}
-              >
-                K-Connect SaaS
+            <div className="overflow-hidden">
+              <div className="font-semibold text-sm text-[#0d0d0d] dark:text-[#ececec] leading-tight truncate">
+                {shopSettings.shopName || 'K-Connect'}
               </div>
-              <div
-                style={{
-                  fontSize: '11px',
-                  color: '#10a37f',
-                  fontWeight: 600,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-                title={shopSettings.shopName}
-              >
-                {shopSettings.shopName || 'KTech Computers'}
+              <div className="text-[11px] text-[#676767] dark:text-[#b4b4b4] truncate">
+                Repair Laboratory OS
               </div>
             </div>
           </div>
         </div>
 
-        {/* ChatGPT Style "New Job" Button */}
-        <div style={{ padding: '0 12px 10px' }}>
+        {/* ChatGPT "New Chat" Style "New Job" Button */}
+        <div className="px-3 py-2">
           <button
+            type="button"
             onClick={onNewJob}
-            style={{
-              width: '100%',
-              padding: '10px 14px',
-              borderRadius: '9999px',
-              backgroundColor: 'var(--bg-card)',
-              border: '1px solid var(--border-color)',
-              color: 'var(--text-main)',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              transition: 'background-color 0.15s ease, border-color 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-surface-hover)';
-              (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-color-light)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-card)';
-              (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-color)';
-            }}
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-[#e5e5e5] dark:border-[#2f2f2f] bg-white dark:bg-[#212121] hover:bg-gray-200 dark:hover:bg-[#282828] text-sm font-medium text-[#0d0d0d] dark:text-[#ececec] transition-colors cursor-pointer shadow-none"
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div
-                style={{
-                  width: '22px',
-                  height: '22px',
-                  borderRadius: '50%',
-                  backgroundColor: 'rgba(16, 163, 127, 0.2)',
-                  color: '#10a37f',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Plus size={14} />
-              </div>
-              <span>New Repair Job</span>
+            <div className="flex items-center gap-2">
+              <Plus size={16} className="text-[#0d0d0d] dark:text-white" />
+              <span>New Job</span>
             </div>
-            <kbd
-              style={{
-                fontSize: '10px',
-                color: 'var(--text-dim)',
-                fontFamily: 'var(--font-mono)',
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                padding: '2px 5px',
-                borderRadius: '4px',
-              }}
-            >
+            <kbd className="text-[10px] font-mono text-[#676767] dark:text-[#b4b4b4] bg-black/5 dark:bg-white/10 px-1.5 py-0.5 rounded">
               F1
             </kbd>
           </button>
         </div>
 
-        {/* Navigation & Recent History Scroll Area */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '4px 8px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '2px',
-          }}
-        >
-          {/* Main App Navigation */}
+        {/* Navigation items as simple text-only links with hover:bg-gray-200 */}
+        <div className="flex-1 overflow-y-auto px-2 py-1 flex flex-col gap-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -313,32 +212,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => {
                   if (isAllowed) onSelectTab(item.id);
                 }}
                 disabled={!isAllowed}
-                className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
-                style={{
-                  borderRadius: '10px',
-                  padding: '8px 12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-left transition-colors cursor-pointer ${
+                  !isAllowed ? 'opacity-40 cursor-not-allowed' : ''
+                } ${
+                  isActive
+                    ? 'bg-gray-200 dark:bg-[#212121] font-medium text-[#0d0d0d] dark:text-white'
+                    : 'text-[#0d0d0d] dark:text-[#ececec] hover:bg-gray-200 dark:hover:bg-[#212121] font-normal'
+                }`}
               >
-                <Icon size={16} color={isActive ? '#10a37f' : 'var(--text-dim)'} />
-                <span style={{ flex: 1 }}>{item.label}</span>
+                <Icon
+                  size={16}
+                  className={isActive ? 'text-[#0d0d0d] dark:text-white' : 'text-[#676767] dark:text-[#b4b4b4]'}
+                />
+                <span className="flex-1 truncate">{item.label}</span>
                 {item.badge && (
-                  <span
-                    style={{
-                      fontSize: '9px',
-                      padding: '1px 5px',
-                      borderRadius: '4px',
-                      backgroundColor: 'rgba(16, 163, 127, 0.15)',
-                      color: '#10a37f',
-                      fontWeight: 700,
-                    }}
-                  >
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full border border-[#e5e5e5] dark:border-[#2f2f2f] text-[#676767] dark:text-[#b4b4b4]">
                     {item.badge}
                   </span>
                 )}
@@ -348,65 +241,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* ChatGPT Style "Recent Repairs" History Stream */}
           {recentJobs.length > 0 && (
-            <div style={{ marginTop: '16px', padding: '0 4px' }}>
-              <div
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: 'var(--text-dim)',
-                  padding: '6px 8px',
-                  letterSpacing: '0.4px',
-                  textTransform: 'uppercase',
-                }}
-              >
+            <div className="mt-4 pt-3 border-t border-[#e5e5e5] dark:border-[#2f2f2f] px-1">
+              <div className="text-[11px] font-medium uppercase tracking-wider text-[#676767] dark:text-[#b4b4b4] px-2 py-1 mb-1">
                 Recent Repairs
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+              <div className="flex flex-col gap-0.5">
                 {recentJobs.map((job) => (
                   <button
                     key={job.id}
+                    type="button"
                     onClick={() => {
                       if (onSelectJob) {
                         onSelectJob(job.id);
                       }
                       onSelectTab('jobs');
                     }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '7px 8px',
-                      borderRadius: '8px',
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      color: 'var(--text-muted)',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      width: '100%',
-                      transition: 'background-color 0.12s ease, color 0.12s ease',
-                      overflow: 'hidden',
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-surface-hover)';
-                      (e.currentTarget as HTMLElement).style.color = 'var(--text-main)';
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
-                      (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)';
-                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left text-xs text-[#676767] dark:text-[#b4b4b4] hover:text-[#0d0d0d] dark:hover:text-white hover:bg-gray-200 dark:hover:bg-[#212121] transition-colors cursor-pointer truncate"
                   >
-                    <Clock size={13} color="var(--text-dim)" style={{ flexShrink: 0 }} />
-                    <span
-                      style={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        flex: 1,
-                      }}
-                    >
-                      <strong style={{ color: 'var(--text-main)' }}>{job.jobNumber}</strong>{' '}
-                      <span style={{ color: 'var(--text-dim)' }}>• {job.customerName}</span>
+                    <Clock size={12} className="shrink-0 text-[#676767] dark:text-[#b4b4b4]" />
+                    <span className="truncate">
+                      <strong className="text-[#0d0d0d] dark:text-[#ececec]">{job.jobNumber}</strong>{' '}
+                      • {job.customerName}
                     </span>
                   </button>
                 ))}
@@ -415,133 +270,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Bottom Section: ChatGPT "Upgrade Plan" & Profile Pill */}
-        <div
-          style={{
-            padding: '10px 10px 14px',
-            borderTop: '1px solid var(--border-color)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-          }}
-        >
-          {/* Upgrade Plan Pill Button */}
+        {/* Bottom Section: ChatGPT Plan & Profile */}
+        <div className="p-2.5 border-t border-[#e5e5e5] dark:border-[#2f2f2f] flex flex-col gap-1.5">
+          {/* Upgrade Plan Button */}
           <button
+            type="button"
             onClick={() => setIsPricingOpen(true)}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '9px 12px',
-              borderRadius: '12px',
-              backgroundColor: 'rgba(16, 163, 127, 0.1)',
-              border: '1px solid rgba(16, 163, 127, 0.25)',
-              color: 'var(--text-main)',
-              fontSize: '12.5px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'background-color 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(16, 163, 127, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(16, 163, 127, 0.1)';
-            }}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-[#e5e5e5] dark:border-[#2f2f2f] hover:bg-gray-200 dark:hover:bg-[#212121] text-xs font-medium text-[#0d0d0d] dark:text-[#ececec] transition-colors cursor-pointer"
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div
-                style={{
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: '50%',
-                  backgroundColor: '#10a37f',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Sparkles size={13} />
-              </div>
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ lineHeight: 1.1, fontSize: '12.5px', fontWeight: 700 }}>Upgrade Plan</div>
-                <div style={{ fontSize: '10px', color: '#10a37f' }}>Pro Multi-Seat Cloud</div>
-              </div>
+            <div className="flex items-center gap-2">
+              <Sparkles size={14} className="text-[#0d0d0d] dark:text-white" />
+              <span>Upgrade Plan</span>
             </div>
-            <span
-              style={{
-                fontSize: '10px',
-                padding: '2px 6px',
-                borderRadius: '9999px',
-                backgroundColor: '#10a37f',
-                color: '#fff',
-                fontWeight: 700,
-              }}
-            >
-              FREE
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/5 dark:bg-white/10 text-[#676767] dark:text-[#b4b4b4]">
+              Pro
             </span>
           </button>
 
           {/* User Profile Pill at Bottom */}
           <button
+            type="button"
             onClick={() => onSelectTab('settings')}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '8px 10px',
-              borderRadius: '12px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text-main)',
-              textAlign: 'left',
-              transition: 'background-color 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-surface-hover)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
-            }}
+            className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-[#212121] transition-colors text-left cursor-pointer"
           >
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                backgroundColor: '#10a37f',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ffffff',
-                fontWeight: 700,
-                fontSize: '13px',
-                flexShrink: 0,
-              }}
-            >
+            <div className="w-7 h-7 rounded-full bg-[#0d0d0d] dark:bg-white text-white dark:text-[#0d0d0d] flex items-center justify-center font-semibold text-xs shrink-0">
               {currentUser?.fullName?.charAt(0) || 'U'}
             </div>
-            <div style={{ flex: 1, overflow: 'hidden' }}>
-              <div
-                style={{
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
+            <div className="flex-1 overflow-hidden">
+              <div className="text-xs font-medium text-[#0d0d0d] dark:text-[#ececec] truncate">
                 {currentUser?.fullName || 'Shop Staff'}
               </div>
-              <div style={{ fontSize: '10.5px', color: 'var(--text-dim)', marginTop: '1px' }}>
-                {currentUser?.roleName || 'Counter'} • Settings
+              <div className="text-[10px] text-[#676767] dark:text-[#b4b4b4] truncate">
+                {currentUser?.roleName || 'Counter'}
               </div>
             </div>
-            <Settings size={15} color="var(--text-dim)" />
+            <Settings size={14} className="text-[#676767] dark:text-[#b4b4b4]" />
           </button>
         </div>
       </aside>

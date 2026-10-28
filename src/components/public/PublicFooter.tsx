@@ -7,10 +7,10 @@ export const PublicFooter: React.FC = () => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
-  const footerBg = isLight ? '#f9fafb' : '#080808';
-  const borderCol = isLight ? '#e5e7eb' : '#1f1f1f';
-  const textMuted = isLight ? '#6b7280' : '#888888';
-  const textMain = isLight ? '#111827' : '#f9fafb';
+  const footerBg = isLight ? '#f9f9f9' : '#171717';
+  const borderCol = isLight ? '#e5e5e5' : '#2f2f2f';
+  const textMuted = isLight ? '#676767' : '#b4b4b4';
+  const textMain = isLight ? '#0d0d0d' : '#ececec';
 
   return (
     <footer

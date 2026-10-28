@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   color-scheme: dark;
 
@@ -17,21 +21,21 @@
   --radius-xl: 24px;
   --radius-pill: 9999px;
 
-  /* Default Dark Mode (ChatGPT Canvas & Surface Theme) */
+  /* ChatGPT Dark Mode Tokens */
   --bg-app: #212121;
   --bg-sidebar: #171717;
   --bg-header: #212121;
   --bg-surface: #212121;
   --bg-surface-hover: #2f2f2f;
   --bg-surface-active: #383838;
-  --bg-card: #2f2f2f;
-  --bg-card-hover: #383838;
+  --bg-card: #212121;
+  --bg-card-hover: #2f2f2f;
   --bg-input: #2f2f2f;
   --bg-main: #212121;
 
-  --border-color: rgba(255, 255, 255, 0.1);
-  --border-color-light: rgba(255, 255, 255, 0.18);
-  --border-color-focus: #10a37f;
+  --border-color: #2f2f2f;
+  --border-color-light: #383838;
+  --border-color-focus: #ececec;
 
   --text-main: #ececec;
   --text-muted: #b4b4b4;
@@ -59,12 +63,13 @@
   --color-purple-bg: rgba(168, 85, 247, 0.15);
   --color-purple-border: #a855f7;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 14px -1px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 16px 32px -4px rgba(0, 0, 0, 0.65);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.35);
 }
 
-[data-theme='light'] {
+[data-theme='light'],
+.light {
   color-scheme: light;
 
   --bg-app: #ffffff;
@@ -73,22 +78,22 @@
   --bg-surface: #ffffff;
   --bg-surface-hover: #f4f4f4;
   --bg-surface-active: #eaeaea;
-  --bg-card: #f4f4f4;
-  --bg-card-hover: #eaeaea;
-  --bg-input: #f4f4f4;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f9f9f9;
+  --bg-input: #ffffff;
   --bg-main: #ffffff;
 
   --border-color: #e5e5e5;
-  --border-color-light: #d1d5db;
-  --border-color-focus: #10a37f;
+  --border-color-light: #d4d4d4;
+  --border-color-focus: #0d0d0d;
 
   --text-main: #0d0d0d;
-  --text-muted: #5d5d5d;
-  --text-dim: #8f8f8f;
+  --text-muted: #676767;
+  --text-dim: #8e8e93;
 
-  --brand-primary: #10a37f;
-  --brand-primary-hover: #1a7f64;
-  --brand-accent: #19c37d;
+  --brand-primary: #0d0d0d;
+  --brand-primary-hover: #2d2d2d;
+  --brand-accent: #10a37f;
 
   --brand-whatsapp: #16a34a;
   --brand-whatsapp-hover: #15803d;
@@ -106,9 +111,9 @@
   --color-purple-bg: #f5f3ff;
   --color-purple-border: #8b5cf6;
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px -1px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 16px 28px -3px rgba(0, 0, 0, 0.12);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.08);
 }
 
 /* Global Reset & Base Styles */
@@ -176,19 +181,23 @@ body {
   animation: fadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Tables */
+/* Tables: Clean data grids with no vertical borders, only horizontal dividers */
 .ktech-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 13px;
+  border: none;
 }
 
 .ktech-table th {
-  background-color: var(--bg-surface-active);
+  background-color: transparent;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 500;
   text-align: left;
-  padding: 9px 12px;
+  padding: 10px 14px;
+  border-top: none;
+  border-left: none;
+  border-right: none;
   border-bottom: 1px solid var(--border-color);
   text-transform: uppercase;
   font-size: 11px;
@@ -199,7 +208,10 @@ body {
 }
 
 .ktech-table td {
-  padding: 9px 12px;
+  padding: 12px 14px;
+  border-top: none;
+  border-left: none;
+  border-right: none;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-main);
   transition: background-color 0.1s ease;
@@ -209,16 +221,16 @@ body {
   background-color: var(--bg-surface-hover);
 }
 
-/* Buttons */
+/* ChatGPT Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 7px 14px;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  font-size: 12px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 13px;
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
@@ -230,49 +242,76 @@ body {
   transform: scale(0.98);
 }
 
+/* Primary Button: Solid black in light mode, solid white in dark mode */
 .btn-primary {
-  background-color: var(--brand-primary);
+  background-color: #0d0d0d;
   color: #ffffff;
+  border: 1px solid #0d0d0d;
+  box-shadow: none;
 }
 .btn-primary:hover {
-  background-color: var(--brand-primary-hover);
-  box-shadow: 0 4px 12px rgba(16, 163, 127, 0.35);
+  background-color: #262626;
+  border-color: #262626;
 }
 
-.btn-secondary {
-  background-color: var(--bg-surface-hover);
-  border-color: var(--border-color);
+[data-theme='dark'] .btn-primary,
+.dark .btn-primary {
+  background-color: #ececec;
+  color: #0d0d0d;
+  border: 1px solid #ececec;
+}
+[data-theme='dark'] .btn-primary:hover,
+.dark .btn-primary:hover {
+  background-color: #ffffff;
+  border-color: #ffffff;
+}
+
+/* Secondary Button: Ghost / Outline variant */
+.btn-secondary,
+.btn-outline,
+.btn-ghost {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
   color: var(--text-main);
 }
-.btn-secondary:hover {
-  background-color: var(--bg-surface-active);
+.btn-secondary:hover,
+.btn-outline:hover,
+.btn-ghost:hover {
+  background-color: var(--bg-surface-hover);
   border-color: var(--border-color-light);
 }
 
 .btn-success {
-  background-color: var(--color-success);
+  background-color: #10a37f;
   color: #ffffff;
 }
 .btn-success:hover {
   background-color: #059669;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
 }
 
 .btn-whatsapp {
-  background-color: var(--brand-whatsapp);
+  background-color: #16a34a;
   color: #ffffff;
 }
 .btn-whatsapp:hover {
-  background-color: var(--brand-whatsapp-hover);
-  box-shadow: 0 2px 10px rgba(34, 197, 94, 0.4);
+  background-color: #15803d;
 }
 
 .btn-danger {
-  background-color: var(--color-danger);
+  background-color: #ef4444;
   color: #ffffff;
 }
 .btn-danger:hover {
   background-color: #dc2626;
+}
+
+/* Cards & Forms: Flat, thin subtle borders, no heavy shadows */
+.card,
+.ktech-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 /* Badges */

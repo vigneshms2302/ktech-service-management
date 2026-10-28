@@ -226,7 +226,7 @@ export const BillingWorkspace: React.FC = () => {
   const totalDue = invoices.reduce((acc, inv) => acc + Number(inv.balance_due || 0), 0);
 
   return (
-    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', height: '100%', overflowY: 'auto' }}>
+    <div className="w-full flex flex-col gap-4 pb-6">
       {/* Financial KPI Banner */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
         <div style={{ padding: '12px 14px', borderRadius: '8px', backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>

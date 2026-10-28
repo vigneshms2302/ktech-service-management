@@ -50,22 +50,14 @@ import {
 } from './components/public/LegalPages.tsx';
 import { useAuth } from './context/AuthContext.tsx';
 import { saasApi } from './api/client.ts';
-import { Sparkles, AlertTriangle, ArrowRight, Clock } from 'lucide-react';
+import { Sparkles, AlertTriangle, ArrowRight, Clock, ArrowUp, Plus } from 'lucide-react';
 
 /** Public Layout with Sticky Navbar and Comprehensive Footer */
 const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
-        backgroundColor: '#0a0a0a',
-        color: '#f9fafb',
-      }}
-    >
+    <div className="flex flex-col min-h-screen bg-white dark:bg-[#212121] text-[#0d0d0d] dark:text-[#ececec] transition-colors duration-200">
       <PublicNavbar />
-      <main style={{ flex: 1 }}>{children}</main>
+      <main className="flex-1">{children}</main>
       <PublicFooter />
     </div>
   );
@@ -125,6 +117,7 @@ const ShopWorkspace: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [licenseError, setLicenseError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [quickInputValue, setQuickInputValue] = useState('');
 
   // Subscription Status Banner State
   const [subStatus, setSubStatus] = useState<any>(null);
@@ -622,8 +615,65 @@ const ShopWorkspace: React.FC = () => {
           onNewJob={() => handleOpenNewJob()}
         />
 
-        <main style={{ flex: 1, overflow: 'hidden', backgroundColor: 'var(--bg-app)', position: 'relative' }}>
-          {renderContent()}
+        <main className="flex-1 overflow-hidden bg-white dark:bg-[#212121] flex flex-col relative transition-colors duration-200">
+          {/* Centered Main Content Area (max-width 800px centered like ChatGPT chat window) */}
+          <div className="flex-1 overflow-y-auto w-full flex flex-col items-center px-4 py-4">
+            <div className="w-full max-w-[800px] flex-1 flex flex-col">
+              {renderContent()}
+            </div>
+          </div>
+
+          {/* ChatGPT Floating Input / Quick-Action Bar */}
+          <div className="w-full pointer-events-none sticky bottom-0 left-0 pb-3 px-4 bg-gradient-to-t from-white via-white/90 dark:from-[#212121] dark:via-[#212121]/90 to-transparent pt-3 z-30">
+            <div className="max-w-[800px] mx-auto w-full pointer-events-auto">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const q = quickInputValue.trim();
+                  if (!q) return;
+                  if (q.toLowerCase() === 'new' || q.toLowerCase() === 'new job' || q.toLowerCase() === 'new repair') {
+                    handleOpenNewJob();
+                  } else {
+                    setIsSearchOpen(true);
+                  }
+                  setQuickInputValue('');
+                }}
+                className="relative flex items-center bg-white dark:bg-[#2f2f2f] border border-[#e5e5e5] dark:border-[#383838] rounded-2xl shadow-sm hover:shadow-md px-3.5 py-2.5 transition-all focus-within:border-gray-400 dark:focus-within:border-gray-500"
+              >
+                {/* Attachment / Plus Icon on Left */}
+                <button
+                  type="button"
+                  onClick={() => handleOpenNewJob()}
+                  title="New Repair Job / Attach Item"
+                  className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#383838] text-[#676767] dark:text-[#b4b4b4] hover:text-[#0d0d0d] dark:hover:text-white transition-colors cursor-pointer mr-2 shrink-0"
+                >
+                  <Plus size={18} />
+                </button>
+
+                {/* Input Field */}
+                <input
+                  type="text"
+                  value={quickInputValue}
+                  onChange={(e) => setQuickInputValue(e.target.value)}
+                  placeholder="Ask K-Connect, search jobs, customer phone, or type 'New Job'..."
+                  className="flex-1 bg-transparent border-none outline-none text-sm text-[#0d0d0d] dark:text-[#ececec] placeholder:text-[#676767] dark:placeholder:text-[#8e8e93]"
+                />
+
+                {/* Send Arrow on Right */}
+                <button
+                  type="submit"
+                  disabled={!quickInputValue.trim()}
+                  title="Send query"
+                  className="w-8 h-8 rounded-full bg-[#0d0d0d] text-white dark:bg-white dark:text-[#0d0d0d] flex items-center justify-center shrink-0 ml-2 disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 transition-all cursor-pointer"
+                >
+                  <ArrowUp size={16} />
+                </button>
+              </form>
+              <div className="text-[11px] text-[#676767] dark:text-[#8e8e93] text-center mt-1.5 font-normal">
+                K-Connect can make mistakes. Verify critical chip diagnostics and passcodes.
+              </div>
+            </div>
+          </div>
         </main>
       </div>
 

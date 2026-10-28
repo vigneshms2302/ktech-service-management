@@ -132,7 +132,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
   let accumulatedOffset = 0;
 
   return (
-    <div style={{ padding: '24px', height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="w-full flex flex-col gap-5 pb-6">
       {/* 1. ChatGPT Style Greeting & Prompt Cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>

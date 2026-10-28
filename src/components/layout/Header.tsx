@@ -5,12 +5,9 @@ import {
   Sun,
   LogOut,
   Plus,
-  Settings,
   ChevronDown,
   Check,
   PanelLeft,
-  Bell,
-  HelpCircle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { useTheme } from '../../context/ThemeContext.tsx';
@@ -70,303 +67,109 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header
-        style={{
-          height: '56px',
-          backgroundColor: 'var(--bg-header)',
-          borderBottom: '1px solid var(--border-color)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 16px',
-          userSelect: 'none',
-          flexShrink: 0,
-          position: 'relative',
-          zIndex: 20,
-          gap: '8px',
-        }}
-      >
+      <header className="h-14 bg-white dark:bg-[#212121] border-b border-[#e5e5e5] dark:border-[#2f2f2f] flex items-center justify-between px-4 select-none shrink-0 relative z-20 gap-2 transition-colors duration-200">
         {/* LEFT: Sidebar toggle + Shop name */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+        <div className="flex items-center gap-2 shrink-0">
           {onToggleSidebar && (
             <button
+              type="button"
               onClick={onToggleSidebar}
               title={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-              style={{
-                width: '34px',
-                height: '34px',
-                borderRadius: '8px',
-                backgroundColor: 'transparent',
-                border: 'none',
-                color: 'var(--text-muted)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#676767] dark:text-[#b4b4b4] hover:bg-gray-100 dark:hover:bg-[#2f2f2f] hover:text-[#0d0d0d] dark:hover:text-white transition-colors cursor-pointer"
             >
               <PanelLeft size={17} />
             </button>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div
-              style={{
-                width: '26px',
-                height: '26px',
-                borderRadius: '7px',
-                backgroundColor: '#10a37f',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <img src="/icon.svg" alt="" style={{ width: '16px', height: '16px', filter: 'brightness(0) invert(1)' }} />
-            </div>
-            <span
-              style={{
-                fontSize: '14px',
-                fontWeight: 600,
-                color: 'var(--text-main)',
-                letterSpacing: '-0.2px',
-                maxWidth: '160px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-[#0d0d0d] dark:text-[#ececec] tracking-tight max-w-[180px] truncate">
               {shopSettings.shopName || 'K-Connect'}
+            </span>
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-[#e5e5e5] dark:border-[#2f2f2f] text-[#676767] dark:text-[#b4b4b4]">
+              Lab OS
             </span>
           </div>
         </div>
 
-        {/* CENTER: Search Bar */}
-        <div style={{ flex: 1, maxWidth: '480px', margin: '0 12px' }}>
+        {/* CENTER: Minimalist Search / Quick Action */}
+        <div className="flex-1 max-w-md mx-3">
           <div
             onClick={onOpenSearch}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              backgroundColor: 'var(--bg-input)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '8px',
-              padding: '6px 12px',
-              cursor: 'pointer',
-              transition: 'border-color 0.15s ease',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--border-color-light)')}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border-color)')}
+            className="flex items-center gap-2 bg-white dark:bg-[#282828] border border-[#e5e5e5] dark:border-[#2f2f2f] hover:border-gray-400 dark:hover:border-gray-500 rounded-xl px-3 py-1.5 cursor-pointer transition-colors shadow-none"
           >
-            <Search size={14} color="var(--text-dim)" />
-            <span style={{ flex: 1, fontSize: '13px', color: 'var(--text-dim)' }}>
+            <Search size={14} className="text-[#676767] dark:text-[#b4b4b4]" />
+            <span className="flex-1 text-xs text-[#676767] dark:text-[#b4b4b4] truncate font-normal">
               Search jobs, customers, invoices...
             </span>
-            <kbd
-              style={{
-                padding: '1px 6px',
-                borderRadius: '5px',
-                backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-dim)',
-                fontSize: '11px',
-                fontFamily: 'monospace',
-              }}
-            >
+            <kbd className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 text-[10px] text-[#676767] dark:text-[#b4b4b4] font-mono">
               ⌘K
             </kbd>
           </div>
         </div>
 
         {/* RIGHT: Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-          {/* New Job Button */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* New Job Button: ChatGPT Solid Button */}
           {onNewJob && (
             <button
+              type="button"
               onClick={onNewJob}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '7px 14px',
-                borderRadius: '8px',
-                backgroundColor: '#10a37f',
-                color: '#ffffff',
-                border: 'none',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                boxShadow: '0 1px 4px rgba(16, 163, 127, 0.3)',
-                transition: 'background-color 0.15s ease',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#0d8f6f')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#10a37f')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0d0d0d] text-white hover:bg-[#262626] dark:bg-[#ececec] dark:text-[#0d0d0d] dark:hover:bg-white text-xs font-medium transition-colors shadow-none cursor-pointer"
             >
-              <Plus size={15} />
+              <Plus size={14} />
               <span>New Job</span>
             </button>
           )}
 
-          {/* Upgrade Button */}
+          {/* Upgrade Ghost Button */}
           <button
+            type="button"
             onClick={() => setIsPricingOpen(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '6px 11px',
-              borderRadius: '8px',
-              backgroundColor: 'transparent',
-              border: '1px solid var(--border-color)',
-              color: 'var(--text-muted)',
-              fontSize: '12.5px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            className="px-2.5 py-1.5 rounded-lg border border-[#e5e5e5] dark:border-[#2f2f2f] hover:bg-gray-100 dark:hover:bg-[#282828] text-xs font-medium text-[#676767] dark:text-[#b4b4b4] hover:text-[#0d0d0d] dark:hover:text-white transition-colors cursor-pointer"
           >
             Upgrade
           </button>
 
-          {/* Help */}
+          {/* Theme Toggle Button */}
           <button
-            title="Help & Documentation"
-            style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '8px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-          >
-            <HelpCircle size={16} />
-          </button>
-
-          {/* Notifications placeholder */}
-          <button
-            title="Notifications"
-            style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '8px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-          >
-            <Bell size={16} />
-          </button>
-
-          {/* Theme Toggle */}
-          <button
+            type="button"
             onClick={toggleTheme}
             title="Toggle theme"
-            style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '8px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#676767] dark:text-[#b4b4b4] hover:bg-gray-100 dark:hover:bg-[#282828] hover:text-[#0d0d0d] dark:hover:text-white transition-colors cursor-pointer"
           >
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
           </button>
 
           {/* User Avatar + Dropdown */}
-          <div ref={userDropdownRef} style={{ position: 'relative', marginLeft: '4px' }}>
+          <div ref={userDropdownRef} className="relative ml-1">
             <button
+              type="button"
               onClick={() => setShowUserDropdown(!showUserDropdown)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 6px 4px 4px',
-                borderRadius: '8px',
-                backgroundColor: showUserDropdown ? 'var(--bg-surface-hover)' : 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = showUserDropdown ? 'var(--bg-surface-hover)' : 'transparent')}
+              className="flex items-center gap-1.5 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-[#282828] transition-colors cursor-pointer"
             >
-              <div
-                style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '50%',
-                  backgroundColor: '#10a37f',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: '11px',
-                }}
-              >
+              <div className="w-7 h-7 rounded-full bg-[#0d0d0d] dark:bg-white text-white dark:text-[#0d0d0d] flex items-center justify-center font-semibold text-xs shrink-0">
                 {initials}
               </div>
-              <ChevronDown size={13} color="var(--text-dim)" />
+              <ChevronDown size={12} className="text-[#676767] dark:text-[#b4b4b4]" />
             </button>
 
-            {/* User Dropdown */}
+            {/* Dropdown Menu */}
             {showUserDropdown && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '44px',
-                  right: 0,
-                  width: '220px',
-                  backgroundColor: 'var(--bg-card)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '12px',
-                  boxShadow: 'var(--shadow-lg)',
-                  padding: '6px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '2px',
-                  zIndex: 200,
-                  animation: 'fadeIn 0.12s ease-out',
-                }}
-              >
+              <div className="absolute top-11 right-0 w-56 bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f] rounded-xl shadow-lg p-1.5 flex flex-col gap-1 z-50 animate-fade-in">
                 {/* User Info */}
-                <div style={{ padding: '8px 10px 10px', borderBottom: '1px solid var(--border-color)', marginBottom: '4px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>
+                <div className="px-2.5 py-2 border-b border-[#e5e5e5] dark:border-[#2f2f2f] mb-1">
+                  <div className="text-xs font-semibold text-[#0d0d0d] dark:text-[#ececec]">
                     {currentUser?.fullName || 'User'}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#10a37f', marginTop: '1px' }}>
+                  <div className="text-[11px] text-[#676767] dark:text-[#b4b4b4] mt-0.5">
                     {currentUser?.roleName || 'Staff'}
                   </div>
                 </div>
 
-                {/* User list for switching */}
+                {/* Switch User List */}
                 {userList.length > 1 && (
                   <>
-                    <div style={{ fontSize: '10px', color: 'var(--text-dim)', padding: '2px 8px 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#676767] dark:text-[#b4b4b4] px-2 py-1">
                       Switch User
                     </div>
                     {userList.map((user) => {
@@ -374,81 +177,36 @@ export const Header: React.FC<HeaderProps> = ({
                       return (
                         <button
                           key={user.id}
+                          type="button"
                           onClick={() => setShowUserDropdown(false)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '6px 10px',
-                            borderRadius: '8px',
-                            border: 'none',
-                            backgroundColor: isCurrent ? 'var(--bg-surface-active)' : 'transparent',
-                            color: 'var(--text-main)',
-                            fontSize: '12.5px',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!isCurrent) e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = isCurrent ? 'var(--bg-surface-active)' : 'transparent';
-                          }}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-left cursor-pointer transition-colors ${
+                            isCurrent
+                              ? 'bg-gray-100 dark:bg-[#2f2f2f] text-[#0d0d0d] dark:text-white font-medium'
+                              : 'text-[#0d0d0d] dark:text-[#ececec] hover:bg-gray-100 dark:hover:bg-[#282828]'
+                          }`}
                         >
                           <div>
-                            <div style={{ fontWeight: isCurrent ? 600 : 400 }}>{user.fullName}</div>
-                            <div style={{ fontSize: '10.5px', color: 'var(--text-dim)' }}>{user.roleName}</div>
+                            <div>{user.fullName}</div>
+                            <div className="text-[10px] text-[#676767] dark:text-[#b4b4b4]">{user.roleName}</div>
                           </div>
-                          {isCurrent && <Check size={13} color="#10a37f" />}
+                          {isCurrent && <Check size={13} className="text-[#0d0d0d] dark:text-white" />}
                         </button>
                       );
                     })}
-                    <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '4px 0' }} />
+                    <div className="h-[1px] bg-[#e5e5e5] dark:bg-[#2f2f2f] my-1" />
                   </>
                 )}
 
-                {/* Settings */}
+                {/* Sign Out Button */}
                 <button
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '7px 10px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: 'transparent',
-                    color: 'var(--text-main)',
-                    fontSize: '12.5px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
+                  type="button"
+                  onClick={async () => {
+                    setShowUserDropdown(false);
+                    await logout();
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors text-left cursor-pointer"
                 >
-                  <Settings size={14} />
-                  <span>Settings</span>
-                </button>
-
-                {/* Sign Out */}
-                <button
-                  onClick={async () => { setShowUserDropdown(false); await logout(); }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '7px 10px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: 'transparent',
-                    color: '#ef4444',
-                    fontSize: '12.5px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                >
-                  <LogOut size={14} />
+                  <LogOut size={13} />
                   <span>Sign out</span>
                 </button>
               </div>
