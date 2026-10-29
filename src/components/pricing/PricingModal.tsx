@@ -29,8 +29,8 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.78)',
-        backdropFilter: 'blur(8px)',
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        backdropFilter: 'blur(6px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -42,15 +42,16 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
       onClick={onClose}
     >
       <div
+        className="card"
         style={{
           width: '100%',
           maxWidth: '920px',
-          backgroundColor: '#212121',
-          color: '#ececec',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
+          backgroundColor: 'var(--bg-card)',
+          color: 'var(--text-main)',
+          border: '1px solid var(--border-color)',
           borderRadius: '24px',
           padding: '32px',
-          boxShadow: '0 30px 80px -20px rgba(0, 0, 0, 0.85)',
+          boxShadow: 'var(--shadow-lg)',
           position: 'relative',
         }}
         onClick={(e) => e.stopPropagation()}
@@ -64,7 +65,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
             right: '24px',
             background: 'transparent',
             border: 'none',
-            color: '#8e8ea0',
+            color: 'var(--text-dim)',
             cursor: 'pointer',
             padding: '6px',
             borderRadius: '8px',
@@ -72,10 +73,8 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
             alignItems: 'center',
             justifyContent: 'center',
           }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = '#ececec')}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = '#8e8ea0')}
         >
-          <X size={22} />
+          <X size={20} />
         </button>
 
         {/* Modal Header */}
@@ -87,8 +86,8 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
               gap: '6px',
               padding: '4px 12px',
               borderRadius: '9999px',
-              backgroundColor: 'rgba(16, 163, 127, 0.15)',
-              border: '1px solid rgba(16, 163, 127, 0.3)',
+              backgroundColor: 'rgba(16, 163, 127, 0.12)',
+              border: '1px solid rgba(16, 163, 127, 0.25)',
               color: '#10a37f',
               fontSize: '12px',
               fontWeight: 600,
@@ -98,10 +97,10 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
             <Sparkles size={14} />
             K-Connect SaaS Plans
           </div>
-          <h2 style={{ fontSize: '26px', fontWeight: 800, color: '#f3f3f3', margin: '0 0 6px', letterSpacing: '-0.5px' }}>
+          <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 6px', letterSpacing: '-0.5px' }}>
             Upgrade your repair shop plan
           </h2>
-          <p style={{ fontSize: '14px', color: '#b4b4b4', margin: 0 }}>
+          <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0 }}>
             Sync counters, technicians, and invoicing across all computers with cloud reliability.
           </p>
 
@@ -112,8 +111,8 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
               alignItems: 'center',
               padding: '3px',
               borderRadius: '9999px',
-              backgroundColor: '#171717',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              backgroundColor: 'var(--bg-surface-hover)',
+              border: '1px solid var(--border-color)',
               marginTop: '16px',
             }}
           >
@@ -123,11 +122,12 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
                 padding: '6px 16px',
                 borderRadius: '9999px',
                 border: 'none',
-                background: billingCycle === 'monthly' ? '#2f2f2f' : 'transparent',
-                color: billingCycle === 'monthly' ? '#ececec' : '#8e8ea0',
+                background: billingCycle === 'monthly' ? 'var(--bg-surface)' : 'transparent',
+                color: billingCycle === 'monthly' ? 'var(--text-main)' : 'var(--text-muted)',
                 fontSize: '12.5px',
                 fontWeight: 600,
                 cursor: 'pointer',
+                boxShadow: billingCycle === 'monthly' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
               }}
             >
               Monthly Billing
@@ -139,7 +139,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
                 borderRadius: '9999px',
                 border: 'none',
                 background: billingCycle === 'annual' ? '#10a37f' : 'transparent',
-                color: billingCycle === 'annual' ? '#ffffff' : '#8e8ea0',
+                color: billingCycle === 'annual' ? '#ffffff' : 'var(--text-muted)',
                 fontSize: '12.5px',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -154,7 +154,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
                   fontSize: '10px',
                   padding: '2px 6px',
                   borderRadius: '9999px',
-                  backgroundColor: billingCycle === 'annual' ? 'rgba(0,0,0,0.25)' : 'rgba(16, 163, 127, 0.2)',
+                  backgroundColor: billingCycle === 'annual' ? 'rgba(0,0,0,0.2)' : 'rgba(16, 163, 127, 0.15)',
                   color: billingCycle === 'annual' ? '#fff' : '#10a37f',
                   fontWeight: 700,
                 }}
@@ -171,9 +171,9 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
             style={{
               padding: '12px 18px',
               borderRadius: '12px',
-              backgroundColor: 'rgba(16, 163, 127, 0.2)',
+              backgroundColor: 'rgba(16, 163, 127, 0.15)',
               border: '1px solid #10a37f',
-              color: '#ececec',
+              color: 'var(--text-main)',
               fontSize: '13.5px',
               fontWeight: 600,
               display: 'flex',
@@ -201,9 +201,9 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
           {/* Card 1: Starter / Free */}
           <div
             style={{
-              backgroundColor: '#171717',
+              backgroundColor: 'var(--bg-surface)',
               borderRadius: '18px',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              border: '1px solid var(--border-color)',
               padding: '24px 20px',
               display: 'flex',
               flexDirection: 'column',
@@ -211,13 +211,13 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
             }}
           >
             <div>
-              <div style={{ fontSize: '16px', fontWeight: 700, color: '#f3f3f3' }}>Starter</div>
-              <div style={{ fontSize: '12px', color: '#8e8ea0', marginTop: '2px' }}>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-main)' }}>Starter</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 For single-technician shops starting out
               </div>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: '#ececec', margin: '14px 0 16px' }}>
+              <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-main)', margin: '14px 0 16px' }}>
                 ₹0
-                <span style={{ fontSize: '13px', fontWeight: 500, color: '#8e8ea0' }}> / month</span>
+                <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-muted)' }}> / month</span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -229,8 +229,8 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
                   'Manual WhatsApp message preview',
                   'Local SQLite storage mode',
                 ].map((feat, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#b4b4b4' }}>
-                    <Check size={14} color="#8e8ea0" />
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-main)' }}>
+                    <Check size={14} color="#10a37f" />
                     <span>{feat}</span>
                   </div>
                 ))}
@@ -243,10 +243,10 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
                 marginTop: '24px',
                 width: '100%',
                 padding: '10px 16px',
-                borderRadius: '9999px',
-                backgroundColor: '#262626',
-                color: '#8e8ea0',
-                border: '1px solid rgba(255, 255, 255, 0.06)',
+                borderRadius: '12px',
+                backgroundColor: 'var(--bg-surface-hover)',
+                color: 'var(--text-muted)',
+                border: '1px solid var(--border-color)',
                 fontSize: '13px',
                 fontWeight: 600,
                 cursor: 'default',
@@ -259,7 +259,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
           {/* Card 2: Shop Pro (Most Popular) */}
           <div
             style={{
-              backgroundColor: '#171717',
+              backgroundColor: 'var(--bg-surface)',
               borderRadius: '18px',
               border: '2px solid #10a37f',
               padding: '24px 20px',
@@ -267,7 +267,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
               flexDirection: 'column',
               justifyContent: 'space-between',
               position: 'relative',
-              boxShadow: '0 8px 30px rgba(16, 163, 127, 0.15)',
+              boxShadow: '0 4px 20px rgba(16, 163, 127, 0.12)',
             }}
           >
             <div
@@ -288,16 +288,16 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
             </div>
 
             <div>
-              <div style={{ fontSize: '16px', fontWeight: 700, color: '#f3f3f3', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span>Shop Pro</span>
                 <Sparkles size={16} color="#10a37f" />
               </div>
-              <div style={{ fontSize: '12px', color: '#8e8ea0', marginTop: '2px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 For busy repair centers with front desk & technicians
               </div>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: '#ececec', margin: '14px 0 16px' }}>
+              <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-main)', margin: '14px 0 16px' }}>
                 ₹{billingCycle === 'annual' ? '799' : '999'}
-                <span style={{ fontSize: '13px', fontWeight: 500, color: '#8e8ea0' }}> / month</span>
+                <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-muted)' }}> / month</span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -311,7 +311,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
                   'Daily automated cloud backups',
                   'Fast telephone & remote desktop support',
                 ].map((feat, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#ececec' }}>
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-main)' }}>
                     <Check size={14} color="#10a37f" strokeWidth={2.5} />
                     <span>{feat}</span>
                   </div>
@@ -321,14 +321,12 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
 
             <button
               onClick={() => handleSelectPlan('Shop Pro')}
+              className="btn btn-primary"
               style={{
                 marginTop: '24px',
                 width: '100%',
                 padding: '11px 16px',
-                borderRadius: '9999px',
-                backgroundColor: '#10a37f',
-                color: '#ffffff',
-                border: 'none',
+                borderRadius: '12px',
                 fontSize: '13.5px',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -336,11 +334,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '6px',
-                boxShadow: '0 4px 14px rgba(16, 163, 127, 0.4)',
-                transition: 'background-color 0.15s ease',
               }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = '#1a7f64')}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = '#10a37f')}
             >
               <Zap size={15} />
               Upgrade to Pro
@@ -350,9 +344,9 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
           {/* Card 3: Multi-Branch Enterprise */}
           <div
             style={{
-              backgroundColor: '#171717',
+              backgroundColor: 'var(--bg-surface)',
               borderRadius: '18px',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              border: '1px solid var(--border-color)',
               padding: '24px 20px',
               display: 'flex',
               flexDirection: 'column',
@@ -360,16 +354,16 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
             }}
           >
             <div>
-              <div style={{ fontSize: '16px', fontWeight: 700, color: '#f3f3f3', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span>Enterprise</span>
-                <Building2 size={16} color="#8e8ea0" />
+                <Building2 size={16} color="var(--text-muted)" />
               </div>
-              <div style={{ fontSize: '12px', color: '#8e8ea0', marginTop: '2px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 For multi-branch chains & corporate centers
               </div>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: '#ececec', margin: '14px 0 16px' }}>
+              <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-main)', margin: '14px 0 16px' }}>
                 ₹{billingCycle === 'annual' ? '1,999' : '2,499'}
-                <span style={{ fontSize: '13px', fontWeight: 500, color: '#8e8ea0' }}> / month</span>
+                <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-muted)' }}> / month</span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -381,7 +375,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
                   'Full audit trail & advanced financial reports',
                   'Dedicated account manager & 24/7 SLA',
                 ].map((feat, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#b4b4b4' }}>
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-main)' }}>
                     <Check size={14} color="#10a37f" />
                     <span>{feat}</span>
                   </div>
@@ -391,20 +385,16 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
 
             <button
               onClick={() => handleSelectPlan('Enterprise')}
+              className="btn btn-secondary"
               style={{
                 marginTop: '24px',
                 width: '100%',
                 padding: '10px 16px',
-                borderRadius: '9999px',
-                backgroundColor: '#2f2f2f',
-                color: '#ececec',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '12px',
                 fontSize: '13px',
                 fontWeight: 600,
                 cursor: 'pointer',
               }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = '#383838')}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = '#2f2f2f')}
             >
               Upgrade to Enterprise
             </button>
@@ -416,12 +406,12 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) =
           style={{
             textAlign: 'center',
             fontSize: '12px',
-            color: '#8e8ea0',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            color: 'var(--text-muted)',
+            borderTop: '1px solid var(--border-color)',
             paddingTop: '16px',
           }}
         >
-          Active Shop: <strong style={{ color: '#ececec' }}>{shopSettings.shopName || 'KTech Computers'}</strong> • Cancel or switch plans anytime. All payments processed with 100% data security.
+          Active Shop: <strong style={{ color: 'var(--text-main)' }}>{shopSettings.shopName || 'KTech Computers'}</strong> • Cancel or switch plans anytime. All payments processed with 100% data security.
         </div>
       </div>
     </div>

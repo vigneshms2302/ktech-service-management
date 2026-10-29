@@ -390,8 +390,8 @@ select {
 
 select option,
 select optgroup {
-  background-color: #131c2e;
-  color: #f8fafc;
+  background-color: #212121;
+  color: #ececec;
 }
 
 [data-theme='light'] select {
@@ -404,7 +404,7 @@ select optgroup {
 [data-theme='light'] select option,
 [data-theme='light'] select optgroup {
   background-color: #ffffff;
-  color: #0f172a;
+  color: #0d0d0d;
 }
 
 .input-field,
@@ -420,14 +420,14 @@ select optgroup {
   font-family: var(--font-sans);
   outline: none;
   transition: border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
 }
 
 [data-theme='light'] .input-field,
 [data-theme='light'] .ktech-input {
-  background-color: #f8fafc;
-  border-color: #cbd5e1;
-  color: #0f172a;
+  background-color: #ffffff;
+  border-color: #e5e5e5;
+  color: #0d0d0d;
 }
 
 .input-field:hover,
@@ -437,22 +437,22 @@ select optgroup {
 
 [data-theme='light'] .input-field:hover,
 [data-theme='light'] .ktech-input:hover {
-  border-color: #94a3b8;
+  border-color: #d4d4d4;
   background-color: #ffffff;
 }
 
 .input-field:focus,
 .ktech-input:focus {
-  border-color: var(--brand-primary);
+  border-color: var(--border-color-focus);
   background-color: var(--bg-surface);
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18), inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 0 0 1px var(--border-color-focus);
 }
 
 [data-theme='light'] .input-field:focus,
 [data-theme='light'] .ktech-input:focus {
   background-color: #ffffff;
-  border-color: #0284c7;
-  box-shadow: 0 0 0 3.5px rgba(2, 132, 199, 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  border-color: #0d0d0d;
+  box-shadow: 0 0 0 1px #0d0d0d;
 }
 
 .input-field::placeholder,
@@ -474,20 +474,20 @@ select optgroup {
   align-items: center;
   justify-content: space-between;
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--text-muted);
   user-select: none;
 }
 
 [data-theme='light'] .ktech-label {
-  color: #334155;
+  color: #676767;
 }
 
 .ktech-label .req-star {
-  color: #0284c7;
+  color: #10a37f;
   margin-left: 2px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .ktech-input-box {
@@ -498,13 +498,13 @@ select optgroup {
   border-radius: 10px;
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: none;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme='light'] .ktech-input-box {
-  background-color: #f8fafc;
-  border-color: #cbd5e1;
+  background-color: #ffffff;
+  border-color: #e5e5e5;
 }
 
 .ktech-input-box:hover {
@@ -512,20 +512,20 @@ select optgroup {
 }
 
 [data-theme='light'] .ktech-input-box:hover {
-  border-color: #94a3b8;
+  border-color: #d4d4d4;
   background-color: #ffffff;
 }
 
 .ktech-input-box:focus-within {
-  border-color: var(--brand-primary);
+  border-color: var(--border-color-focus);
   background-color: var(--bg-surface);
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18), inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 0 0 1px var(--border-color-focus);
 }
 
 [data-theme='light'] .ktech-input-box:focus-within {
   background-color: #ffffff;
-  border-color: #0284c7;
-  box-shadow: 0 0 0 3.5px rgba(2, 132, 199, 0.15);
+  border-color: #0d0d0d;
+  box-shadow: 0 0 0 1px #0d0d0d;
 }
 
 .ktech-input-box .field-icon-left {
@@ -540,7 +540,7 @@ select optgroup {
 }
 
 .ktech-input-box:focus-within .field-icon-left {
-  color: var(--brand-primary);
+  color: var(--text-main);
 }
 
 .ktech-input-box input,
@@ -562,7 +562,7 @@ select optgroup {
 [data-theme='light'] .ktech-input-box input,
 [data-theme='light'] .ktech-input-box select,
 [data-theme='light'] .ktech-input-box textarea {
-  color: #0f172a;
+  color: #0d0d0d;
 }
 
 .ktech-input-box input.no-icon {
@@ -603,20 +603,20 @@ select optgroup {
   height: 38px;
   border-radius: 8px;
   background-color: var(--bg-input);
-  border: 1.5px solid var(--border-color);
+  border: 1px solid var(--border-color);
   color: var(--text-main);
   font-family: var(--font-mono);
   font-size: 17px;
-  font-weight: 800;
+  font-weight: 700;
   text-align: center;
   outline: none;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme='light'] .pin-digit-cell {
-  background-color: #f8fafc;
-  border-color: #cbd5e1;
-  color: #0f172a;
+  background-color: #ffffff;
+  border-color: #e5e5e5;
+  color: #0d0d0d;
 }
 
 .pin-digit-cell:hover {
@@ -624,16 +624,15 @@ select optgroup {
 }
 
 .pin-digit-cell:focus {
-  border-color: var(--brand-primary);
+  border-color: var(--border-color-focus);
   background-color: var(--bg-surface);
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
-  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px var(--border-color-focus);
 }
 
 [data-theme='light'] .pin-digit-cell:focus {
   background-color: #ffffff;
-  border-color: #0284c7;
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  border-color: #0d0d0d;
+  box-shadow: 0 0 0 1px #0d0d0d;
 }
 
 /* Setup Card Sectioning */
@@ -642,15 +641,15 @@ select optgroup {
   border-radius: 12px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
   margin-bottom: 10px;
   transition: border-color 0.15s ease;
 }
 
 [data-theme='light'] .setup-group-card {
   background-color: #ffffff;
-  border-color: #e2e8f0;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+  border-color: #e5e5e5;
+  box-shadow: none;
 }
 
 .setup-group-header {
@@ -658,17 +657,17 @@ select optgroup {
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--brand-primary);
+  color: var(--text-main);
   margin-bottom: 8px;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border-color);
 }
 
 [data-theme='light'] .setup-group-header {
-  border-bottom-color: #f1f5f9;
+  border-bottom-color: #e5e5e5;
 }
 
 /* Search Containers & Inputs (Prevents awkward nested focus rings) */
@@ -680,7 +679,7 @@ select optgroup {
 
 .search-box:focus-within {
   border-color: var(--border-color-focus) !important;
-  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2) !important;
+  box-shadow: 0 0 0 1px var(--border-color-focus) !important;
 }
 
 .search-input {

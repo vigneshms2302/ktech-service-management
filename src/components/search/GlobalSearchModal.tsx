@@ -93,7 +93,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
             gap: '10px',
             padding: '8px 12px',
             backgroundColor: 'var(--bg-app)',
-            borderRadius: '6px',
+            borderRadius: '12px',
             border: '1px solid var(--border-color)',
             marginBottom: '14px',
           }}

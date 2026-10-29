@@ -151,8 +151,8 @@ authRouter.post('/pin', validateBody(pinLoginSchema), async (req, res) => {
             FROM users u 
             JOIN roles r ON u.role_id = r.id
             JOIN shops s ON u.shop_id = s.id
-            WHERE u.shop_id = ? AND u.pin_code = ? AND u.is_active = 1`,
-      args: [shopId, pinCode.trim()],
+            WHERE (u.shop_id = ? OR s.slug = ?) AND u.pin_code = ? AND u.is_active = 1`,
+      args: [shopId, shopId, pinCode.trim()],
     });
 
     if (userRes.rows.length === 0) {

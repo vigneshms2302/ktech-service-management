@@ -1,20 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext.tsx';
+import { Search, ChevronDown, ChevronUp, ArrowRight, HelpCircle } from 'lucide-react';
 
 export const FaqPage: React.FC = () => {
-  const { theme } = useTheme();
-  const isLight = theme === 'light';
-
   const [searchQuery, setSearchQuery] = useState('');
   const [openIndex, setOpenIndex] = useState<number | null>(0);
-
-  const bg = isLight ? '#ffffff' : '#0a0a0a';
-  const cardBg = isLight ? '#ffffff' : '#111111';
-  const borderCol = isLight ? '#e5e7eb' : '#222222';
-  const textMain = isLight ? '#111827' : '#f9fafb';
-  const textMuted = isLight ? '#6b7280' : '#9ca3af';
 
   const allFaqs = [
     {
@@ -67,52 +57,37 @@ export const FaqPage: React.FC = () => {
   );
 
   return (
-    <div style={{ backgroundColor: bg, color: textMain, fontFamily: "'Inter', -apple-system, sans-serif" }}>
-      <section style={{ padding: '70px 20px 40px', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#10a37f', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px' }}>
+    <div className="w-full bg-white dark:bg-[#212121] text-[#0d0d0d] dark:text-[#ececec] transition-colors duration-200">
+      <section className="pt-16 pb-12 px-4 sm:px-6 max-w-4xl mx-auto text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#10a37f]/10 text-[#10a37f] border border-[#10a37f]/20 uppercase tracking-wider mb-4">
+          <HelpCircle size={13} />
           Got Questions?
         </div>
-        <h1 style={{ fontSize: 'clamp(32px, 4.5vw, 50px)', fontWeight: 900, letterSpacing: '-1.2px', marginBottom: '20px' }}>
+        <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#0d0d0d] dark:text-[#ececec] mb-4">
           Frequently Asked Questions
         </h1>
-        <p style={{ fontSize: '16px', color: textMuted, lineHeight: 1.6, marginBottom: '30px' }}>
+        <p className="text-base sm:text-lg text-[#676767] dark:text-[#b4b4b4] max-w-2xl mx-auto leading-relaxed mb-8">
           Everything you need to know about K-Connect setup, subscriptions, GPay payments, and multi-workstation sync.
         </p>
 
         {/* Search Input */}
-        <div
-          style={{
-            position: 'relative',
-            maxWidth: '500px',
-            margin: '0 auto',
-          }}
-        >
-          <Search size={18} color={textMuted} style={{ position: 'absolute', left: '16px', top: '14px' }} />
+        <div className="relative max-w-md mx-auto">
+          <Search size={16} className="absolute left-3.5 top-3.5 text-[#676767] dark:text-[#b4b4b4]" />
           <input
             type="text"
-            placeholder="Search questions (e.g. GST, GPay, seats, trial)..."
+            placeholder="Search questions (e.g. GST, GPay, seats)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 16px 12px 46px',
-              borderRadius: '10px',
-              border: `1px solid ${borderCol}`,
-              backgroundColor: cardBg,
-              color: textMain,
-              fontSize: '14px',
-              outline: 'none',
-              boxSizing: 'border-box',
-            }}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#e5e5e5] dark:border-[#2f2f2f] bg-white dark:bg-[#2f2f2f] text-[#0d0d0d] dark:text-[#ececec] text-sm outline-none focus:border-[#0d0d0d] dark:focus:border-[#ececec] transition-colors"
           />
         </div>
       </section>
 
       {/* Accordion FAQ List */}
-      <section style={{ maxWidth: '800px', margin: '0 auto', padding: '0 20px 80px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-20">
+        <div className="flex flex-col gap-3">
           {filteredFaqs.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: textMuted }}>
+            <div className="text-center py-12 text-[#676767] dark:text-[#b4b4b4] text-sm">
               No matching questions found for "{searchQuery}". Feel free to contact our support team.
             </div>
           ) : (
@@ -121,45 +96,27 @@ export const FaqPage: React.FC = () => {
               return (
                 <div
                   key={idx}
-                  style={{
-                    borderRadius: '12px',
-                    backgroundColor: cardBg,
-                    border: `1px solid ${isOpen ? '#10a37f' : borderCol}`,
-                    overflow: 'hidden',
-                    transition: 'border-color 0.15s ease',
-                  }}
+                  className="rounded-2xl bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f] overflow-hidden transition-all shadow-sm"
                 >
                   <button
                     onClick={() => setOpenIndex(isOpen ? null : idx)}
-                    style={{
-                      width: '100%',
-                      padding: '18px 20px',
-                      background: 'none',
-                      border: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      color: textMain,
-                      fontSize: '15px',
-                      fontWeight: 700,
-                    }}
+                    className="w-full p-5 text-left bg-transparent border-none flex items-center justify-between gap-4 cursor-pointer"
                   >
-                    <span>{faq.q}</span>
-                    {isOpen ? <ChevronUp size={18} color="#10a37f" /> : <ChevronDown size={18} color={textMuted} />}
+                    <div>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-[#10a37f] mr-2">
+                        {faq.category}
+                      </span>
+                      <h2 className="text-sm sm:text-base font-semibold text-[#0d0d0d] dark:text-[#ececec] mt-0.5">
+                        {faq.q}
+                      </h2>
+                    </div>
+                    <span className="text-[#676767] dark:text-[#b4b4b4] shrink-0">
+                      {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                    </span>
                   </button>
+
                   {isOpen && (
-                    <div
-                      style={{
-                        padding: '0 20px 18px',
-                        fontSize: '14px',
-                        color: textMuted,
-                        lineHeight: 1.6,
-                        borderTop: `1px solid ${isLight ? '#f3f4f6' : '#1c1c1c'}`,
-                        paddingTop: '14px',
-                      }}
-                    >
+                    <div className="px-5 pb-5 text-xs sm:text-sm text-[#676767] dark:text-[#b4b4b4] leading-relaxed border-t border-[#f0f0f0] dark:border-[#2a2a2a] pt-3">
                       {faq.a}
                     </div>
                   )}
@@ -169,38 +126,22 @@ export const FaqPage: React.FC = () => {
           )}
         </div>
 
-        {/* Still Have Questions CTA */}
-        <div
-          style={{
-            marginTop: '50px',
-            padding: '30px',
-            borderRadius: '14px',
-            backgroundColor: isLight ? '#f9fafb' : '#141414',
-            border: `1px solid ${borderCol}`,
-            textAlign: 'center',
-          }}
-        >
-          <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px' }}>Still have questions?</h3>
-          <p style={{ fontSize: '14px', color: textMuted, marginBottom: '20px' }}>
-            Our team is available on phone and WhatsApp to answer any specific hardware questions.
+        {/* CTA Banner */}
+        <div className="mt-14 p-8 rounded-2xl bg-[#f9f9f9] dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#2f2f2f] text-center">
+          <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0d0d0d] dark:text-[#ececec] mb-2">
+            Have more questions?
+          </h3>
+          <p className="text-xs sm:text-sm text-[#676767] dark:text-[#b4b4b4] max-w-lg mx-auto mb-5">
+            Our engineers and founders are available directly on WhatsApp and phone.
           </p>
-          <Link
-            to="/contact"
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#10a37f',
-              color: '#ffffff',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '13.5px',
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            Contact Sales & Support <ArrowRight size={15} />
-          </Link>
+          <div className="flex justify-center gap-3">
+            <Link
+              to="/contact"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0d0d0d] text-white hover:bg-[#262626] dark:bg-[#ececec] dark:text-[#0d0d0d] dark:hover:bg-white rounded-xl font-medium text-xs sm:text-sm transition-colors no-underline shadow-none"
+            >
+              Contact Support <ArrowRight size={14} />
+            </Link>
+          </div>
         </div>
       </section>
     </div>

@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
-import { Phone, Mail, MapPin, CheckCircle, AlertCircle, Send } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext.tsx';
+import { Mail, Phone, MapPin, Send, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react';
 import { saasApi } from '../../api/client.ts';
 
 export const ContactPage: React.FC = () => {
-  const { theme } = useTheme();
-  const isLight = theme === 'light';
-
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -21,19 +17,21 @@ export const ContactPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.email.trim() || !formData.message.trim()) {
-      setErrorMessage('Please fill in all required fields.');
-      return;
-    }
-
     setIsSubmitting(true);
-    setErrorMessage(null);
     setSuccessMessage(null);
+    setErrorMessage(null);
 
     try {
-      const res = await saasApi.public.submitContact(formData);
+      const res = await saasApi.public.submitContact({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        subject: formData.subject,
+        message: formData.message,
+      });
+
       if (res.success) {
-        setSuccessMessage('Thank you! Your message has been received. Our team will contact you within 24 hours.');
+        setSuccessMessage('Thank you! Your message has been received. Our team will contact you shortly.');
         setFormData({
           name: '',
           email: '',
@@ -51,69 +49,73 @@ export const ContactPage: React.FC = () => {
     }
   };
 
-  const bg = isLight ? '#ffffff' : '#0a0a0a';
-  const cardBg = isLight ? '#ffffff' : '#111111';
-  const borderCol = isLight ? '#e5e7eb' : '#222222';
-  const textMain = isLight ? '#111827' : '#f9fafb';
-  const textMuted = isLight ? '#6b7280' : '#9ca3af';
-
   return (
-    <div style={{ backgroundColor: bg, color: textMain, fontFamily: "'Inter', -apple-system, sans-serif" }}>
-      <section style={{ padding: '70px 20px 40px', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#10a37f', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px' }}>
+    <div className="w-full bg-white dark:bg-[#212121] text-[#0d0d0d] dark:text-[#ececec] transition-colors duration-200">
+      <section className="pt-16 pb-12 px-4 sm:px-6 max-w-4xl mx-auto text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#10a37f]/10 text-[#10a37f] border border-[#10a37f]/20 uppercase tracking-wider mb-4">
+          <MessageSquare size={13} />
           Get In Touch
         </div>
-        <h1 style={{ fontSize: 'clamp(32px, 4.5vw, 50px)', fontWeight: 900, letterSpacing: '-1.2px', marginBottom: '20px' }}>
+        <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#0d0d0d] dark:text-[#ececec] mb-4">
           We’re Here to Help Your Repair Lab Succeed
         </h1>
-        <p style={{ fontSize: '16px', color: textMuted, lineHeight: 1.6 }}>
+        <p className="text-base sm:text-lg text-[#676767] dark:text-[#b4b4b4] max-w-2xl mx-auto leading-relaxed">
           Have questions about multi-workstation setup, annual GPay payments, thermal printers, or custom shop migration? Talk to our founders directly.
         </p>
       </section>
 
-      <section style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 20px 80px' }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: '30px',
-            alignItems: 'flex-start',
-          }}
-        >
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 pb-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
           {/* Contact Details */}
-          <div style={{ padding: '36px', borderRadius: '16px', backgroundColor: cardBg, border: `1px solid ${borderCol}` }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '20px' }}>Direct Support & Operations</h2>
+          <div className="p-6 sm:p-8 rounded-2xl bg-[#f9f9f9] dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#2f2f2f]">
+            <h2 className="text-xl font-bold text-[#0d0d0d] dark:text-[#ececec] mb-6">
+              Direct Support & Operations
+            </h2>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '30px' }}>
-              <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'rgba(16, 163, 127, 0.15)', color: '#10a37f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div className="flex flex-col gap-6 mb-8">
+              <div className="flex gap-4 items-start">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f] text-[#0d0d0d] dark:text-[#ececec] flex items-center justify-center shrink-0">
                   <Phone size={18} />
                 </div>
                 <div>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: textMuted, textTransform: 'uppercase' }}>Phone & WhatsApp Support</div>
-                  <div style={{ fontSize: '15px', fontWeight: 700, marginTop: '2px' }}>+91 98422 00000</div>
-                  <div style={{ fontSize: '12px', color: textMuted, marginTop: '2px' }}>Mon - Sat: 9:30 AM to 8:30 PM IST</div>
+                  <div className="text-xs font-semibold text-[#676767] dark:text-[#b4b4b4] uppercase tracking-wider">
+                    Phone & WhatsApp Support
+                  </div>
+                  <div className="text-sm sm:text-base font-semibold text-[#0d0d0d] dark:text-[#ececec] mt-0.5">
+                    +91 98422 00000
+                  </div>
+                  <div className="text-xs text-[#676767] dark:text-[#b4b4b4] mt-0.5">
+                    Mon - Sat: 9:30 AM to 8:30 PM IST
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'rgba(16, 163, 127, 0.15)', color: '#10a37f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div className="flex gap-4 items-start">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f] text-[#0d0d0d] dark:text-[#ececec] flex items-center justify-center shrink-0">
                   <Mail size={18} />
                 </div>
                 <div>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: textMuted, textTransform: 'uppercase' }}>Email Correspondence</div>
-                  <div style={{ fontSize: '15px', fontWeight: 700, marginTop: '2px' }}>billing@kconnect.cloud</div>
-                  <div style={{ fontSize: '12px', color: textMuted, marginTop: '2px' }}>Inquiries answered within 2-4 hours</div>
+                  <div className="text-xs font-semibold text-[#676767] dark:text-[#b4b4b4] uppercase tracking-wider">
+                    Email Correspondence
+                  </div>
+                  <div className="text-sm sm:text-base font-semibold text-[#0d0d0d] dark:text-[#ececec] mt-0.5">
+                    billing@kconnect.cloud
+                  </div>
+                  <div className="text-xs text-[#676767] dark:text-[#b4b4b4] mt-0.5">
+                    Inquiries answered within 2-4 hours
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'rgba(16, 163, 127, 0.15)', color: '#10a37f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div className="flex gap-4 items-start">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f] text-[#0d0d0d] dark:text-[#ececec] flex items-center justify-center shrink-0">
                   <MapPin size={18} />
                 </div>
                 <div>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: textMuted, textTransform: 'uppercase' }}>Main Headquarters</div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, marginTop: '2px', lineHeight: 1.5 }}>
+                  <div className="text-xs font-semibold text-[#676767] dark:text-[#b4b4b4] uppercase tracking-wider">
+                    Main Headquarters
+                  </div>
+                  <div className="text-xs sm:text-sm font-medium text-[#0d0d0d] dark:text-[#ececec] mt-0.5 leading-relaxed">
                     K-Connect Cloud SaaS Technologies<br />
                     Gandhipuram Market, Coimbatore, Tamil Nadu 641012, India
                   </div>
@@ -121,75 +123,85 @@ export const ContactPage: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: isLight ? '#f0fdf4' : 'rgba(16, 163, 127, 0.08)', border: `1px solid ${isLight ? '#bbf7d0' : 'rgba(16, 163, 127, 0.3)'}`, fontSize: '13px', color: '#10a37f', lineHeight: 1.5 }}>
-              💡 <strong>Instant Activation:</strong> If you have already made a GPay payment, simply submit your 12-digit UTR on the checkout page for rapid verification.
+            <div className="p-4 rounded-xl bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f] text-xs text-[#676767] dark:text-[#b4b4b4] leading-relaxed">
+              <strong className="text-[#0d0d0d] dark:text-[#ececec]">Instant Activation:</strong> If you have already made a GPay payment, simply submit your 12-digit UTR on the checkout page for rapid verification.
             </div>
           </div>
 
           {/* Contact Form */}
-          <div style={{ padding: '36px', borderRadius: '16px', backgroundColor: cardBg, border: `1px solid ${borderCol}` }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>Send Us a Message</h2>
-            <p style={{ fontSize: '13.5px', color: textMuted, marginBottom: '24px' }}>
+          <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f] shadow-sm">
+            <h2 className="text-xl font-bold text-[#0d0d0d] dark:text-[#ececec] mb-2">
+              Send Us a Message
+            </h2>
+            <p className="text-xs sm:text-sm text-[#676767] dark:text-[#b4b4b4] mb-6">
               Fill in your details and we’ll reach out to schedule an onboarding walkthrough.
             </p>
 
             {successMessage && (
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '14px', borderRadius: '10px', backgroundColor: 'rgba(16, 163, 127, 0.12)', border: '1px solid #10a37f', color: '#10a37f', fontSize: '13px', marginBottom: '20px' }}>
-                <CheckCircle size={18} style={{ flexShrink: 0 }} />
+              <div className="flex gap-2.5 items-start p-3.5 rounded-xl bg-[#10a37f]/10 border border-[#10a37f]/20 text-[#10a37f] text-xs sm:text-sm mb-5">
+                <CheckCircle size={16} className="shrink-0 mt-0.5" />
                 <span>{successMessage}</span>
               </div>
             )}
 
             {errorMessage && (
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '14px', borderRadius: '10px', backgroundColor: 'rgba(239, 68, 68, 0.12)', border: '1px solid #ef4444', color: '#ef4444', fontSize: '13px', marginBottom: '20px' }}>
-                <AlertCircle size={18} style={{ flexShrink: 0 }} />
+              <div className="flex gap-2.5 items-start p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs sm:text-sm mb-5">
+                <AlertCircle size={16} className="shrink-0 mt-0.5" />
                 <span>{errorMessage}</span>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>Your Name *</label>
+                <label className="block text-xs font-semibold text-[#0d0d0d] dark:text-[#ececec] mb-1.5">
+                  Your Name *
+                </label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Senthil Nathan"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: `1px solid ${borderCol}`, backgroundColor: isLight ? '#ffffff' : '#171717', color: textMain, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#e5e5e5] dark:border-[#2f2f2f] bg-white dark:bg-[#2f2f2f] text-[#0d0d0d] dark:text-[#ececec] text-sm outline-none focus:border-[#0d0d0d] dark:focus:border-[#ececec] transition-colors"
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>Email Address *</label>
+                  <label className="block text-xs font-semibold text-[#0d0d0d] dark:text-[#ececec] mb-1.5">
+                    Email Address *
+                  </label>
                   <input
                     type="email"
                     required
                     placeholder="senthil@gmail.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: `1px solid ${borderCol}`, backgroundColor: isLight ? '#ffffff' : '#171717', color: textMain, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#e5e5e5] dark:border-[#2f2f2f] bg-white dark:bg-[#2f2f2f] text-[#0d0d0d] dark:text-[#ececec] text-sm outline-none focus:border-[#0d0d0d] dark:focus:border-[#ececec] transition-colors"
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>Phone / WhatsApp</label>
+                  <label className="block text-xs font-semibold text-[#0d0d0d] dark:text-[#ececec] mb-1.5">
+                    Phone / WhatsApp
+                  </label>
                   <input
                     type="text"
                     placeholder="98422 12345"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: `1px solid ${borderCol}`, backgroundColor: isLight ? '#ffffff' : '#171717', color: textMain, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#e5e5e5] dark:border-[#2f2f2f] bg-white dark:bg-[#2f2f2f] text-[#0d0d0d] dark:text-[#ececec] text-sm outline-none focus:border-[#0d0d0d] dark:focus:border-[#ececec] transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>Subject</label>
+                <label className="block text-xs font-semibold text-[#0d0d0d] dark:text-[#ececec] mb-1.5">
+                  Subject
+                </label>
                 <select
                   value={formData.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: `1px solid ${borderCol}`, backgroundColor: isLight ? '#ffffff' : '#171717', color: textMain, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#e5e5e5] dark:border-[#2f2f2f] bg-white dark:bg-[#2f2f2f] text-[#0d0d0d] dark:text-[#ececec] text-sm outline-none focus:border-[#0d0d0d] dark:focus:border-[#ececec] transition-colors"
                 >
                   <option value="Sales Inquiry / Demo">Sales Inquiry & Onboarding Demo</option>
                   <option value="GPay Payment Assistance">GPay Payment & Licence Verification</option>
@@ -200,36 +212,25 @@ export const ContactPage: React.FC = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>Message *</label>
+                <label className="block text-xs font-semibold text-[#0d0d0d] dark:text-[#ececec] mb-1.5">
+                  Message *
+                </label>
                 <textarea
                   required
                   rows={4}
-                  placeholder="Tell us about your shop (how many technicians, types of repairs, or questions you have)..."
+                  placeholder="Tell us about your shop (number of technicians, repair types, or questions)..."
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: `1px solid ${borderCol}`, backgroundColor: isLight ? '#ffffff' : '#171717', color: textMain, fontSize: '14px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#e5e5e5] dark:border-[#2f2f2f] bg-white dark:bg-[#2f2f2f] text-[#0d0d0d] dark:text-[#ececec] text-sm outline-none focus:border-[#0d0d0d] dark:focus:border-[#ececec] transition-colors resize-vertical"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                style={{
-                  padding: '12px 20px',
-                  backgroundColor: '#10a37f',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  fontSize: '14px',
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                }}
+                className="w-full py-3 px-5 bg-[#0d0d0d] text-white hover:bg-[#262626] dark:bg-[#ececec] dark:text-[#0d0d0d] dark:hover:bg-white rounded-xl font-medium text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-none mt-2"
               >
-                <Send size={16} /> {isSubmitting ? 'Submitting...' : 'Send Inquiry'}
+                <Send size={15} /> {isSubmitting ? 'Submitting...' : 'Send Inquiry'}
               </button>
             </form>
           </div>

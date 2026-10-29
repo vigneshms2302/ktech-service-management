@@ -1,18 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext.tsx';
+import { ArrowRight, Workflow } from 'lucide-react';
 
 export const HowItWorksPage: React.FC = () => {
-  const { theme } = useTheme();
-  const isLight = theme === 'light';
-
-  const bg = isLight ? '#ffffff' : '#0a0a0a';
-  const cardBg = isLight ? '#ffffff' : '#111111';
-  const borderCol = isLight ? '#e5e7eb' : '#222222';
-  const textMain = isLight ? '#111827' : '#f9fafb';
-  const textMuted = isLight ? '#6b7280' : '#9ca3af';
-
   const steps = [
     {
       num: '01',
@@ -42,76 +32,55 @@ export const HowItWorksPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ backgroundColor: bg, color: textMain, fontFamily: "'Inter', -apple-system, sans-serif" }}>
-      <section style={{ padding: '70px 20px 40px', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#10a37f', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px' }}>
+    <div className="w-full bg-white dark:bg-[#212121] text-[#0d0d0d] dark:text-[#ececec] transition-colors duration-200">
+      <section className="pt-16 pb-12 px-4 sm:px-6 max-w-4xl mx-auto text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#10a37f]/10 text-[#10a37f] border border-[#10a37f]/20 uppercase tracking-wider mb-4">
+          <Workflow size={13} />
           Simplicity at Scale
         </div>
-        <h1 style={{ fontSize: 'clamp(32px, 4.5vw, 50px)', fontWeight: 900, letterSpacing: '-1.2px', marginBottom: '20px' }}>
+        <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#0d0d0d] dark:text-[#ececec] mb-4">
           How K-Connect Transforms Your Daily Repair Operations
         </h1>
-        <p style={{ fontSize: '16px', color: textMuted, lineHeight: 1.6 }}>
+        <p className="text-base sm:text-lg text-[#676767] dark:text-[#b4b4b4] max-w-2xl mx-auto leading-relaxed">
           Designed from the ground up to replace handwritten ticket books, WhatsApp confusion, and untracked scrap parts with a smooth 5-step flow.
         </p>
       </section>
 
-      <section style={{ maxWidth: '860px', margin: '0 auto', padding: '20px 20px 80px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {steps.map((st, i) => (
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-20">
+        <div className="flex flex-col gap-4">
+          {steps.map((st) => (
             <div
-              key={i}
-              style={{
-                display: 'flex',
-                gap: '24px',
-                padding: '30px',
-                borderRadius: '16px',
-                backgroundColor: cardBg,
-                border: `1px solid ${borderCol}`,
-                alignItems: 'flex-start',
-              }}
+              key={st.num}
+              className="p-6 sm:p-7 rounded-2xl bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f] shadow-sm flex items-start gap-5 hover:shadow-md transition-shadow"
             >
-              <div
-                style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '12px',
-                  backgroundColor: '#10a37f',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  fontWeight: 900,
-                  flexShrink: 0,
-                }}
-              >
+              <div className="w-10 h-10 rounded-xl bg-[#f4f4f4] dark:bg-[#2a2a2a] text-[#0d0d0d] dark:text-[#ececec] font-mono font-bold text-sm flex items-center justify-center shrink-0">
                 {st.num}
               </div>
-              <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>{st.title}</h3>
-                <p style={{ fontSize: '14px', color: textMuted, lineHeight: 1.6 }}>{st.desc}</p>
+              <div className="flex-1">
+                <h2 className="text-base sm:text-lg font-bold text-[#0d0d0d] dark:text-[#ececec] mb-1.5">
+                  {st.title}
+                </h2>
+                <p className="text-xs sm:text-sm text-[#676767] dark:text-[#b4b4b4] leading-relaxed">
+                  {st.desc}
+                </p>
               </div>
             </div>
           ))}
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '50px' }}>
+        {/* CTA Banner */}
+        <div className="mt-12 p-8 rounded-2xl bg-[#f9f9f9] dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#2f2f2f] text-center">
+          <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0d0d0d] dark:text-[#ececec] mb-2">
+            Ready to streamline your shop today?
+          </h3>
+          <p className="text-xs sm:text-sm text-[#676767] dark:text-[#b4b4b4] max-w-lg mx-auto mb-5">
+            Join hundreds of Indian repair technicians managing their benches on K-Connect.
+          </p>
           <Link
             to="/signup"
-            style={{
-              padding: '14px 28px',
-              backgroundColor: '#10a37f',
-              color: '#ffffff',
-              borderRadius: '10px',
-              fontWeight: 700,
-              fontSize: '15px',
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0d0d0d] text-white hover:bg-[#262626] dark:bg-[#ececec] dark:text-[#0d0d0d] dark:hover:bg-white rounded-xl font-medium text-sm transition-colors no-underline shadow-none"
           >
-            Start Your Free 14-Day Trial <ArrowRight size={16} />
+            Start 14-Day Free Trial <ArrowRight size={15} />
           </Link>
         </div>
       </section>

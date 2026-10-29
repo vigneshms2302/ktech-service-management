@@ -41,8 +41,8 @@ export class ErrorBoundary extends Component<Props, State> {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#0a0a0a',
-            color: '#f9fafb',
+            backgroundColor: '#212121',
+            color: '#ececec',
             fontFamily: "'Inter', -apple-system, sans-serif",
             padding: '24px',
           }}
@@ -51,11 +51,11 @@ export class ErrorBoundary extends Component<Props, State> {
             style={{
               maxWidth: '520px',
               width: '100%',
-              backgroundColor: '#141414',
-              border: '1px solid #262626',
+              backgroundColor: '#171717',
+              border: '1px solid #2f2f2f',
               borderRadius: '16px',
               padding: '32px',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+              boxShadow: 'none',
               textAlign: 'center',
             }}
           >
@@ -78,15 +78,15 @@ export class ErrorBoundary extends Component<Props, State> {
             <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>
               Something went wrong
             </h2>
-            <p style={{ fontSize: '13px', color: '#a1a1aa', lineHeight: 1.5, marginBottom: '20px' }}>
+            <p style={{ fontSize: '13px', color: '#b4b4b4', lineHeight: 1.5, marginBottom: '20px' }}>
               An unexpected interface error occurred. You can reload the page or return to dashboard.
             </p>
 
             {this.state.error && (
               <div
                 style={{
-                  backgroundColor: '#0a0a0a',
-                  border: '1px solid #262626',
+                  backgroundColor: '#212121',
+                  border: '1px solid #2f2f2f',
                   borderRadius: '8px',
                   padding: '12px',
                   fontSize: '11px',

@@ -71,158 +71,132 @@ export const PublicJobTracker: React.FC<PublicJobTrackerProps> = ({ initialJobNu
   const currentStageIndex = jobData ? getStageIndex(jobData.currentStatus) : 0;
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#212121', color: '#ececec', padding: '32px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div style={{ maxWidth: '640px', width: '100%' }}>
+    <div className="w-full bg-white dark:bg-[#212121] text-[#0d0d0d] dark:text-[#ececec] transition-colors duration-200 py-16 px-4 sm:px-6 flex flex-col items-center">
+      <div className="max-w-xl w-full">
         {/* Brand Banner */}
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '5px 14px', borderRadius: '9999px', backgroundColor: 'rgba(16, 163, 127, 0.12)', border: '1px solid rgba(16, 163, 127, 0.3)', fontSize: '12px', color: '#10a37f', fontWeight: 600, marginBottom: '12px' }}>
-            <ShieldCheck size={16} /> Live Service Repair Tracker
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#10a37f]/10 text-[#10a37f] border border-[#10a37f]/20 uppercase tracking-wider mb-4">
+            <ShieldCheck size={14} />
+            Live Service Repair Tracker
           </div>
-          <h1 style={{ fontSize: '26px', fontWeight: 800, margin: '0 0 6px', letterSpacing: '-0.5px', color: '#f3f3f3' }}>
+          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-[#0d0d0d] dark:text-[#ececec] mb-2">
             Track Your Device Service
           </h1>
-          <p style={{ fontSize: '13.5px', color: '#b4b4b4', margin: 0 }}>
+          <p className="text-xs sm:text-sm text-[#676767] dark:text-[#b4b4b4]">
             Enter your service ticket number to view live repair progress and technician notes.
           </p>
         </div>
 
         {/* Search Input Box */}
-        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '10px', marginBottom: '28px' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
+        <form onSubmit={handleSearchSubmit} className="flex gap-2.5 mb-8">
+          <div className="flex-1 relative">
             <input
               type="text"
               placeholder="e.g. JOB-2026-00001"
               value={jobNumber}
               onChange={(e) => setJobNumber(e.target.value.toUpperCase())}
-              style={{
-                width: '100%',
-                padding: '12px 20px',
-                borderRadius: '9999px',
-                backgroundColor: '#2f2f2f',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                color: '#ececec',
-                fontSize: '14px',
-                fontWeight: 600,
-                outline: 'none',
-                fontFamily: 'monospace',
-                textTransform: 'uppercase',
-              }}
+              className="w-full px-5 py-3 rounded-xl border border-[#e5e5e5] dark:border-[#2f2f2f] bg-white dark:bg-[#2f2f2f] text-[#0d0d0d] dark:text-[#ececec] text-sm font-mono uppercase font-semibold outline-none focus:border-[#0d0d0d] dark:focus:border-[#ececec] transition-colors shadow-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={isLoading}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: '#10a37f',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '9999px',
-              fontWeight: 600,
-              fontSize: '13.5px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 4px 14px rgba(16, 163, 127, 0.35)',
-              transition: 'background-color 0.15s ease',
-            }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = '#1a7f64')}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = '#10a37f')}
+            className="py-3 px-6 bg-[#0d0d0d] text-white hover:bg-[#262626] dark:bg-[#ececec] dark:text-[#0d0d0d] dark:hover:bg-white rounded-xl font-medium text-sm flex items-center gap-2 cursor-pointer transition-colors shadow-none shrink-0"
           >
-            <Search size={16} /> Track
+            <Search size={15} /> Track
           </button>
         </form>
 
         {error && (
-          <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
-            <AlertCircle size={18} style={{ flexShrink: 0 }} />
+          <div className="flex items-center gap-2.5 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs sm:text-sm mb-6">
+            <AlertCircle size={16} className="shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {/* Live Tracking Card */}
         {jobData && (
-          <div style={{ backgroundColor: '#2f2f2f', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 30px 80px -20px rgba(0,0,0,0.85)' }}>
+          <div className="bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f] rounded-2xl overflow-hidden shadow-sm">
             {/* Header info */}
-            <div style={{ padding: '20px', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+            <div className="p-5 sm:p-6 border-b border-[#e5e5e5] dark:border-[#2f2f2f] flex items-center justify-between flex-wrap gap-2.5">
               <div>
-                <span style={{ fontSize: '11px', color: '#10a37f', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <span className="text-[11px] font-semibold text-[#10a37f] uppercase tracking-wider">
                   {jobData.shop.name}
                 </span>
-                <div style={{ fontSize: '18px', fontWeight: 800, color: '#f3f3f3', fontFamily: 'monospace', marginTop: '2px' }}>
+                <div className="text-base sm:text-lg font-mono font-bold text-[#0d0d0d] dark:text-[#ececec] mt-0.5">
                   {jobData.jobNumber}
                 </div>
               </div>
 
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '9999px', backgroundColor: 'rgba(16, 163, 127, 0.15)', color: '#10a37f', border: '1px solid rgba(16, 163, 127, 0.3)', fontSize: '12px', fontWeight: 700 }}>
+              <div>
+                <span className="px-3 py-1 rounded-full bg-[#10a37f]/10 text-[#10a37f] border border-[#10a37f]/20 text-xs font-semibold">
                   {jobData.currentStatus.replace(/_/g, ' ')}
                 </span>
               </div>
             </div>
 
             {/* Device & Issue Summary */}
-            <div style={{ padding: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', backgroundColor: '#171717' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#212121', border: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10a37f' }}>
-                  <Laptop size={20} />
+            <div className="p-5 sm:p-6 border-b border-[#e5e5e5] dark:border-[#2f2f2f] bg-[#f9f9f9] dark:bg-[#171717]">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f] flex items-center justify-center text-[#10a37f]">
+                  <Laptop size={18} />
                 </div>
                 <div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#f3f3f3' }}>
+                  <div className="text-sm font-bold text-[#0d0d0d] dark:text-[#ececec]">
                     {jobData.device.brand} {jobData.device.modelName}
                   </div>
-                  <div style={{ fontSize: '11.5px', color: '#8e8ea0' }}>
+                  <div className="text-xs text-[#676767] dark:text-[#b4b4b4]">
                     Type: {jobData.device.equipmentType}
                   </div>
                 </div>
               </div>
 
-              <div style={{ fontSize: '12.5px', color: '#ececec', lineHeight: 1.5, backgroundColor: '#212121', padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <strong style={{ color: '#8e8ea0' }}>Reported Problem: </strong>
+              <div className="text-xs sm:text-sm text-[#0d0d0d] dark:text-[#ececec] leading-relaxed bg-white dark:bg-[#212121] p-3.5 rounded-xl border border-[#e5e5e5] dark:border-[#2f2f2f]">
+                <strong className="text-[#676767] dark:text-[#b4b4b4]">Reported Problem: </strong>
                 {jobData.reportedIssue}
               </div>
             </div>
 
             {/* Repair Progress Stepper */}
-            <div style={{ padding: '24px 20px' }}>
-              <h3 style={{ fontSize: '12.5px', fontWeight: 700, color: '#8e8ea0', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 16px' }}>
+            <div className="p-5 sm:p-6">
+              <h3 className="text-xs font-semibold text-[#676767] dark:text-[#b4b4b4] uppercase tracking-wider mb-4">
                 Live Repair Progress
               </h3>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="flex flex-col gap-4">
                 {STAGES.map((stg, i) => {
                   const isCompleted = i < currentStageIndex;
                   const isCurrent = i === currentStageIndex;
 
                   return (
-                    <div key={stg.key} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                    <div key={stg.key} className="flex items-start gap-3.5">
                       <div
-                        style={{
-                          width: '26px',
-                          height: '26px',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: isCompleted ? '#10a37f' : isCurrent ? '#10a37f' : '#171717',
-                          border: isCurrent ? '2px solid #ffffff' : isCompleted ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
-                          color: '#fff',
-                          flexShrink: 0,
-                          fontSize: '12px',
-                          fontWeight: 700,
-                        }}
+                        className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                          isCompleted
+                            ? 'bg-[#10a37f] text-white'
+                            : isCurrent
+                            ? 'bg-[#0d0d0d] text-white dark:bg-white dark:text-[#0d0d0d] ring-2 ring-[#10a37f]'
+                            : 'bg-[#f0f0f0] dark:bg-[#2a2a2a] text-[#676767] dark:text-[#8e8e93] border border-[#e5e5e5] dark:border-[#383838]'
+                        }`}
                       >
-                        {isCompleted ? <CheckCircle2 size={16} /> : i + 1}
+                        {isCompleted ? <CheckCircle2 size={14} /> : i + 1}
                       </div>
 
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '13px', fontWeight: isCurrent ? 800 : 600, color: isCurrent ? '#10a37f' : isCompleted ? '#ececec' : '#8e8ea0' }}>
+                      <div className="flex-1">
+                        <div
+                          className={`text-xs sm:text-sm ${
+                            isCurrent
+                              ? 'font-bold text-[#0d0d0d] dark:text-[#ececec]'
+                              : isCompleted
+                              ? 'font-medium text-[#0d0d0d] dark:text-[#ececec]'
+                              : 'text-[#676767] dark:text-[#8e8e93]'
+                          }`}
+                        >
                           {stg.label}
                         </div>
                         {isCurrent && (
-                          <div style={{ fontSize: '11.5px', color: '#b4b4b4', marginTop: '2px' }}>
+                          <div className="text-[11px] text-[#10a37f] font-medium mt-0.5">
                             Currently at this service workstation
                           </div>
                         )}
@@ -234,30 +208,17 @@ export const PublicJobTracker: React.FC<PublicJobTrackerProps> = ({ initialJobNu
             </div>
 
             {/* Shop Contact & Help */}
-            <div style={{ padding: '16px 20px', backgroundColor: '#171717', borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#b4b4b4' }}>
-                <MapPin size={14} color="#10a37f" />
+            <div className="p-4 sm:p-5 bg-[#f9f9f9] dark:bg-[#171717] border-t border-[#e5e5e5] dark:border-[#2f2f2f] flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2 text-xs text-[#676767] dark:text-[#b4b4b4]">
+                <MapPin size={13} className="text-[#10a37f]" />
                 <span>{jobData.shop.address}</span>
               </div>
 
               <a
                 href={`tel:${jobData.shop.phone}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '8px 16px',
-                  backgroundColor: '#2f2f2f',
-                  color: '#10a37f',
-                  borderRadius: '9999px',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  textDecoration: 'none',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  transition: 'background-color 0.15s ease',
-                }}
+                className="flex items-center gap-1.5 py-2 px-3.5 rounded-full bg-white dark:bg-[#212121] text-[#0d0d0d] dark:text-[#ececec] border border-[#e5e5e5] dark:border-[#2f2f2f] hover:bg-black/5 dark:hover:bg-white/5 text-xs font-semibold transition-colors no-underline"
               >
-                <Phone size={14} /> Call Shop: {jobData.shop.phone}
+                <Phone size={13} /> Call Shop: {jobData.shop.phone}
               </a>
             </div>
           </div>

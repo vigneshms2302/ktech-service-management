@@ -4,14 +4,11 @@ import {
   CheckCircle,
   ArrowRight,
   QrCode,
+  ShieldCheck,
 } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext.tsx';
 import { saasApi } from '../../api/client.ts';
 
 export const PricingPage: React.FC = () => {
-  const { theme } = useTheme();
-  const isLight = theme === 'light';
-
   const [platformSettings, setPlatformSettings] = useState<{
     annualPriceInr: number;
     payeeName: string;
@@ -37,12 +34,6 @@ export const PricingPage: React.FC = () => {
     });
   }, []);
 
-  const bg = isLight ? '#ffffff' : '#0a0a0a';
-  const cardBg = isLight ? '#ffffff' : '#111111';
-  const borderCol = isLight ? '#e5e7eb' : '#222222';
-  const textMain = isLight ? '#111827' : '#f9fafb';
-  const textMuted = isLight ? '#6b7280' : '#9ca3af';
-
   const faqs = [
     {
       q: 'How does the 14-day free trial work?',
@@ -67,82 +58,57 @@ export const PricingPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ backgroundColor: bg, color: textMain, fontFamily: "'Inter', -apple-system, sans-serif" }}>
+    <div className="w-full bg-white dark:bg-[#212121] text-[#0d0d0d] dark:text-[#ececec] transition-colors duration-200">
       {/* Header */}
-      <section style={{ padding: '70px 20px 40px', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#10a37f', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px' }}>
+      <section className="pt-16 pb-12 px-4 sm:px-6 max-w-4xl mx-auto text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#10a37f]/10 text-[#10a37f] border border-[#10a37f]/20 uppercase tracking-wider mb-4">
+          <ShieldCheck size={13} />
           Predictable Pricing
         </div>
-        <h1 style={{ fontSize: 'clamp(32px, 4.5vw, 52px)', fontWeight: 900, letterSpacing: '-1.2px', marginBottom: '20px' }}>
+        <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#0d0d0d] dark:text-[#ececec] mb-4">
           One Plan. Full Power. No Hidden Fees.
         </h1>
-        <p style={{ fontSize: '16px', color: textMuted, lineHeight: 1.6 }}>
+        <p className="text-base sm:text-lg text-[#676767] dark:text-[#b4b4b4] max-w-2xl mx-auto leading-relaxed">
           Start with a risk-free {platformSettings.trialDurationDays}-day trial. Upgrade to an annual licence via convenient Google Pay QR verification.
         </p>
       </section>
 
       {/* Main Pricing Box */}
-      <section style={{ maxWidth: '800px', margin: '0 auto', padding: '0 20px 60px' }}>
-        <div
-          style={{
-            borderRadius: '20px',
-            backgroundColor: cardBg,
-            border: '2px solid #10a37f',
-            boxShadow: '0 20px 60px rgba(16, 163, 127, 0.15)',
-            overflow: 'hidden',
-          }}
-        >
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-16">
+        <div className="rounded-2xl bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f] shadow-sm hover:shadow-md transition-shadow overflow-hidden">
           {/* Header Bar */}
-          <div
-            style={{
-              padding: '24px 32px',
-              backgroundColor: isLight ? '#f0fdf4' : 'rgba(16, 163, 127, 0.1)',
-              borderBottom: `1px solid ${borderCol}`,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '12px',
-            }}
-          >
+          <div className="p-6 sm:p-8 bg-[#f9f9f9] dark:bg-[#171717] border-b border-[#e5e5e5] dark:border-[#2f2f2f] flex justify-between items-center flex-wrap gap-3">
             <div>
-              <span style={{ fontSize: '12px', fontWeight: 800, color: '#10a37f', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#10a37f]">
                 Full Commercial Lab License
               </span>
-              <h2 style={{ fontSize: '22px', fontWeight: 800, marginTop: '2px' }}>K-Connect Professional Annual</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-[#0d0d0d] dark:text-[#ececec] mt-1">
+                K-Connect Professional Annual
+              </h2>
             </div>
-            <span
-              style={{
-                padding: '6px 14px',
-                borderRadius: '9999px',
-                backgroundColor: '#10a37f',
-                color: '#ffffff',
-                fontSize: '12px',
-                fontWeight: 700,
-              }}
-            >
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#0d0d0d] text-white dark:bg-[#ececec] dark:text-[#0d0d0d]">
               Includes {platformSettings.trialDurationDays}-Day Free Trial
             </span>
           </div>
 
-          <div style={{ padding: '36px 32px' }}>
+          <div className="p-6 sm:p-8">
             {/* Price Display */}
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
-              <span style={{ fontSize: '48px', fontWeight: 900, color: textMain }}>
+            <div className="flex items-baseline gap-2 mb-3">
+              <span className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#0d0d0d] dark:text-[#ececec]">
                 ₹{platformSettings.annualPriceInr.toLocaleString('en-IN')}
               </span>
-              <span style={{ fontSize: '15px', color: textMuted }}>/ year</span>
-              <span style={{ fontSize: '13px', color: '#10a37f', fontWeight: 600, marginLeft: '8px' }}>
+              <span className="text-base text-[#676767] dark:text-[#b4b4b4]">/ year</span>
+              <span className="text-xs sm:text-sm font-semibold text-[#10a37f] ml-2">
                 (₹{Math.round(platformSettings.annualPriceInr / 12).toLocaleString('en-IN')}/month)
               </span>
             </div>
 
-            <p style={{ fontSize: '14px', color: textMuted, marginBottom: '32px' }}>
-              Full commercial licence for 1 shop location. Includes 5 workstation seats, unlimited service tickets, automated GST reporting, and priority support.
+            <p className="text-sm text-[#676767] dark:text-[#b4b4b4] mb-8 leading-relaxed">
+              Full commercial licence for 1 shop location. Includes 5 workstation seats, unlimited service tickets, automated GST reporting, and priority technical support.
             </p>
 
             {/* Included features list */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', marginBottom: '36px' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-8">
               {[
                 'Unlimited computer, laptop & mobile repair jobs',
                 '13-stage diagnostic state machine',
@@ -155,54 +121,26 @@ export const PricingPage: React.FC = () => {
                 'Daily automated cloud data backup',
                 'Direct phone & WhatsApp technical support',
               ].map((feat, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px' }}>
-                  <CheckCircle size={16} color="#10a37f" style={{ flexShrink: 0 }} />
+                <div key={idx} className="flex items-center gap-2.5 text-xs sm:text-sm text-[#0d0d0d] dark:text-[#ececec]">
+                  <CheckCircle size={15} className="text-[#10a37f] shrink-0" />
                   <span>{feat}</span>
                 </div>
               ))}
             </div>
 
             {/* Action Buttons */}
-            <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-[#e5e5e5] dark:border-[#2f2f2f]">
               <Link
                 to="/signup"
-                style={{
-                  flex: 1,
-                  minWidth: '220px',
-                  padding: '14px',
-                  backgroundColor: '#10a37f',
-                  color: '#ffffff',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '15px',
-                  textAlign: 'center',
-                  textDecoration: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                }}
+                className="flex-1 py-3 px-5 bg-[#0d0d0d] text-white hover:bg-[#262626] dark:bg-[#ececec] dark:text-[#0d0d0d] dark:hover:bg-white rounded-xl font-medium text-sm text-center no-underline flex items-center justify-center gap-2 transition-colors shadow-none"
               >
-                Start 14-Day Free Trial <ArrowRight size={16} />
+                Start 14-Day Free Trial <ArrowRight size={15} />
               </Link>
               <Link
                 to="/checkout/annual"
-                style={{
-                  padding: '14px 24px',
-                  backgroundColor: isLight ? '#f3f4f6' : '#1f1f1f',
-                  color: textMain,
-                  borderRadius: '10px',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                  textAlign: 'center',
-                  textDecoration: 'none',
-                  border: `1px solid ${borderCol}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
+                className="py-3 px-5 bg-transparent text-[#0d0d0d] dark:text-[#ececec] border border-[#e5e5e5] dark:border-[#2f2f2f] hover:bg-black/5 dark:hover:bg-white/5 rounded-xl font-medium text-sm text-center no-underline flex items-center justify-center gap-2 transition-colors"
               >
-                <QrCode size={16} /> View GPay Payment Details
+                <QrCode size={15} /> View GPay Payment Details
               </Link>
             </div>
           </div>
@@ -210,20 +148,28 @@ export const PricingPage: React.FC = () => {
       </section>
 
       {/* Payment Process Explanation */}
-      <section style={{ maxWidth: '800px', margin: '0 auto', padding: '0 20px 80px' }}>
-        <div style={{ padding: '32px', borderRadius: '16px', backgroundColor: isLight ? '#f9fafb' : '#141414', border: `1px solid ${borderCol}` }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '14px' }}>How Annual GPay Activation Works</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', fontSize: '13px', color: textMuted }}>
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-16">
+        <div className="p-6 sm:p-8 rounded-2xl bg-[#f9f9f9] dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#2f2f2f]">
+          <h3 className="text-lg font-bold text-[#0d0d0d] dark:text-[#ececec] mb-4">
+            How Annual GPay Activation Works
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-xs sm:text-sm text-[#676767] dark:text-[#b4b4b4]">
             <div>
-              <div style={{ fontWeight: 700, color: textMain, marginBottom: '4px' }}>1. Start 14-Day Free Trial</div>
+              <div className="font-semibold text-[#0d0d0d] dark:text-[#ececec] mb-1">
+                1. Start 14-Day Free Trial
+              </div>
               Register your shop in 30 seconds. Test all features on your bench with zero payment.
             </div>
             <div>
-              <div style={{ fontWeight: 700, color: textMain, marginBottom: '4px' }}>2. Scan Official GPay QR</div>
+              <div className="font-semibold text-[#0d0d0d] dark:text-[#ececec] mb-1">
+                2. Scan Official GPay QR
+              </div>
               Pay ₹{platformSettings.annualPriceInr.toLocaleString('en-IN')} using Google Pay, PhonePe, or UPI to {platformSettings.upiId}.
             </div>
             <div>
-              <div style={{ fontWeight: 700, color: textMain, marginBottom: '4px' }}>3. Verified & Activated</div>
+              <div className="font-semibold text-[#0d0d0d] dark:text-[#ececec] mb-1">
+                3. Verified & Activated
+              </div>
               Submit your 12-digit UTR ID. The platform owner manually verifies your payment and activates your 365-day licence.
             </div>
           </div>
@@ -231,25 +177,20 @@ export const PricingPage: React.FC = () => {
       </section>
 
       {/* FAQ */}
-      <section style={{ maxWidth: '800px', margin: '0 auto', padding: '0 20px 80px' }}>
-        <h2 style={{ fontSize: '26px', fontWeight: 800, textAlign: 'center', marginBottom: '32px' }}>
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-20">
+        <h2 className="text-2xl font-bold tracking-tight text-center text-[#0d0d0d] dark:text-[#ececec] mb-8">
           Frequently Asked Questions
         </h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="flex flex-col gap-3">
           {faqs.map((faq, i) => (
             <div
               key={i}
-              style={{
-                padding: '20px',
-                borderRadius: '12px',
-                backgroundColor: cardBg,
-                border: `1px solid ${borderCol}`,
-              }}
+              className="p-5 rounded-xl bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f]"
             >
-              <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px', color: textMain }}>
+              <div className="text-sm sm:text-base font-semibold text-[#0d0d0d] dark:text-[#ececec] mb-1.5">
                 {faq.q}
               </div>
-              <div style={{ fontSize: '13.5px', color: textMuted, lineHeight: 1.6 }}>
+              <div className="text-xs sm:text-sm text-[#676767] dark:text-[#b4b4b4] leading-relaxed">
                 {faq.a}
               </div>
             </div>

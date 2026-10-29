@@ -58,12 +58,12 @@ export const OnboardingWizard: React.FC = () => {
     setStep(3);
   };
 
-  const bg = isLight ? '#ffffff' : '#0a0a0a';
-  const cardBg = isLight ? '#ffffff' : '#111111';
-  const borderCol = isLight ? '#e5e7eb' : '#222222';
-  const textMain = isLight ? '#111827' : '#f9fafb';
-  const textMuted = isLight ? '#6b7280' : '#9ca3af';
-  const inputBg = isLight ? '#f9fafb' : '#171717';
+  const bg = isLight ? '#ffffff' : '#212121';
+  const cardBg = isLight ? '#ffffff' : '#212121';
+  const borderCol = isLight ? '#e5e5e5' : '#2f2f2f';
+  const textMain = isLight ? '#0d0d0d' : '#ececec';
+  const textMuted = isLight ? '#676767' : '#b4b4b4';
+  const inputBg = isLight ? '#ffffff' : '#2f2f2f';
 
   return (
     <div
@@ -92,7 +92,7 @@ export const OnboardingWizard: React.FC = () => {
                   width: '28px',
                   height: '28px',
                   borderRadius: '50%',
-                  backgroundColor: step >= item.s ? '#10a37f' : isLight ? '#e5e7eb' : '#222222',
+                  backgroundColor: step >= item.s ? '#10a37f' : isLight ? '#e5e5e5' : '#2f2f2f',
                   color: step >= item.s ? '#ffffff' : textMuted,
                   display: 'flex',
                   alignItems: 'center',
@@ -191,11 +191,11 @@ export const OnboardingWizard: React.FC = () => {
                 style={{
                   marginTop: '10px',
                   padding: '12px',
-                  backgroundColor: '#10a37f',
-                  color: '#ffffff',
+                  backgroundColor: isLight ? '#0d0d0d' : '#ececec',
+                  color: isLight ? '#ffffff' : '#0d0d0d',
                   border: 'none',
-                  borderRadius: '8px',
-                  fontWeight: 700,
+                  borderRadius: '12px',
+                  fontWeight: 600,
                   fontSize: '14px',
                   cursor: 'pointer',
                   display: 'flex',
@@ -275,11 +275,11 @@ export const OnboardingWizard: React.FC = () => {
                   style={{
                     flex: 2,
                     padding: '12px',
-                    backgroundColor: '#10a37f',
-                    color: '#ffffff',
+                    backgroundColor: isLight ? '#0d0d0d' : '#ececec',
+                    color: isLight ? '#ffffff' : '#0d0d0d',
                     border: 'none',
-                    borderRadius: '8px',
-                    fontWeight: 700,
+                    borderRadius: '12px',
+                    fontWeight: 600,
                     fontSize: '14px',
                     cursor: 'pointer',
                     display: 'flex',
@@ -323,11 +323,11 @@ export const OnboardingWizard: React.FC = () => {
                   onClick={() => navigate('/app/jobs')}
                   style={{
                     padding: '14px',
-                    backgroundColor: '#10a37f',
-                    color: '#ffffff',
+                    backgroundColor: isLight ? '#0d0d0d' : '#ececec',
+                    color: isLight ? '#ffffff' : '#0d0d0d',
                     border: 'none',
-                    borderRadius: '8px',
-                    fontWeight: 700,
+                    borderRadius: '12px',
+                    fontWeight: 600,
                     fontSize: '14.5px',
                     cursor: 'pointer',
                     display: 'flex',

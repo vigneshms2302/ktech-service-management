@@ -13,7 +13,7 @@ export const SignupPage: React.FC = () => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const navigate = useNavigate();
-  const { refreshUserList } = useAuth();
+  const { login, refreshUserList } = useAuth();
 
   const [formData, setFormData] = useState({
     shopName: '',
@@ -65,9 +65,17 @@ export const SignupPage: React.FC = () => {
 
       if (res.success) {
         setShopSlug(formData.slug.trim().toLowerCase());
-        await refreshUserList();
-        // Redirect to onboarding
-        navigate('/onboarding');
+        try {
+          await login({
+            username: formData.username,
+            password: formData.password,
+            shopSlug: formData.slug.trim().toLowerCase(),
+          });
+        } catch (_) {
+          await refreshUserList();
+        }
+        // Redirect directly to the /app dashboard
+        navigate('/app', { replace: true });
       } else {
         setError(res.error || 'Failed to create shop account. Please verify details.');
       }
@@ -78,12 +86,12 @@ export const SignupPage: React.FC = () => {
     }
   };
 
-  const bg = isLight ? '#ffffff' : '#0a0a0a';
-  const cardBg = isLight ? '#ffffff' : '#111111';
-  const borderCol = isLight ? '#e5e7eb' : '#222222';
-  const textMain = isLight ? '#111827' : '#f9fafb';
-  const textMuted = isLight ? '#6b7280' : '#9ca3af';
-  const inputBg = isLight ? '#f9fafb' : '#171717';
+  const bg = isLight ? '#ffffff' : '#212121';
+  const cardBg = isLight ? '#ffffff' : '#212121';
+  const borderCol = isLight ? '#e5e5e5' : '#2f2f2f';
+  const textMain = isLight ? '#0d0d0d' : '#ececec';
+  const textMuted = isLight ? '#676767' : '#b4b4b4';
+  const inputBg = isLight ? '#ffffff' : '#2f2f2f';
 
   return (
     <div
@@ -374,18 +382,18 @@ export const SignupPage: React.FC = () => {
               style={{
                 marginTop: '10px',
                 padding: '13px',
-                backgroundColor: '#10a37f',
-                color: '#ffffff',
+                backgroundColor: isLight ? '#0d0d0d' : '#ececec',
+                color: isLight ? '#ffffff' : '#0d0d0d',
                 border: 'none',
-                borderRadius: '8px',
-                fontWeight: 700,
+                borderRadius: '12px',
+                fontWeight: 600,
                 fontSize: '14.5px',
                 cursor: isSubmitting ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                boxShadow: '0 4px 14px rgba(16, 163, 127, 0.3)',
+                boxShadow: 'none',
               }}
             >
               {isSubmitting ? 'Provisioning Shop...' : 'Create Account & Start 14-Day Free Trial'} <ArrowRight size={16} />

@@ -84,12 +84,12 @@ export const AnnualCheckoutPage: React.FC = () => {
     }
   };
 
-  const bg = isLight ? '#ffffff' : '#0a0a0a';
-  const cardBg = isLight ? '#ffffff' : '#111111';
-  const borderCol = isLight ? '#e5e7eb' : '#222222';
-  const textMain = isLight ? '#111827' : '#f9fafb';
-  const textMuted = isLight ? '#6b7280' : '#9ca3af';
-  const inputBg = isLight ? '#f9fafb' : '#171717';
+  const bg = isLight ? '#ffffff' : '#212121';
+  const cardBg = isLight ? '#ffffff' : '#212121';
+  const borderCol = isLight ? '#e5e5e5' : '#2f2f2f';
+  const textMain = isLight ? '#0d0d0d' : '#ececec';
+  const textMuted = isLight ? '#676767' : '#b4b4b4';
+  const inputBg = isLight ? '#ffffff' : '#2f2f2f';
 
   const price = data?.paymentConfig?.annualPriceInr || 14999;
   const upiId = data?.paymentConfig?.upiId || 'ktech@upi';
@@ -295,7 +295,7 @@ export const AnnualCheckoutPage: React.FC = () => {
                     padding: '4px 8px',
                     borderRadius: '6px',
                     border: `1px solid ${borderCol}`,
-                    backgroundColor: isLight ? '#ffffff' : '#222222',
+                    backgroundColor: isLight ? '#ffffff' : '#2f2f2f',
                     color: textMain,
                     fontSize: '11px',
                     fontWeight: 600,
@@ -406,18 +406,18 @@ export const AnnualCheckoutPage: React.FC = () => {
                 disabled={isSubmitting}
                 style={{
                   padding: '13px',
-                  backgroundColor: '#10a37f',
-                  color: '#ffffff',
+                  backgroundColor: isLight ? '#0d0d0d' : '#ececec',
+                  color: isLight ? '#ffffff' : '#0d0d0d',
                   border: 'none',
-                  borderRadius: '8px',
-                  fontWeight: 700,
+                  borderRadius: '12px',
+                  fontWeight: 600,
                   fontSize: '14.5px',
                   cursor: isSubmitting ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  boxShadow: '0 4px 14px rgba(16, 163, 127, 0.3)',
+                  boxShadow: 'none',
                 }}
               >
                 {isSubmitting ? 'Submitting Claim...' : 'Submit Claim for Manual Verification'}

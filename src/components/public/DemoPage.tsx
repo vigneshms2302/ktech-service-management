@@ -1,19 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, CheckCircle } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext.tsx';
+import { Play, CheckCircle, MonitorPlay } from 'lucide-react';
 
 export const DemoPage: React.FC = () => {
-  const { theme } = useTheme();
-  const isLight = theme === 'light';
-
   const [activeTab, setActiveTab] = useState<'intake' | 'diagnostics' | 'billing' | 'salvage'>('intake');
-
-  const bg = isLight ? '#ffffff' : '#0a0a0a';
-  const cardBg = isLight ? '#ffffff' : '#111111';
-  const borderCol = isLight ? '#e5e7eb' : '#222222';
-  const textMain = isLight ? '#111827' : '#f9fafb';
-  const textMuted = isLight ? '#6b7280' : '#9ca3af';
 
   const demos = {
     intake: {
@@ -65,32 +55,23 @@ export const DemoPage: React.FC = () => {
   const current = demos[activeTab];
 
   return (
-    <div style={{ backgroundColor: bg, color: textMain, fontFamily: "'Inter', -apple-system, sans-serif" }}>
-      <section style={{ padding: '70px 20px 40px', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#10a37f', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px' }}>
+    <div className="w-full bg-white dark:bg-[#212121] text-[#0d0d0d] dark:text-[#ececec] transition-colors duration-200">
+      <section className="pt-16 pb-12 px-4 sm:px-6 max-w-4xl mx-auto text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#10a37f]/10 text-[#10a37f] border border-[#10a37f]/20 uppercase tracking-wider mb-4">
+          <MonitorPlay size={13} />
           Interactive Guided Tour
         </div>
-        <h1 style={{ fontSize: 'clamp(32px, 4.5vw, 50px)', fontWeight: 900, letterSpacing: '-1.2px', marginBottom: '20px' }}>
+        <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#0d0d0d] dark:text-[#ececec] mb-4">
           See How K-Connect Powers Everyday Lab Operations
         </h1>
-        <p style={{ fontSize: '16px', color: textMuted, lineHeight: 1.6 }}>
+        <p className="text-base sm:text-lg text-[#676767] dark:text-[#b4b4b4] max-w-2xl mx-auto leading-relaxed">
           Switch between the four major workstation views below to understand how front desk, diagnostic technicians, and accountants collaborate in real-time.
         </p>
       </section>
 
       {/* Interactive Tabs */}
-      <section style={{ maxWidth: '960px', margin: '0 auto', padding: '0 20px 80px' }}>
-        <div
-          style={{
-            display: 'flex',
-            gap: '8px',
-            backgroundColor: isLight ? '#f3f4f6' : '#141414',
-            padding: '6px',
-            borderRadius: '12px',
-            marginBottom: '30px',
-            overflowX: 'auto',
-          }}
-        >
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 pb-20">
+        <div className="flex gap-1.5 p-1.5 rounded-2xl bg-[#f4f4f4] dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#2f2f2f] mb-8 overflow-x-auto">
           {[
             { id: 'intake', label: '1. Front Desk Intake' },
             { id: 'diagnostics', label: '2. Chip-Level Bench' },
@@ -100,19 +81,11 @@ export const DemoPage: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              style={{
-                flex: 1,
-                padding: '10px 16px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: activeTab === tab.id ? (isLight ? '#ffffff' : '#222222') : 'transparent',
-                color: activeTab === tab.id ? '#10a37f' : textMuted,
-                fontWeight: activeTab === tab.id ? 700 : 500,
-                fontSize: '13.5px',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                boxShadow: activeTab === tab.id ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
-              }}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap border-none ${
+                activeTab === tab.id
+                  ? 'bg-white dark:bg-[#2f2f2f] text-[#0d0d0d] dark:text-[#ececec] shadow-sm font-semibold'
+                  : 'bg-transparent text-[#676767] dark:text-[#b4b4b4] hover:text-[#0d0d0d] dark:hover:text-white'
+              }`}
             >
               {tab.label}
             </button>
@@ -120,104 +93,48 @@ export const DemoPage: React.FC = () => {
         </div>
 
         {/* Demo Content Box */}
-        <div
-          style={{
-            padding: '36px',
-            borderRadius: '16px',
-            backgroundColor: cardBg,
-            border: `1px solid ${borderCol}`,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: '30px',
-            alignItems: 'center',
-          }}
-        >
+        <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f] grid grid-cols-1 md:grid-cols-2 gap-8 items-center shadow-sm">
           <div>
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 800,
-                padding: '3px 8px',
-                borderRadius: '6px',
-                backgroundColor: 'rgba(16, 163, 127, 0.15)',
-                color: '#10a37f',
-                textTransform: 'uppercase',
-              }}
-            >
+            <span className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-[#10a37f]/10 text-[#10a37f] uppercase tracking-wider">
               {current.tag}
             </span>
-            <h2 style={{ fontSize: '22px', fontWeight: 800, marginTop: '10px', marginBottom: '12px' }}>
+            <h2 className="text-xl sm:text-2xl font-bold text-[#0d0d0d] dark:text-[#ececec] mt-3 mb-2.5">
               {current.title}
             </h2>
-            <p style={{ fontSize: '14px', color: textMuted, lineHeight: 1.6, marginBottom: '24px' }}>
+            <p className="text-xs sm:text-sm text-[#676767] dark:text-[#b4b4b4] leading-relaxed mb-6">
               {current.desc}
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13.5px' }}>
+            <div className="flex flex-col gap-2.5 text-xs sm:text-sm">
               {current.highlights.map((h, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <CheckCircle size={16} color="#10a37f" style={{ flexShrink: 0 }} />
+                <div key={i} className="flex items-center gap-2.5 text-[#0d0d0d] dark:text-[#ececec]">
+                  <CheckCircle size={15} className="text-[#10a37f] shrink-0" />
                   <span>{h}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Interactive Action Card */}
-          <div
-            style={{
-              padding: '24px',
-              borderRadius: '12px',
-              backgroundColor: isLight ? '#f9fafb' : '#161616',
-              border: `1px solid ${borderCol}`,
-              textAlign: 'center',
-            }}
-          >
-            <div
-              style={{
-                width: '56px',
-                height: '56px',
-                borderRadius: '50%',
-                backgroundColor: 'rgba(16, 163, 127, 0.15)',
-                color: '#10a37f',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 16px',
-              }}
-            >
-              <Play size={24} style={{ marginLeft: '4px' }} />
+          {/* Action Card */}
+          <div className="p-6 rounded-xl bg-[#f9f9f9] dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#2f2f2f] text-center">
+            <div className="w-12 h-12 rounded-full bg-[#f4f4f4] dark:bg-[#2a2a2a] text-[#0d0d0d] dark:text-[#ececec] flex items-center justify-center mx-auto mb-4">
+              <Play size={20} className="ml-0.5" />
             </div>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '8px' }}>Test Live in Your Browser</h3>
-            <p style={{ fontSize: '13px', color: textMuted, lineHeight: 1.5, marginBottom: '20px' }}>
+            <h3 className="text-base font-bold text-[#0d0d0d] dark:text-[#ececec] mb-1.5">
+              Test Live in Your Browser
+            </h3>
+            <p className="text-xs text-[#676767] dark:text-[#b4b4b4] leading-relaxed mb-5">
               Experience the actual application with demo shop data, or create your own shop account with 14 days free trial.
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="flex flex-col gap-2.5">
               <Link
                 to="/signup"
-                style={{
-                  padding: '12px',
-                  backgroundColor: '#10a37f',
-                  color: '#ffffff',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  fontSize: '13.5px',
-                  textDecoration: 'none',
-                }}
+                className="py-2.5 px-4 bg-[#0d0d0d] text-white hover:bg-[#262626] dark:bg-[#ececec] dark:text-[#0d0d0d] dark:hover:bg-white rounded-xl font-medium text-xs sm:text-sm text-center no-underline transition-colors shadow-none"
               >
                 Start 14-Day Free Trial
               </Link>
               <Link
                 to="/login"
-                style={{
-                  padding: '10px',
-                  backgroundColor: 'transparent',
-                  color: textMain,
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  fontSize: '13px',
-                  textDecoration: 'none',
-                  border: `1px solid ${borderCol}`,
-                }}
+                className="py-2 px-4 bg-transparent text-[#0d0d0d] dark:text-[#ececec] border border-[#e5e5e5] dark:border-[#2f2f2f] hover:bg-black/5 dark:hover:bg-white/5 rounded-xl font-medium text-xs sm:text-sm text-center no-underline transition-colors"
               >
                 Sign In to Demo Lab (ktech)
               </Link>

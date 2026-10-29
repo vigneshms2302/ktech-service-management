@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Shield,
   Lock,
@@ -9,13 +9,14 @@ import {
   AlertCircle,
   Moon,
   Sun,
-  ArrowLeft,
+  QrCode,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { useTheme } from '../../context/ThemeContext.tsx';
 import { getShopSlug, setShopSlug } from '../../api/client.ts';
 
 export const LoginPage: React.FC = () => {
+  const navigate = useNavigate();
   const { login, pinLogin, userList } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
@@ -75,6 +76,8 @@ export const LoginPage: React.FC = () => {
       if (!res.success) {
         setError(res.error || 'Incorrect PIN');
         setPinCode('');
+      } else {
+        navigate('/app', { replace: true });
       }
     } catch (err: unknown) {
       setError((err as Error).message || 'Authentication error');
@@ -102,6 +105,8 @@ export const LoginPage: React.FC = () => {
       });
       if (!res.success) {
         setError(res.error || 'Invalid credentials');
+      } else {
+        navigate(isSuperAdmin ? '/admin' : '/app', { replace: true });
       }
     } catch (err: unknown) {
       setError((err as Error).message || 'Authentication failed');
@@ -110,13 +115,13 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const bg = isLight ? '#ffffff' : '#0a0a0a';
-  const cardBg = isLight ? '#ffffff' : '#111111';
-  const borderCol = isLight ? '#e5e7eb' : '#222222';
-  const textMain = isLight ? '#111827' : '#f9fafb';
-  const textMuted = isLight ? '#6b7280' : '#9ca3af';
-  const inputBg = isLight ? '#f9fafb' : '#1a1a1a';
-  const inputBorder = isLight ? '#d1d5db' : '#2a2a2a';
+  const bg = isLight ? '#ffffff' : '#212121';
+  const cardBg = isLight ? '#ffffff' : '#212121';
+  const borderCol = isLight ? '#e5e5e5' : '#2f2f2f';
+  const textMain = isLight ? '#0d0d0d' : '#ececec';
+  const textMuted = isLight ? '#676767' : '#b4b4b4';
+  const inputBg = isLight ? '#ffffff' : '#2f2f2f';
+  const inputBorder = isLight ? '#e5e5e5' : '#383838';
 
   return (
     <div
@@ -285,6 +290,78 @@ export const LoginPage: React.FC = () => {
               </button>
             </div>
 
+            {/* Handover & Demo Quick Access Box */}
+            {!isSuperAdmin && (
+              <div
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  backgroundColor: isLight ? '#f9f9f9' : '#171717',
+                  border: `1px solid ${borderCol}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#10a37f' }}>
+                    ⚡ 1-Click Handover Login
+                  </span>
+                  <span style={{ fontSize: '11px', color: textMuted, fontFamily: 'monospace' }}>@ktech</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShopSlugState('ktech');
+                      setUsername('admin');
+                      setPassword('admin123');
+                      setIsSuperAdmin(false);
+                      setError(null);
+                    }}
+                    style={{
+                      padding: '6px 8px',
+                      borderRadius: '8px',
+                      border: `1px solid ${inputBorder}`,
+                      backgroundColor: inputBg,
+                      color: textMain,
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ color: textMain }}>👤 Shop Owner</div>
+                    <div style={{ fontSize: '10px', color: textMuted }}>admin / admin123</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShopSlugState('ktech');
+                      setUsername('tech1');
+                      setPassword('tech123');
+                      setIsSuperAdmin(false);
+                      setError(null);
+                    }}
+                    style={{
+                      padding: '6px 8px',
+                      borderRadius: '8px',
+                      border: `1px solid ${inputBorder}`,
+                      backgroundColor: inputBg,
+                      color: textMain,
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ color: textMain }}>🔧 Technician</div>
+                    <div style={{ fontSize: '10px', color: textMuted }}>tech1 / tech123</div>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Shop Slug */}
             {!isSuperAdmin && (
               <div>
@@ -413,9 +490,9 @@ export const LoginPage: React.FC = () => {
               style={{
                 width: '100%',
                 padding: '11px',
-                borderRadius: '10px',
-                backgroundColor: '#10a37f',
-                color: '#ffffff',
+                borderRadius: '12px',
+                backgroundColor: isLight ? '#0d0d0d' : '#ececec',
+                color: isLight ? '#ffffff' : '#0d0d0d',
                 border: 'none',
                 fontSize: '14px',
                 fontWeight: 600,
@@ -433,8 +510,8 @@ export const LoginPage: React.FC = () => {
         {/* PIN MODE */}
         {activeMode === 'PIN' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
-            {/* User selector */}
-            {userList.length > 0 && (
+            {/* User selector or Quick Demo PIN buttons */}
+            {userList.length > 0 ? (
               <div style={{ display: 'flex', gap: '8px', width: '100%', overflowX: 'auto', paddingBottom: '2px' }}>
                 {userList.map((usr) => {
                   const isSelected = selectedUser === usr.id;
@@ -489,6 +566,45 @@ export const LoginPage: React.FC = () => {
                     </button>
                   );
                 })}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                <button
+                  type="button"
+                  onClick={() => executePinAuth('1234')}
+                  style={{
+                    flex: 1,
+                    padding: '8px',
+                    borderRadius: '8px',
+                    border: `1px solid ${inputBorder}`,
+                    backgroundColor: inputBg,
+                    color: textMain,
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                  }}
+                >
+                  👤 Admin PIN: 1234
+                </button>
+                <button
+                  type="button"
+                  onClick={() => executePinAuth('2222')}
+                  style={{
+                    flex: 1,
+                    padding: '8px',
+                    borderRadius: '8px',
+                    border: `1px solid ${inputBorder}`,
+                    backgroundColor: inputBg,
+                    color: textMain,
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                  }}
+                >
+                  🔧 Tech PIN: 2222
+                </button>
               </div>
             )}
 
@@ -549,8 +665,9 @@ export const LoginPage: React.FC = () => {
             Start 14-day free trial &rarr;
           </Link>
         </div>
-        <Link to="/" style={{ color: textMuted, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
-          <ArrowLeft size={13} /> Back to K-Connect SaaS Website
+        <Link to="/track" style={{ color: textMuted, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px' }}>
+          <QrCode size={13} color="#10a37f" />
+          <span>Customer Repair Tracker (QR / SMS) &rarr;</span>
         </Link>
       </div>
 

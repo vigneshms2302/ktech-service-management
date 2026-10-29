@@ -9,19 +9,10 @@ import {
   ArrowRight,
   CheckCircle,
   Cpu,
+  Layers,
 } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext.tsx';
 
 export const FeaturesPage: React.FC = () => {
-  const { theme } = useTheme();
-  const isLight = theme === 'light';
-
-  const bg = isLight ? '#ffffff' : '#0a0a0a';
-  const cardBg = isLight ? '#ffffff' : '#111111';
-  const borderCol = isLight ? '#e5e7eb' : '#222222';
-  const textMain = isLight ? '#111827' : '#f9fafb';
-  const textMuted = isLight ? '#6b7280' : '#9ca3af';
-
   const detailedModules = [
     {
       id: 'jobs',
@@ -110,83 +101,63 @@ export const FeaturesPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ backgroundColor: bg, color: textMain, fontFamily: "'Inter', -apple-system, sans-serif" }}>
+    <div className="w-full bg-white dark:bg-[#212121] text-[#0d0d0d] dark:text-[#ececec] transition-colors duration-200">
       {/* Header */}
-      <section style={{ padding: '70px 20px 40px', maxWidth: '1000px', margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#10a37f', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px' }}>
+      <section className="pt-16 pb-12 px-4 sm:px-6 max-w-4xl mx-auto text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#10a37f]/10 text-[#10a37f] border border-[#10a37f]/20 uppercase tracking-wider mb-4">
+          <Layers size={13} />
           Deep Product Capabilities
         </div>
-        <h1 style={{ fontSize: 'clamp(32px, 4.5vw, 52px)', fontWeight: 900, letterSpacing: '-1.2px', marginBottom: '20px' }}>
-          Engineered for Hardware Realities, Not Generic Invoicing
+        <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#0d0d0d] dark:text-[#ececec] mb-4">
+          Engineered for Hardware Realities
         </h1>
-        <p style={{ fontSize: '16px', color: textMuted, lineHeight: 1.6, maxWidth: '700px', margin: '0 auto' }}>
+        <p className="text-base sm:text-lg text-[#676767] dark:text-[#b4b4b4] max-w-2xl mx-auto leading-relaxed">
           Explore the exact features built into K-Connect to run front desk intake, chip-level diagnosis benches, salvage inventory, and GST accounts with zero friction.
         </p>
       </section>
 
       {/* Modules List */}
-      <section style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 20px 80px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-20">
+        <div className="flex flex-col gap-8">
           {detailedModules.map((m, idx) => {
             const Icon = m.icon;
             return (
               <div
                 key={m.id}
-                style={{
-                  padding: '36px',
-                  borderRadius: '16px',
-                  backgroundColor: cardBg,
-                  border: `1px solid ${borderCol}`,
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                  gap: '30px',
-                  alignItems: 'center',
-                }}
+                className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f] grid grid-cols-1 md:grid-cols-2 gap-8 items-center shadow-sm hover:shadow-md transition-shadow"
               >
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                    <div
-                      style={{
-                        width: '44px',
-                        height: '44px',
-                        borderRadius: '10px',
-                        backgroundColor: isLight ? '#f0fdf4' : 'rgba(16, 163, 127, 0.12)',
-                        color: '#10a37f',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Icon size={24} />
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-[#f4f4f4] dark:bg-[#2a2a2a] text-[#0d0d0d] dark:text-[#ececec] flex items-center justify-center">
+                      <Icon size={20} />
                     </div>
                     <div>
-                      <div style={{ fontSize: '11px', color: '#10a37f', fontWeight: 800, textTransform: 'uppercase' }}>
-                        MODULE 0{idx + 1}
+                      <div className="text-[11px] font-semibold text-[#10a37f] uppercase tracking-wider">
+                        Module 0{idx + 1}
                       </div>
-                      <h2 style={{ fontSize: '20px', fontWeight: 800 }}>{m.title}</h2>
+                      <h2 className="text-lg sm:text-xl font-bold text-[#0d0d0d] dark:text-[#ececec]">
+                        {m.title}
+                      </h2>
                     </div>
                   </div>
 
-                  <p style={{ fontSize: '14.5px', fontWeight: 600, color: textMain, marginBottom: '10px' }}>{m.subtitle}</p>
-                  <p style={{ fontSize: '13.5px', color: textMuted, lineHeight: 1.6, marginBottom: '20px' }}>{m.description}</p>
+                  <p className="text-sm font-semibold text-[#0d0d0d] dark:text-[#ececec] mb-2 leading-snug">
+                    {m.subtitle}
+                  </p>
+                  <p className="text-xs sm:text-sm text-[#676767] dark:text-[#b4b4b4] leading-relaxed mb-4">
+                    {m.description}
+                  </p>
                 </div>
 
-                <div
-                  style={{
-                    backgroundColor: isLight ? '#f9fafb' : '#141414',
-                    border: `1px solid ${borderCol}`,
-                    borderRadius: '12px',
-                    padding: '24px',
-                  }}
-                >
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: textMain, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '14px' }}>
+                <div className="p-6 rounded-xl bg-[#f9f9f9] dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#2f2f2f]">
+                  <div className="text-xs font-semibold text-[#0d0d0d] dark:text-[#ececec] uppercase tracking-wider mb-4">
                     Key Operational Capabilities
                   </div>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
+                  <ul className="list-none p-0 m-0 flex flex-col gap-2.5 text-xs sm:text-sm">
                     {m.bullets.map((b, bIdx) => (
-                      <li key={bIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                        <CheckCircle size={16} color="#10a37f" style={{ flexShrink: 0, marginTop: '2px' }} />
-                        <span style={{ color: textMain }}>{b}</span>
+                      <li key={bIdx} className="flex items-start gap-2.5">
+                        <CheckCircle size={15} className="text-[#10a37f] shrink-0 mt-0.5" />
+                        <span className="text-[#0d0d0d] dark:text-[#ececec]">{b}</span>
                       </li>
                     ))}
                   </ul>
@@ -197,38 +168,18 @@ export const FeaturesPage: React.FC = () => {
         </div>
 
         {/* CTA Banner */}
-        <div
-          style={{
-            marginTop: '60px',
-            padding: '40px',
-            borderRadius: '16px',
-            backgroundColor: isLight ? '#f0fdf4' : '#08140f',
-            border: '1px solid #10a37f',
-            textAlign: 'center',
-          }}
-        >
-          <h3 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '10px' }}>
+        <div className="mt-16 p-8 sm:p-12 rounded-2xl bg-[#f9f9f9] dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#2f2f2f] text-center">
+          <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0d0d0d] dark:text-[#ececec] mb-3">
             Ready to experience these features in your own repair shop?
           </h3>
-          <p style={{ fontSize: '14px', color: textMuted, marginBottom: '24px' }}>
+          <p className="text-sm sm:text-base text-[#676767] dark:text-[#b4b4b4] max-w-xl mx-auto mb-6">
             Get complete unrestricted access to all 6 modules for 14 days without paying a single rupee.
           </p>
           <Link
             to="/signup"
-            style={{
-              padding: '12px 24px',
-              backgroundColor: '#10a37f',
-              color: '#ffffff',
-              borderRadius: '8px',
-              fontWeight: 700,
-              fontSize: '14.5px',
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#0d0d0d] text-white hover:bg-[#262626] dark:bg-[#ececec] dark:text-[#0d0d0d] dark:hover:bg-white rounded-xl font-medium text-sm transition-colors no-underline shadow-none"
           >
-            Start 14-Day Free Trial <ArrowRight size={16} />
+            Start 14-Day Free Trial <ArrowRight size={15} />
           </Link>
         </div>
       </section>
