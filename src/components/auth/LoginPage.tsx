@@ -27,7 +27,7 @@ export const LoginPage: React.FC = () => {
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
   const [selectedUser, setSelectedUser] = useState<string>(() => userList[0]?.id || '');
   const [pinCode, setPinCode] = useState<string>('');
-  const [username, setUsername] = useState<string>('admin');
+  const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -290,75 +290,46 @@ export const LoginPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Handover & Demo Quick Access Box */}
+            {/* New Shop Registration Prompt */}
             {!isSuperAdmin && (
               <div
                 style={{
-                  padding: '10px 12px',
-                  borderRadius: '10px',
-                  backgroundColor: isLight ? '#f9f9f9' : '#171717',
-                  border: `1px solid ${borderCol}`,
+                  padding: '12px 14px',
+                  borderRadius: '12px',
+                  backgroundColor: isLight ? 'rgba(16, 163, 127, 0.06)' : 'rgba(16, 163, 127, 0.1)',
+                  border: '1px solid rgba(16, 163, 127, 0.25)',
                   display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#10a37f' }}>
-                    ⚡ 1-Click Handover Login
-                  </span>
-                  <span style={{ fontSize: '11px', color: textMuted, fontFamily: 'monospace' }}>@ktech</span>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#10a37f' }}>
+                    New Repair Shop?
+                  </div>
+                  <div style={{ fontSize: '11px', color: textMuted, marginTop: '2px' }}>
+                    Register & activate 14-day free trial
+                  </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShopSlugState('ktech');
-                      setUsername('admin');
-                      setPassword('admin123');
-                      setIsSuperAdmin(false);
-                      setError(null);
-                    }}
-                    style={{
-                      padding: '6px 8px',
-                      borderRadius: '8px',
-                      border: `1px solid ${inputBorder}`,
-                      backgroundColor: inputBg,
-                      color: textMain,
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <div style={{ color: textMain }}>👤 Shop Owner</div>
-                    <div style={{ fontSize: '10px', color: textMuted }}>admin / admin123</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShopSlugState('ktech');
-                      setUsername('tech1');
-                      setPassword('tech123');
-                      setIsSuperAdmin(false);
-                      setError(null);
-                    }}
-                    style={{
-                      padding: '6px 8px',
-                      borderRadius: '8px',
-                      border: `1px solid ${inputBorder}`,
-                      backgroundColor: inputBg,
-                      color: textMain,
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <div style={{ color: textMain }}>🔧 Technician</div>
-                    <div style={{ fontSize: '10px', color: textMuted }}>tech1 / tech123</div>
-                  </button>
-                </div>
+                <Link
+                  to="/signup"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '7px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: '#10a37f',
+                    color: '#ffffff',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Register Shop &rarr;
+                </Link>
               </div>
             )}
 
@@ -423,7 +394,7 @@ export const LoginPage: React.FC = () => {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin"
+                  placeholder={isSuperAdmin ? 'admin' : 'Username or mobile'}
                   required
                   autoComplete="username"
                   style={{
@@ -568,44 +539,9 @@ export const LoginPage: React.FC = () => {
                 })}
               </div>
             ) : (
-              <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-                <button
-                  type="button"
-                  onClick={() => executePinAuth('1234')}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    borderRadius: '8px',
-                    border: `1px solid ${inputBorder}`,
-                    backgroundColor: inputBg,
-                    color: textMain,
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                  }}
-                >
-                  👤 Admin PIN: 1234
-                </button>
-                <button
-                  type="button"
-                  onClick={() => executePinAuth('2222')}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    borderRadius: '8px',
-                    border: `1px solid ${inputBorder}`,
-                    backgroundColor: inputBg,
-                    color: textMain,
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                  }}
-                >
-                  🔧 Tech PIN: 2222
-                </button>
-              </div>
+              <p style={{ fontSize: '12.5px', color: textMuted, margin: '4px 0', textAlign: 'center' }}>
+                Enter your 4-digit staff PIN to unlock
+              </p>
             )}
 
             {/* PIN dots */}

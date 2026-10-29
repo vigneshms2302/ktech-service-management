@@ -83,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-[#0d0d0d] dark:text-[#ececec] tracking-tight max-w-[180px] truncate">
-              {shopSettings.shopName || 'K-Connect'}
+              {currentUser?.shopName || shopSettings.shopName || 'K-Connect'}
             </span>
             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-[#e5e5e5] dark:border-[#2f2f2f] text-[#676767] dark:text-[#b4b4b4]">
               Lab OS

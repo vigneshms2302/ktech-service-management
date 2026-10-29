@@ -9,6 +9,9 @@ export interface UserSession {
   phone?: string | null;
   commissionPct: number;
   permissions: string[];
+  shopId?: string;
+  shopName?: string;
+  shopSlug?: string;
 }
 
 export interface UserProfile {

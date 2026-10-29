@@ -20,7 +20,7 @@ export function clearAuthToken(): void {
 }
 
 export function getShopSlug(): string {
-  return localStorage.getItem(SHOP_SLUG_KEY) || 'ktech';
+  return localStorage.getItem(SHOP_SLUG_KEY) || '';
 }
 
 export function setShopSlug(slug: string): void {
