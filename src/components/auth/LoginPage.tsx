@@ -24,10 +24,12 @@ export const LoginPage: React.FC = () => {
 
   const [activeMode, setActiveMode] = useState<'PASSWORD' | 'PIN'>('PASSWORD');
   const [shopSlug, setShopSlugState] = useState<string>(() => getShopSlug());
-  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
+  const searchParams = new URLSearchParams(window.location.search);
+  const isAdminParam = searchParams.get('admin') === '1';
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(isAdminParam);
   const [selectedUser, setSelectedUser] = useState<string>(() => userList[0]?.id || '');
   const [pinCode, setPinCode] = useState<string>('');
-  const [username, setUsername] = useState<string>('');
+  const [username, setUsername] = useState<string>(isAdminParam ? 'superadmin' : '');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -199,44 +201,46 @@ export const LoginPage: React.FC = () => {
             : '0 4px 40px rgba(0,0,0,0.5)',
         }}
       >
-        {/* Tab Switcher */}
-        <div
-          style={{
-            display: 'flex',
-            borderRadius: '10px',
-            backgroundColor: isLight ? '#f3f4f6' : '#1a1a1a',
-            padding: '3px',
-            marginBottom: '20px',
-            gap: '2px',
-          }}
-        >
-          {(['PASSWORD', 'PIN'] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => { setActiveMode(mode); setError(null); }}
-              style={{
-                flex: 1,
-                padding: '7px 0',
-                borderRadius: '8px',
-                border: 'none',
-                fontSize: '13px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                backgroundColor: activeMode === mode
-                  ? (isLight ? '#ffffff' : '#2a2a2a')
-                  : 'transparent',
-                color: activeMode === mode ? textMain : textMuted,
-                boxShadow: activeMode === mode
-                  ? (isLight ? '0 1px 3px rgba(0,0,0,0.08)' : 'none')
-                  : 'none',
-              }}
-            >
-              {mode === 'PASSWORD' ? 'Password' : 'Quick PIN'}
-            </button>
-          ))}
-        </div>
+        {/* Tab Switcher (Only for regular shop staff) */}
+        {!isSuperAdmin && (
+          <div
+            style={{
+              display: 'flex',
+              borderRadius: '10px',
+              backgroundColor: isLight ? '#f3f4f6' : '#1a1a1a',
+              padding: '3px',
+              marginBottom: '20px',
+              gap: '2px',
+            }}
+          >
+            {(['PASSWORD', 'PIN'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => { setActiveMode(mode); setError(null); }}
+                style={{
+                  flex: 1,
+                  padding: '7px 0',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  backgroundColor: activeMode === mode
+                    ? (isLight ? '#ffffff' : '#2a2a2a')
+                    : 'transparent',
+                  color: activeMode === mode ? textMain : textMuted,
+                  boxShadow: activeMode === mode
+                    ? (isLight ? '0 1px 3px rgba(0,0,0,0.08)' : 'none')
+                    : 'none',
+                }}
+              >
+                {mode === 'PASSWORD' ? 'Password' : 'Quick PIN'}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Error Banner */}
         {error && (
@@ -263,32 +267,26 @@ export const LoginPage: React.FC = () => {
         {activeMode === 'PASSWORD' && (
           <form onSubmit={handlePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-            {/* Admin mode toggle */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '12px', color: textMuted }}>
-                {isSuperAdmin ? '🛡️ Vendor Admin' : '🏬 Shop Login'}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSuperAdmin(!isSuperAdmin);
-                  setUsername(!isSuperAdmin ? 'superadmin' : 'admin');
-                  setPassword('');
-                  setError(null);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#10a37f',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  padding: 0,
-                }}
-              >
-                {isSuperAdmin ? 'Switch to Shop' : 'Vendor Admin'}
-              </button>
-            </div>
+            {/* Vendor Admin Header (Only shown when accessed via /admin or ?admin=1) */}
+            {isSuperAdmin && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '4px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#10a37f' }}>
+                  🛡️ Vendor Super-Admin Portal
+                </span>
+                <Link
+                  to="/login"
+                  onClick={() => {
+                    setIsSuperAdmin(false);
+                    setUsername('');
+                    setPassword('');
+                    setError(null);
+                  }}
+                  style={{ fontSize: '12px', color: textMuted, textDecoration: 'none' }}
+                >
+                  Shop Login &rarr;
+                </Link>
+              </div>
+            )}
 
             {/* New Shop Registration Prompt */}
             {!isSuperAdmin && (
