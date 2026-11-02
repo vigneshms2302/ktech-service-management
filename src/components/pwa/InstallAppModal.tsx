@@ -84,7 +84,11 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
               boxShadow: '0 4px 14px rgba(16, 163, 127, 0.25)',
             }}
           >
-            <img src="/icon.svg" alt="K-Connect" style={{ width: '36px', height: '36px' }} />
+            <img
+              src={typeof window !== 'undefined' && window.location.protocol === 'file:' ? './icon.svg' : '/icon.svg'}
+              alt="K-Connect"
+              style={{ width: '36px', height: '36px' }}
+            />
           </div>
           <div>
             <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#f3f3f3', margin: 0, letterSpacing: '-0.3px' }}>

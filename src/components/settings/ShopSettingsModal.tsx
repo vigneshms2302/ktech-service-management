@@ -21,6 +21,7 @@ import {
   Shield,
   FolderOpen,
   ExternalLink,
+  Monitor,
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext.tsx';
 import { useAuth } from '../../context/AuthContext.tsx';
@@ -1299,13 +1300,51 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                 )}
               </div>
 
+              {/* Standalone Desktop Application Package */}
+              <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: 'rgba(16, 163, 127, 0.12)', color: '#10a37f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Monitor size={20} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>
+                      K-Connect Windows Desktop Application (.exe)
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>
+                      Standalone portable edition • Real-Time Cloud Synced • Direct 80mm thermal receipt printer support
+                    </div>
+                  </div>
+                </div>
+
+                <a
+                  href="/api/public/download/desktop"
+                  download="K-Connect-Portable.exe"
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    backgroundColor: '#10a37f',
+                    color: '#ffffff',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Download size={14} />
+                  <span>Download .exe (72 MB)</span>
+                </a>
+              </div>
+
               {/* Data & Database Safety Badge */}
               <div style={{ padding: '12px 14px', backgroundColor: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '11px' }}>
                 <ShieldCheck size={18} color="var(--brand-primary)" style={{ flexShrink: 0, marginTop: '1px' }} />
                 <div>
-                  <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>Zero-Data-Loss Architecture</div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>Unified Cloud Database Architecture</div>
                   <div style={{ color: 'var(--text-dim)', marginTop: '2px' }}>
-                    When updating to new versions, your local SQLite database (customers, tickets, inventory, GST invoices, and backups) stored in AppData is preserved safely and automatically migrated.
+                    Both the web application and Windows desktop application connect to the exact same Cloud Database in real-time. Any repair job, customer profile, or invoice created on desktop is instantly synchronized and available across web and mobile.
                   </div>
                 </div>
               </div>

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ArrowRight, Sun, Moon } from 'lucide-react';
+import { Menu, X, ArrowRight, Sun, Moon, Monitor, Download } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext.tsx';
+import { DownloadAppModal } from '../components/common/DownloadAppModal.tsx';
 
 export const PublicNavbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const isLight = theme === 'light';
@@ -66,6 +68,18 @@ export const PublicNavbar: React.FC = () => {
 
         {/* Action CTAs: Clean Marketing Sign In & Sign Up */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Download Desktop App Button */}
+          <button
+            type="button"
+            onClick={() => setIsDownloadOpen(true)}
+            title="Download Windows Desktop Application (.exe)"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/15 transition-colors cursor-pointer"
+          >
+            <Monitor size={13} />
+            <span>Desktop App</span>
+            <Download size={12} className="opacity-70" />
+          </button>
+
           {/* Theme Toggle */}
           <button
             type="button"
@@ -123,6 +137,17 @@ export const PublicNavbar: React.FC = () => {
               {link.label}
             </Link>
           ))}
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              setIsDownloadOpen(true);
+            }}
+            className="w-full py-2.5 mt-2 text-center text-xs font-semibold rounded-xl border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/15 transition-colors cursor-pointer flex items-center justify-center gap-2"
+          >
+            <Monitor size={14} />
+            <span>Download Desktop App (.exe)</span>
+          </button>
           <div className="flex gap-2 mt-3 pt-3 border-t border-[#e5e5e5] dark:border-[#2f2f2f]">
             <Link
               to="/login"
@@ -141,6 +166,9 @@ export const PublicNavbar: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Desktop App Download Modal */}
+      <DownloadAppModal isOpen={isDownloadOpen} onClose={() => setIsDownloadOpen(false)} />
     </header>
   );
 };

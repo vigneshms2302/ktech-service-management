@@ -26,7 +26,7 @@ export interface UpdateStatusPayload {
 
 let currentStatus: UpdateStatusPayload = {
   status: 'IDLE',
-  currentVersion: app.getVersion() || '1.0.0',
+  currentVersion: '1.2.0',
 };
 
 let isUpdaterConfigured = false;
@@ -44,8 +44,8 @@ export function registerUpdaterIpc(): void {
   if (isUpdaterConfigured) return;
   isUpdaterConfigured = true;
 
-  // Initialize status version
-  currentStatus.currentVersion = app.getVersion() || '1.0.0';
+  // Initialize status version safely after app is ready
+  currentStatus.currentVersion = (app?.getVersion ? app.getVersion() : null) || '1.2.0';
 
   // Configure electron-updater
   autoUpdater.autoDownload = false; // Give user control / UI visibility over downloads
@@ -131,7 +131,7 @@ export function registerUpdaterIpc(): void {
 
   ipcMain.handle('updater:checkForUpdates', async () => {
     try {
-      if (!app.isPackaged) {
+      if (!Boolean(app?.isPackaged)) {
         currentStatus = {
           ...currentStatus,
           status: 'DEV_MODE',
@@ -174,7 +174,7 @@ export function registerUpdaterIpc(): void {
 
   ipcMain.handle('updater:downloadUpdate', async () => {
     try {
-      if (!app.isPackaged) {
+      if (!Boolean(app?.isPackaged)) {
         return {
           success: false,
           error: 'Cannot download updates in development mode.',
@@ -206,7 +206,7 @@ export function registerUpdaterIpc(): void {
 
   ipcMain.handle('updater:quitAndInstall', async () => {
     try {
-      if (!app.isPackaged) {
+      if (!Boolean(app?.isPackaged)) {
         return {
           success: false,
           error: 'Cannot install updates in development mode.',
@@ -226,7 +226,7 @@ export function registerUpdaterIpc(): void {
 }
 
 export function checkForUpdatesOnStartup(): void {
-  if (app.isPackaged) {
+  if (Boolean(app?.isPackaged)) {
     // Delay check slightly after boot so startup is fast and smooth
     setTimeout(() => {
       autoUpdater.checkForUpdates().catch((err) => {

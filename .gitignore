@@ -152,6 +152,8 @@ dist
 dist/
 dist-electron/
 release/
+public/downloads/*.exe
 .env*
 !.env.example
+
 

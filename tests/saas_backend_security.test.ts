@@ -226,8 +226,10 @@ describe('K-Connect SaaS — Production Backend Security & Multi-Tenant Hardenin
       // Production mode must permit whitelisted origin
       expect(isOriginAllowed('https://app.kconnectsaas.com', 'production', allowedOrigins)).toBe(true);
 
-      // Mobile apps, electron shell, and curl (no Origin header) must be permitted
+      // Mobile apps, electron shell, and curl (no Origin header, or file/null origin) must be permitted
       expect(isOriginAllowed(undefined, 'production', allowedOrigins)).toBe(true);
+      expect(isOriginAllowed('null', 'production', allowedOrigins)).toBe(true);
+      expect(isOriginAllowed('file://', 'production', allowedOrigins)).toBe(true);
     });
   });
 

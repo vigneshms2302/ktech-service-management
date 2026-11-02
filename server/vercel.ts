@@ -1,6 +1,6 @@
-import { app } from '../server/index.ts';
-import { initializeMultiTenantSchema } from '../server/db/database.ts';
-import { seedInitialPlatform } from '../server/db/seed.ts';
+import { app } from './index.ts';
+import { initializeMultiTenantSchema } from './db/database.ts';
+import { seedInitialPlatform } from './db/seed.ts';
 
 let isInitialized = false;
 let initPromise: Promise<void> | null = null;
@@ -32,10 +32,19 @@ async function bootstrap(): Promise<void> {
   return initPromise;
 }
 
-// Ensure database schema is bootstrapped on first serverless request
+// 1. Ensure database schema is bootstrapped on first serverless request
 app.use(async (_req, _res, next) => {
   if (!isInitialized) {
     await bootstrap();
+  }
+  next();
+});
+
+// 2. Restore original URL path if Vercel serverless rewrite routed to /api
+app.use((req, _res, next) => {
+  const vercelPath = req.headers['x-matched-path'] || req.headers['x-vercel-matched-path'];
+  if (typeof vercelPath === 'string' && vercelPath.startsWith('/api') && req.url === '/api') {
+    req.url = vercelPath;
   }
   next();
 });

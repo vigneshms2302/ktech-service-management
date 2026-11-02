@@ -45,15 +45,19 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Load overview from SaaS API
+      // Load overview from local desktop or SaaS API
       try {
-        const oRes = await saasApi.reports.getOverview();
+        const oRes = window.electronAPI?.reports?.getOverview
+          ? await window.electronAPI.reports.getOverview()
+          : await saasApi.reports.getOverview();
         if (oRes.success && oRes.data) setOverview(oRes.data);
       } catch (_) { /* overview optional */ }
 
       // Load recent jobs
       try {
-        const jRes = await saasApi.jobs.list({ limit: 6 });
+        const jRes = window.electronAPI?.jobs?.list
+          ? await window.electronAPI.jobs.list({ limit: 6 })
+          : await saasApi.jobs.list({ limit: 6 });
         if (jRes.success && Array.isArray(jRes.data)) {
           setRecentJobs(jRes.data);
         } else if (jRes.success && jRes.data?.jobs) {
@@ -61,9 +65,11 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
         }
       } catch (_) { /* jobs optional */ }
 
-      // Pending quotes via billing API
+      // Pending quotes
       try {
-        const qRes = await saasApi.billing.listQuotations({ status: 'PENDING' });
+        const qRes = window.electronAPI?.billing?.listQuotations
+          ? await window.electronAPI.billing.listQuotations({ status: 'PENDING' })
+          : await saasApi.billing.listQuotations({ status: 'PENDING' });
         if (qRes.success && qRes.data) setPendingQuotes(qRes.data);
       } catch (_) { /* quotes optional */ }
 

@@ -18,13 +18,8 @@ export function validateConfig(): ServerConfig {
   const jwtSecret = process.env.JWT_SECRET;
 
   if (!jwtSecret || jwtSecret.trim() === '') {
-    if (nodeEnv === 'production' && !process.env.VERCEL) {
-      throw new Error('JWT_SECRET environment variable is required in production mode for security.');
-    }
-    if (process.env.VERCEL) {
-      console.warn(
-        '[Config Warning] JWT_SECRET environment variable is not configured in Vercel project settings! Using fallback key for preview. Please set JWT_SECRET for production.'
-      );
+    if (nodeEnv === 'production') {
+      throw new Error('JWT_SECRET environment variable is required in production mode for security. Please set JWT_SECRET in environment settings.');
     }
   }
 
@@ -33,7 +28,9 @@ export function validateConfig(): ServerConfig {
     ? jwtSecret.trim()
     : (nodeEnv === 'test'
         ? 'test-environment-jwt-secret-key-32chars-min'
-        : 'ktech-saas-cloud-jwt-fallback-key-min-32-chars-2026');
+        : (nodeEnv === 'production'
+            ? ''
+            : 'ktech-saas-cloud-jwt-fallback-key-min-32-chars-2026'));
 
   const rawOrigins = process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://localhost:4173';
   const allowedOrigins = rawOrigins

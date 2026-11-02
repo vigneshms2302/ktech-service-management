@@ -22,5 +22,5 @@
       "@electron/*": ["electron/*"]
     }
   },
-  "include": ["src", "electron", "tests", "server", "api"]
+  "include": ["src", "electron", "tests", "server"]
 }

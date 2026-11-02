@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Shield,
   Lock,
   User,
   Eye,
@@ -9,84 +8,85 @@ import {
   AlertCircle,
   Moon,
   Sun,
-  QrCode,
+  Monitor,
+  Building2,
+  Sparkles,
+  ArrowRight,
+  ShieldCheck,
+  Cpu,
+  Database,
+  Search,
+  CheckCircle2,
+  Server,
+  Settings,
+  Check,
+  RefreshCw,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { useTheme } from '../../context/ThemeContext.tsx';
-import { getShopSlug, setShopSlug } from '../../api/client.ts';
+import { getShopSlug, setShopSlug, getApiBaseUrl, setApiBaseUrl } from '../../api/client.ts';
+import { DownloadAppModal } from '../common/DownloadAppModal.tsx';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, pinLogin, userList } = useAuth();
+  const { login } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   const isLight = theme === 'light';
 
-  const [activeMode, setActiveMode] = useState<'PASSWORD' | 'PIN'>('PASSWORD');
-  const [shopSlug, setShopSlugState] = useState<string>(() => getShopSlug());
+  const [shopSlug, setShopSlugState] = useState<string>(() => getShopSlug() || 'ktech');
   const searchParams = new URLSearchParams(window.location.search);
   const isAdminParam = searchParams.get('admin') === '1';
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(isAdminParam);
-  const [selectedUser, setSelectedUser] = useState<string>(() => userList[0]?.id || '');
-  const [pinCode, setPinCode] = useState<string>('');
   const [username, setUsername] = useState<string>(isAdminParam ? 'superadmin' : '');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isDownloadOpen, setIsDownloadOpen] = useState<boolean>(false);
+  const [isServerModalOpen, setIsServerModalOpen] = useState<boolean>(false);
+  const [currentApiUrl, setCurrentApiUrl] = useState<string>(() => getApiBaseUrl() || (window.location.protocol === 'file:' ? 'http://localhost:5000' : ''));
+  const [modalApiUrl, setModalApiUrl] = useState<string>(currentApiUrl);
+  const [testResult, setTestResult] = useState<{ status: 'idle' | 'testing' | 'success' | 'error'; message?: string }>({ status: 'idle' });
 
-  useEffect(() => {
-    if (userList.length > 0 && !selectedUser) {
-      setSelectedUser(userList[0].id);
-      setUsername(userList[0].username);
-    }
-  }, [userList, selectedUser]);
+  const isDesktop = Boolean(window.electronAPI?.isDesktop);
 
-  // Keyboard PIN handler
-  useEffect(() => {
-    if (activeMode !== 'PIN') return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (/^[0-9]$/.test(e.key)) {
-        if (pinCode.length < 6) handlePinDigit(e.key);
-      } else if (e.key === 'Backspace') {
-        setPinCode((prev) => prev.slice(0, -1));
-        setError(null);
-      } else if (e.key === 'Enter' && pinCode.length >= 4) {
-        executePinAuth(pinCode);
-      } else if (e.key === 'Escape') {
-        setPinCode('');
-        setError(null);
+  const handleTestConnection = async (urlToTest: string) => {
+    setTestResult({ status: 'testing', message: 'Connecting to server...' });
+    const startTime = Date.now();
+    try {
+      const cleanUrl = urlToTest.trim().replace(/\/$/, '');
+      const target = cleanUrl.startsWith('http')
+        ? `${cleanUrl}/api/health`
+        : `${window.location.origin}/api/health`;
+      const res = await fetch(target, { method: 'GET' });
+      const latency = Date.now() - startTime;
+      if (res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setTestResult({
+          status: 'success',
+          message: `Connected (${latency}ms) • ${json.service || 'API Server Active'}`,
+        });
+      } else {
+        setTestResult({
+          status: 'error',
+          message: `HTTP ${res.status}: Server returned error status`,
+        });
       }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeMode, pinCode, selectedUser]);
-
-  const handlePinDigit = (digit: string) => {
-    if (pinCode.length >= 6) return;
-    setError(null);
-    const newPin = pinCode + digit;
-    setPinCode(newPin);
-    if (newPin.length === 4) executePinAuth(newPin);
+    } catch (e: any) {
+      setTestResult({
+        status: 'error',
+        message: e.message || 'Cannot reach server at this address.',
+      });
+    }
   };
 
-  const executePinAuth = async (pin: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await pinLogin(pin);
-      if (!res.success) {
-        setError(res.error || 'Incorrect PIN');
-        setPinCode('');
-      } else {
-        navigate('/app', { replace: true });
-      }
-    } catch (err: unknown) {
-      setError((err as Error).message || 'Authentication error');
-      setPinCode('');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSaveApiUrl = () => {
+    const clean = modalApiUrl.trim().replace(/\/$/, '');
+    setApiBaseUrl(clean);
+    setCurrentApiUrl(clean);
+    setIsServerModalOpen(false);
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -95,521 +95,633 @@ export const LoginPage: React.FC = () => {
       setError('Please enter both username and password');
       return;
     }
+    if (!isSuperAdmin && !shopSlug.trim()) {
+      setError('Please specify your registered Shop ID');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
-      setShopSlug(shopSlug.trim().toLowerCase());
+      const cleanSlug = shopSlug.trim().toLowerCase();
+      setShopSlug(cleanSlug);
       const res = await login({
         username: username.trim(),
         password,
-        shopSlug: isSuperAdmin ? undefined : shopSlug.trim().toLowerCase(),
+        shopSlug: isSuperAdmin ? undefined : cleanSlug,
         isSuperAdmin,
       });
       if (!res.success) {
-        setError(res.error || 'Invalid credentials');
+        setError(res.error || 'Invalid credentials or shop not found');
       } else {
         navigate(isSuperAdmin ? '/admin' : '/app', { replace: true });
       }
     } catch (err: unknown) {
-      setError((err as Error).message || 'Authentication failed');
+      setError((err as Error).message || 'Authentication failed. Please check network connection.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const bg = isLight ? '#ffffff' : '#212121';
-  const cardBg = isLight ? '#ffffff' : '#212121';
-  const borderCol = isLight ? '#e5e5e5' : '#2f2f2f';
-  const textMain = isLight ? '#0d0d0d' : '#ececec';
-  const textMuted = isLight ? '#676767' : '#b4b4b4';
-  const inputBg = isLight ? '#ffffff' : '#2f2f2f';
-  const inputBorder = isLight ? '#e5e5e5' : '#383838';
-
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: bg,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px',
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      }}
-    >
-      {/* Theme Toggle - top right */}
-      <button
-        type="button"
-        onClick={toggleTheme}
-        style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          width: '36px',
-          height: '36px',
-          borderRadius: '8px',
-          border: `1px solid ${borderCol}`,
-          backgroundColor: cardBg,
-          color: textMuted,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-        }}
-      >
-        {isLight ? <Moon size={15} /> : <Sun size={15} />}
-      </button>
+    <div className={`min-h-screen w-full flex flex-col lg:flex-row ${isLight ? 'bg-gray-50 text-[#0d0d0d]' : 'bg-[#0a0e17] text-[#ececec]'} font-sans transition-colors duration-200 selection:bg-[#10a37f] selection:text-white`}>
+      
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* LEFT COLUMN: VIBRANT SHOWCASE & MULTI-TENANT LAB EXPERIENCE    */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      <div className="lg:w-7/12 xl:w-7/12 p-6 sm:p-10 lg:p-14 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-[#070b14] via-[#0d1424] to-[#08121f] text-white border-b lg:border-b-0 lg:border-r border-slate-800/60 shadow-2xl">
+        
+        {/* Ambient Glow Orbs */}
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Logo + Brand */}
-      <div style={{ marginBottom: '32px', textAlign: 'center' }}>
-        <div
-          style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '12px',
-            backgroundColor: '#10a37f',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 14px',
-            boxShadow: '0 0 0 4px rgba(16, 163, 127, 0.15)',
-          }}
-        >
-          <img src="/icon.svg" alt="K-Connect" style={{ width: '28px', height: '28px', filter: 'brightness(0) invert(1)' }} />
+        {/* Top Header & Brand */}
+        <div className="relative z-10">
+          <div className="flex items-center justify-between gap-4 mb-8">
+            <Link to="/public" className="flex items-center gap-3 no-underline group">
+              <div className="w-11 h-11 rounded-xl bg-[#10a37f] flex items-center justify-center shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-400/30 group-hover:scale-105 transition-all">
+                <img
+                  src={window.location.protocol === 'file:' ? './icon.svg' : '/icon.svg'}
+                  alt="K-Connect"
+                  className="w-6 h-6 filter brightness-0 invert"
+                />
+              </div>
+              <div>
+                <span className="text-xl font-bold tracking-tight text-white block">K-Connect</span>
+                <span className="text-[11px] font-mono text-emerald-400 block tracking-wider uppercase font-semibold">Cloud Service OS</span>
+              </div>
+            </Link>
+
+            {/* Live Status Pill */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 border border-slate-700/60 text-xs font-mono text-slate-300 backdrop-blur-md shadow-inner">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span>Multi-Tenant Cloud Live</span>
+            </div>
+          </div>
+
+          {/* Main Headline */}
+          <div className="max-w-2xl mb-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-4">
+              <Sparkles size={13} />
+              <span>Multi-Shop Repair Laboratory Platform</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl xl:text-5xl font-extrabold tracking-tight text-white leading-tight mb-4">
+              The Real-Time Operating System for Modern Repair Centers.
+            </h1>
+            <p className="text-sm sm:text-base text-slate-300/90 leading-relaxed max-w-xl">
+              Each repair business gets an isolated, dedicated cloud workspace. Manage multi-meter intake diagnostics, 13-stage board repairs, spare inventory, automated WhatsApp estimates, and GST invoicing in real-time.
+            </p>
+          </div>
+
+          {/* High-Tech Workbench Visual Showcase Frame */}
+          <div className="relative mb-8 rounded-2xl border border-slate-700/60 overflow-hidden shadow-2xl bg-slate-950/60 group">
+            <img
+              src={window.location.protocol === 'file:' ? './login-hero.jpg' : '/login-hero.jpg'}
+              alt="K-Connect Modern Electronics Diagnostics Lab"
+              className="w-full h-56 sm:h-72 object-cover object-center filter brightness-95 contrast-105 group-hover:scale-102 transition-transform duration-700"
+            />
+            {/* Dark gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#070b14] via-[#070b14]/30 to-transparent pointer-events-none" />
+
+            {/* Floating Live Telemetry Badge inside Image */}
+            <div className="absolute bottom-4 left-4 right-4 p-3.5 rounded-xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <Cpu size={18} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white tracking-wide">MacBook Pro 16&quot; M2 Logic Board</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                      Stage 6: Soldering
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-300 mt-0.5 flex items-center gap-2">
+                    <span>Ticket #JOB-2026-0842</span>
+                    <span>•</span>
+                    <span className="text-emerald-400 font-medium">Estimated: ₹14,500 (Approved)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                <div className="px-2.5 py-1 rounded-md bg-slate-800/90 border border-slate-700 text-[11px] font-mono text-slate-300 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Real-Time Cloud Sync</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3 Value Pillars */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-2">
+                <Building2 size={16} />
+              </div>
+              <div className="text-xs font-bold text-white mb-1">Multi-Tenant Isolation</div>
+              <div className="text-[11px] text-slate-400 leading-relaxed">
+                Dedicated database partition per shop. Your data, tickets, and customers are completely isolated.
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm">
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-2">
+                <Database size={16} />
+              </div>
+              <div className="text-xs font-bold text-white mb-1">Real-Time Cloud Sync</div>
+              <div className="text-[11px] text-slate-400 leading-relaxed">
+                Zero split-brain databases. Counter PCs, repair benches, and mobile phones stay 100% in sync.
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm">
+              <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center mb-2">
+                <Monitor size={16} />
+              </div>
+              <div className="text-xs font-bold text-white mb-1">Web &amp; Desktop App</div>
+              <div className="text-[11px] text-slate-400 leading-relaxed">
+                Use in any web browser or download the native portable Windows executable (.exe) for your counter.
+              </div>
+            </div>
+          </div>
         </div>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: textMain, margin: 0, letterSpacing: '-0.4px' }}>
-          K-Connect
-        </h1>
-        <p style={{ fontSize: '13px', color: textMuted, margin: '4px 0 0' }}>
-          Service Management Platform
-        </p>
+
+        {/* Left Footer Trust Badges */}
+        <div className="relative z-10 pt-4 border-t border-slate-800/60 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck size={14} className="text-emerald-400" />
+              <span>AES-256 Passcode Vault</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 size={14} className="text-emerald-400" />
+              <span>99.99% Cloud Uptime</span>
+            </span>
+          </div>
+          <span className="font-mono text-[11px] text-slate-500">&copy; {new Date().getFullYear()} K-Connect Platform</span>
+        </div>
       </div>
 
-      {/* Login Card */}
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '400px',
-          backgroundColor: cardBg,
-          border: `1px solid ${borderCol}`,
-          borderRadius: '16px',
-          padding: '28px',
-          boxShadow: isLight
-            ? '0 4px 24px rgba(0,0,0,0.06)'
-            : '0 4px 40px rgba(0,0,0,0.5)',
-        }}
-      >
-        {/* Tab Switcher (Only for regular shop staff) */}
-        {!isSuperAdmin && (
-          <div
-            style={{
-              display: 'flex',
-              borderRadius: '10px',
-              backgroundColor: isLight ? '#f3f4f6' : '#1a1a1a',
-              padding: '3px',
-              marginBottom: '20px',
-              gap: '2px',
-            }}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* RIGHT COLUMN: FOCUSED, HIGH-CONVERSION SIGN-IN CONSOLE         */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      <div className={`lg:w-5/12 xl:w-5/12 p-6 sm:p-10 lg:p-12 flex flex-col justify-between ${isLight ? 'bg-white' : 'bg-[#111622]'} relative`}>
+        
+        {/* Top Controls Row */}
+        <div className="flex items-center justify-between gap-4 mb-8">
+          <Link
+            to="/public"
+            className={`text-xs font-medium flex items-center gap-1.5 no-underline transition-colors ${
+              isLight ? 'text-gray-500 hover:text-gray-900' : 'text-slate-400 hover:text-white'
+            }`}
           >
-            {(['PASSWORD', 'PIN'] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => { setActiveMode(mode); setError(null); }}
-                style={{
-                  flex: 1,
-                  padding: '7px 0',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  backgroundColor: activeMode === mode
-                    ? (isLight ? '#ffffff' : '#2a2a2a')
-                    : 'transparent',
-                  color: activeMode === mode ? textMain : textMuted,
-                  boxShadow: activeMode === mode
-                    ? (isLight ? '0 1px 3px rgba(0,0,0,0.08)' : 'none')
-                    : 'none',
-                }}
-              >
-                {mode === 'PASSWORD' ? 'Password' : 'Quick PIN'}
-              </button>
-            ))}
+            &larr; Back to Public Portal
+          </Link>
+
+          <div className="flex items-center gap-2">
+            {/* Server Connection Endpoint Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setModalApiUrl(currentApiUrl);
+                setTestResult({ status: 'idle' });
+                setIsServerModalOpen(true);
+              }}
+              title="Configure API Server Endpoint"
+              className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-mono flex items-center gap-1.5 transition-all cursor-pointer ${
+                isLight
+                  ? 'bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200'
+                  : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <Server size={12} className="text-emerald-500" />
+              <span className="max-w-[120px] truncate">{currentApiUrl || 'Server Active'}</span>
+              <Settings size={12} className="text-slate-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+              className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                isLight
+                  ? 'bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200'
+                  : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              {isLight ? <Moon size={15} /> : <Sun size={15} />}
+            </button>
           </div>
-        )}
+        </div>
 
-        {/* Error Banner */}
-        {error && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 12px',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(239, 68, 68, 0.08)',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
-              color: '#ef4444',
-              fontSize: '12.5px',
-              marginBottom: '16px',
-            }}
-          >
-            <AlertCircle size={14} />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* PASSWORD FORM */}
-        {activeMode === 'PASSWORD' && (
-          <form onSubmit={handlePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-
-            {/* Vendor Admin Header (Only shown when accessed via /admin or ?admin=1) */}
-            {isSuperAdmin && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '4px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#10a37f' }}>
-                  🛡️ Vendor Super-Admin Portal
+        {/* Central Sign-In Container */}
+        <div className="w-full max-w-md mx-auto my-auto">
+          
+          {/* Card Header */}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                {isSuperAdmin ? 'Platform Super-Admin' : 'Shop Staff Authentication'}
+              </span>
+              {isDesktop && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                  Windows Desktop
                 </span>
-                <Link
-                  to="/login"
-                  onClick={() => {
-                    setIsSuperAdmin(false);
-                    setUsername('');
-                    setPassword('');
-                    setError(null);
-                  }}
-                  style={{ fontSize: '12px', color: textMuted, textDecoration: 'none' }}
-                >
-                  Shop Login &rarr;
-                </Link>
-              </div>
-            )}
+              )}
+            </div>
+            <h2 className={`text-2xl sm:text-3xl font-bold tracking-tight ${isLight ? 'text-gray-900' : 'text-white'}`}>
+              {isSuperAdmin ? 'Super-Admin Console' : 'Sign in to your repair shop'}
+            </h2>
+            <p className={`text-xs sm:text-sm mt-1.5 ${isLight ? 'text-gray-500' : 'text-slate-400'}`}>
+              {isSuperAdmin
+                ? 'Master vendor control center for shop provisioning & subscriptions.'
+                : 'Enter your Shop ID and credentials to access your repair ledger and diagnostics.'}
+            </p>
+          </div>
 
-            {/* New Shop Registration Prompt */}
-            {!isSuperAdmin && (
-              <div
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: '12px',
-                  backgroundColor: isLight ? 'rgba(16, 163, 127, 0.06)' : 'rgba(16, 163, 127, 0.1)',
-                  border: '1px solid rgba(16, 163, 127, 0.25)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '12px',
-                }}
-              >
+          {/* New Shop Registration Prompt Banner */}
+          {!isSuperAdmin && (
+            <div className={`mb-6 p-4 rounded-xl border transition-all ${
+              isLight
+                ? 'bg-emerald-50/70 border-emerald-200/80 text-gray-800'
+                : 'bg-emerald-950/20 border-emerald-500/30 text-slate-200'
+            }`}>
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#10a37f' }}>
-                    New Repair Shop?
+                  <div className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <Sparkles size={13} />
+                    <span>New Repair Business?</span>
                   </div>
-                  <div style={{ fontSize: '11px', color: textMuted, marginTop: '2px' }}>
-                    Register & activate 14-day free trial
-                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">
+                    Register your shop in 60 seconds. Launch a dedicated multi-tenant lab workspace with a 14-day free trial.
+                  </p>
                 </div>
                 <Link
                   to="/signup"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '7px 12px',
-                    borderRadius: '8px',
-                    backgroundColor: '#10a37f',
-                    color: '#ffffff',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                    whiteSpace: 'nowrap',
-                  }}
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1 shadow-sm transition-all"
                 >
-                  Register Shop &rarr;
+                  <span>Register</span>
+                  <ArrowRight size={13} />
                 </Link>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Shop Slug */}
+          {/* Error Banner */}
+          {error && (
+            <div className="mb-5 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs flex items-center gap-2.5 animate-shake">
+              <AlertCircle size={16} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Clean Unified Form: ShopID + Username + Password */}
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            
+            {/* Shop Identifier Input */}
             {!isSuperAdmin && (
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: textMuted, marginBottom: '6px' }}>
-                  Shop ID
-                </label>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    backgroundColor: inputBg,
-                    border: `1px solid ${inputBorder}`,
-                    borderRadius: '10px',
-                    padding: '0 12px',
-                    height: '42px',
-                  }}
+                <label
+                  htmlFor="shopSlug"
+                  className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${isLight ? 'text-gray-700' : 'text-slate-300'}`}
                 >
-                  <span style={{ color: '#10a37f', fontWeight: 700, fontSize: '14px', marginRight: '4px' }}>@</span>
+                  Shop Identifier (Slug)
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600 dark:text-emerald-400 font-mono font-bold text-sm">
+                    @
+                  </span>
                   <input
+                    id="shopSlug"
+                    name="shopSlug"
                     type="text"
+                    required
+                    spellCheck={false}
+                    autoCorrect="off"
+                    autoCapitalize="none"
                     value={shopSlug}
                     onChange={(e) => setShopSlugState(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-                    placeholder="yourshop"
-                    required
-                    style={{
-                      flex: 1,
-                      height: '100%',
-                      background: 'transparent',
-                      border: 'none',
-                      outline: 'none',
-                      color: textMain,
-                      fontSize: '13.5px',
-                      fontFamily: 'monospace',
-                    }}
+                    placeholder="e.g. ktech"
+                    className={`w-full pl-9 pr-3.5 py-2.5 rounded-xl border text-sm font-mono transition-all outline-none ${
+                      isLight
+                        ? 'bg-white border-gray-200 text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15'
+                        : 'bg-slate-900/80 border-slate-700 text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                    }`}
                   />
                 </div>
+                <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
+                  The unique ID chosen when you registered your shop (e.g. <span className="font-mono text-emerald-500">ktech</span>).
+                </p>
               </div>
             )}
 
-            {/* Username */}
+            {/* Staff Username */}
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: textMuted, marginBottom: '6px' }}>
-                {isSuperAdmin ? 'Admin Username' : 'Username'}
-              </label>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  backgroundColor: inputBg,
-                  border: `1px solid ${inputBorder}`,
-                  borderRadius: '10px',
-                  padding: '0 12px',
-                  height: '42px',
-                  gap: '8px',
-                }}
+              <label
+                htmlFor="username"
+                className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${isLight ? 'text-gray-700' : 'text-slate-300'}`}
               >
-                <User size={15} color={textMuted} />
+                {isSuperAdmin ? 'Super-Admin Username' : 'Staff Username'}
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                  <User size={16} />
+                </span>
                 <input
+                  id="username"
+                  name="username"
                   type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder={isSuperAdmin ? 'admin' : 'Username or mobile'}
                   required
                   autoComplete="username"
-                  style={{
-                    flex: 1,
-                    height: '100%',
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    color: textMain,
-                    fontSize: '13.5px',
-                  }}
+                  spellCheck={false}
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder={isSuperAdmin ? 'superadmin' : 'Username or mobile number'}
+                  className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm transition-all outline-none ${
+                    isLight
+                      ? 'bg-white border-gray-200 text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15'
+                      : 'bg-slate-900/80 border-slate-700 text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                  }`}
                 />
               </div>
             </div>
 
             {/* Password */}
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: textMuted, marginBottom: '6px' }}>
-                Password
-              </label>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  backgroundColor: inputBg,
-                  border: `1px solid ${inputBorder}`,
-                  borderRadius: '10px',
-                  padding: '0 12px',
-                  height: '42px',
-                  gap: '8px',
-                }}
-              >
-                <Lock size={15} color={textMuted} />
+              <div className="flex items-center justify-between mb-1.5">
+                <label
+                  htmlFor="password"
+                  className={`block text-xs font-semibold uppercase tracking-wider ${isLight ? 'text-gray-700' : 'text-slate-300'}`}
+                >
+                  Password
+                </label>
+              </div>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                  <Lock size={16} />
+                </span>
                 <input
+                  id="password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
                   required
                   autoComplete="current-password"
-                  style={{
-                    flex: 1,
-                    height: '100%',
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    color: textMain,
-                    fontSize: '13.5px',
-                  }}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your account password"
+                  className={`w-full pl-10 pr-10 py-2.5 rounded-xl border text-sm transition-all outline-none ${
+                    isLight
+                      ? 'bg-white border-gray-200 text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15'
+                      : 'bg-slate-900/80 border-slate-700 text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                  }`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  style={{ background: 'none', border: 'none', color: textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                  title={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              style={{
-                width: '100%',
-                padding: '11px',
-                borderRadius: '12px',
-                backgroundColor: isLight ? '#0d0d0d' : '#ececec',
-                color: isLight ? '#ffffff' : '#0d0d0d',
-                border: 'none',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                opacity: isLoading ? 0.7 : 1,
-                marginTop: '4px',
-                transition: 'all 0.15s ease',
-              }}
+              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 active:scale-98 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed mt-2"
             >
-              {isLoading ? 'Signing in...' : 'Sign in'}
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Authenticating...</span>
+                </>
+              ) : (
+                <>
+                  <span>{isSuperAdmin ? 'Access Super-Admin Portal' : 'Sign In to Repair Lab'}</span>
+                  <ArrowRight size={16} />
+                </>
+              )}
             </button>
           </form>
-        )}
 
-        {/* PIN MODE */}
-        {activeMode === 'PIN' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
-            {/* User selector or Quick Demo PIN buttons */}
-            {userList.length > 0 ? (
-              <div style={{ display: 'flex', gap: '8px', width: '100%', overflowX: 'auto', paddingBottom: '2px' }}>
-                {userList.map((usr) => {
-                  const isSelected = selectedUser === usr.id;
-                  return (
-                    <button
-                      key={usr.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedUser(usr.id);
-                        setUsername(usr.username);
-                        setPinCode('');
-                        setError(null);
-                      }}
-                      style={{
-                        flex: '1 0 auto',
-                        padding: '8px 10px',
-                        borderRadius: '10px',
-                        border: isSelected
-                          ? '1.5px solid #10a37f'
-                          : `1px solid ${inputBorder}`,
-                        backgroundColor: isSelected
-                          ? 'rgba(16, 163, 127, 0.1)'
-                          : inputBg,
-                        color: textMain,
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '5px',
-                        transition: 'all 0.12s ease',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '50%',
-                          backgroundColor: isSelected ? '#10a37f' : (isLight ? '#e5e7eb' : '#333'),
-                          color: isSelected ? '#fff' : textMain,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '12px',
-                          fontWeight: 700,
-                        }}
-                      >
-                        {usr.fullName.charAt(0)}
-                      </div>
-                      <span style={{ whiteSpace: 'nowrap' }}>{usr.fullName.split(' ')[0]}</span>
-                    </button>
-                  );
-                })}
+          {/* Useful Quick Links */}
+          <div className="mt-6 pt-5 border-t border-gray-200 dark:border-slate-800 space-y-2.5">
+            
+            {/* Customer Repair Tracking Link */}
+            <div className="flex items-center justify-between text-xs">
+              <span className={isLight ? 'text-gray-500' : 'text-slate-400'}>Customer tracking a device?</span>
+              <Link
+                to="/track"
+                className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline flex items-center gap-1"
+              >
+                <Search size={12} />
+                <span>Track Repair Job &rarr;</span>
+              </Link>
+            </div>
+
+            {/* Windows Desktop App Modal Trigger */}
+            {!isDesktop ? (
+              <div className="flex items-center justify-between text-xs">
+                <span className={isLight ? 'text-gray-500' : 'text-slate-400'}>Prefer native Windows window?</span>
+                <button
+                  type="button"
+                  onClick={() => setIsDownloadOpen(true)}
+                  className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline flex items-center gap-1 bg-transparent border-none p-0 cursor-pointer"
+                >
+                  <Monitor size={12} />
+                  <span>Download Desktop (.exe) &rarr;</span>
+                </button>
               </div>
             ) : (
-              <p style={{ fontSize: '12.5px', color: textMuted, margin: '4px 0', textAlign: 'center' }}>
-                Enter your 4-digit staff PIN to unlock
-              </p>
+              <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-500 flex items-center gap-2">
+                <Monitor size={14} className="shrink-0" />
+                <span>Running Windows Desktop Edition • Connected to Cloud Database</span>
+              </div>
             )}
 
-            {/* PIN dots */}
-            <div style={{ display: 'flex', gap: '10px' }}>
-              {[0, 1, 2, 3].map((idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    width: '12px',
-                    height: '12px',
-                    borderRadius: '50%',
-                    backgroundColor: pinCode.length > idx ? '#10a37f' : (isLight ? '#d1d5db' : '#333'),
-                    transition: 'all 0.15s ease',
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Keypad */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', width: '100%', maxWidth: '260px' }}>
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => {
-                    if (k === 'C') { setPinCode(''); setError(null); }
-                    else if (k === '⌫') { setPinCode((p) => p.slice(0, -1)); setError(null); }
-                    else handlePinDigit(k);
-                  }}
-                  style={{
-                    height: '48px',
-                    borderRadius: '10px',
-                    border: `1px solid ${inputBorder}`,
-                    backgroundColor: inputBg,
-                    color: textMain,
-                    fontSize: '18px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'background-color 0.1s ease',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = isLight ? '#e5e7eb' : '#2a2a2a')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = inputBg)}
-                >
-                  {k}
-                </button>
-              ))}
+            {/* Toggle Super Admin Mode */}
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSuperAdmin(!isSuperAdmin);
+                  setError(null);
+                  setUsername(isSuperAdmin ? '' : 'superadmin');
+                  setPassword('');
+                }}
+                className={`text-[11px] underline transition-colors cursor-pointer ${
+                  isLight ? 'text-gray-400 hover:text-gray-600' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {isSuperAdmin ? '&larr; Return to Regular Shop Staff Login' : 'Platform Vendor / Master Super-Admin Portal &rarr;'}
+              </button>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Navigation links */}
-      <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', fontSize: '13px' }}>
-        <div>
-          <span style={{ color: textMuted }}>New repair shop? </span>
-          <Link to="/signup" style={{ color: '#10a37f', fontWeight: 600, textDecoration: 'none' }}>
-            Start 14-day free trial &rarr;
-          </Link>
         </div>
-        <Link to="/track" style={{ color: textMuted, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px' }}>
-          <QrCode size={13} color="#10a37f" />
-          <span>Customer Repair Tracker (QR / SMS) &rarr;</span>
-        </Link>
+
+        {/* Right Footer Security Notice */}
+        <div className={`mt-8 pt-4 border-t text-center text-xs flex items-center justify-center gap-1.5 ${
+          isLight ? 'border-gray-100 text-gray-400' : 'border-slate-800 text-slate-500'
+        }`}>
+          <ShieldCheck size={13} className="text-emerald-500" />
+          <span>Multi-Tenant Cloud • 256-Bit Encrypted • Real-Time Database</span>
+        </div>
       </div>
 
-      {/* Footer */}
-      <p style={{ marginTop: '16px', fontSize: '12px', color: textMuted, display: 'flex', alignItems: 'center', gap: '5px' }}>
-        <Shield size={12} color="#10a37f" />
-        Secure • Multi-tenant Cloud • 256-bit Encrypted
-      </p>
+      {/* Cloud Server Connection Configuration Modal */}
+      {isServerModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setIsServerModalOpen(false)}
+        >
+          <div
+            className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl ${
+              isLight ? 'bg-white border-gray-200 text-gray-900' : 'bg-[#181d29] border-slate-700 text-white'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-4 border-b border-slate-700/60 mb-5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                  <Server size={17} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">Cloud API Server Endpoint</h3>
+                  <p className="text-xs text-slate-400">Configure central database backend URL</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsServerModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5 text-slate-300">
+                  API Server Base URL
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={modalApiUrl}
+                    onChange={(e) => setModalApiUrl(e.target.value)}
+                    placeholder="http://localhost:5000"
+                    className={`flex-1 px-3.5 py-2 rounded-xl text-sm font-mono border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      isLight ? 'bg-gray-50 border-gray-300 text-gray-900' : 'bg-slate-900/90 border-slate-700 text-white'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleTestConnection(modalApiUrl)}
+                    disabled={testResult.status === 'testing'}
+                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {testResult.status === 'testing' ? (
+                      <RefreshCw size={13} className="animate-spin" />
+                    ) : (
+                      <RefreshCw size={13} />
+                    )}
+                    <span>Test</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Test Status Banner */}
+              {testResult.status !== 'idle' && (
+                <div
+                  className={`p-3 rounded-xl border text-xs flex items-center gap-2.5 ${
+                    testResult.status === 'success'
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                      : testResult.status === 'error'
+                      ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                      : 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                  }`}
+                >
+                  {testResult.status === 'success' && <Check size={14} className="shrink-0" />}
+                  {testResult.status === 'error' && <AlertCircle size={14} className="shrink-0" />}
+                  {testResult.status === 'testing' && <RefreshCw size={14} className="animate-spin shrink-0" />}
+                  <span className="font-mono">{testResult.message}</span>
+                </div>
+              )}
+
+              {/* Quick Preset Buttons */}
+              <div>
+                <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                  Quick Presets
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalApiUrl('http://localhost:5000');
+                      handleTestConnection('http://localhost:5000');
+                    }}
+                    className="p-2.5 rounded-xl border text-left text-xs bg-slate-900/60 hover:bg-slate-900 border-slate-700/80 transition-all cursor-pointer"
+                  >
+                    <div className="font-bold text-white flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      <span>Local Backend</span>
+                    </div>
+                    <div className="text-[10px] font-mono text-slate-400 truncate mt-0.5">
+                      http://localhost:5000
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalApiUrl('https://ktech-service-management.vercel.app');
+                      handleTestConnection('https://ktech-service-management.vercel.app');
+                    }}
+                    className="p-2.5 rounded-xl border text-left text-xs bg-slate-900/60 hover:bg-slate-900 border-slate-700/80 transition-all cursor-pointer"
+                  >
+                    <div className="font-bold text-white flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                      <span>Cloud Production</span>
+                    </div>
+                    <div className="text-[10px] font-mono text-slate-400 truncate mt-0.5">
+                      https://ktech-...vercel.app
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-700/60">
+              <button
+                type="button"
+                onClick={() => setIsServerModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveApiUrl}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+              >
+                <Check size={14} />
+                <span>Save &amp; Connect</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop App Download Modal */}
+      <DownloadAppModal isOpen={isDownloadOpen} onClose={() => setIsDownloadOpen(false)} />
     </div>
   );
 };

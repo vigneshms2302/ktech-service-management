@@ -11,9 +11,14 @@ import {
   Sparkles,
   Database,
   Lock,
+  Monitor,
+  Download,
 } from 'lucide-react';
+import { DownloadAppModal } from '../common/DownloadAppModal.tsx';
+
 export const HomePage: React.FC = () => {
   const [activeWorkflowStep, setActiveWorkflowStep] = useState(0);
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
 
   const workflowSteps = [
     {
@@ -86,8 +91,8 @@ export const HomePage: React.FC = () => {
     },
     {
       icon: Database,
-      title: 'Multi-Device Cloud Sync & Offline Safe',
-      desc: 'Front desk desktop, repair bench laptops, and owner mobile browsers share the identical real-time ledger.',
+      title: 'Multi-Device Real-Time Cloud Sync',
+      desc: 'Front desk desktop, repair bench laptops, and owner mobile browsers share the identical real-time cloud ledger.',
       tag: 'Cloud SaaS',
     },
   ];
@@ -120,6 +125,15 @@ export const HomePage: React.FC = () => {
           >
             Start 14-Day Free Trial <ArrowRight size={16} />
           </Link>
+          <button
+            type="button"
+            onClick={() => setIsDownloadOpen(true)}
+            className="px-6 py-3.5 rounded-xl text-sm md:text-base font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm"
+          >
+            <Monitor size={17} />
+            <span>Download Desktop App (.exe)</span>
+            <Download size={15} className="opacity-70" />
+          </button>
           <Link
             to="/demo"
             className="px-6 py-3.5 rounded-xl text-sm md:text-base font-medium bg-transparent text-[#0d0d0d] dark:text-[#ececec] border border-[#e5e5e5] dark:border-[#2f2f2f] hover:bg-gray-100 dark:hover:bg-[#2f2f2f] transition-colors inline-flex items-center gap-2 no-underline"
@@ -349,6 +363,9 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Desktop App Download Modal */}
+      <DownloadAppModal isOpen={isDownloadOpen} onClose={() => setIsDownloadOpen(false)} />
     </div>
   );
 };

@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import path from 'node:path';
+import fs from 'node:fs';
 import { getClient } from '../db/database.ts';
 import { hashPassword, generateToken } from '../middleware/auth.ts';
 import { validateBody } from '../middleware/validate.ts';
@@ -328,4 +330,64 @@ publicRouter.get('/track/:jobNumber', async (req, res) => {
   } catch (error: unknown) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
+});
+
+// 7. Desktop Application Binary Download & Info
+const GITHUB_RELEASE_URL = 'https://github.com/vigneshms2302/ktech-service-management/releases/latest/download/K-Connect-Portable.exe';
+
+publicRouter.get(['/download/desktop', '/download/desktop-app'], (_req, res) => {
+  const candidatePaths = [
+    path.join(process.cwd(), 'public', 'downloads', 'K-Connect-Portable.exe'),
+    path.join(process.cwd(), 'release', 'K-Connect-Portable.exe'),
+  ];
+
+  for (const exePath of candidatePaths) {
+    if (fs.existsSync(exePath)) {
+      res.setHeader('Content-Disposition', 'attachment; filename="K-Connect-Portable.exe"');
+      res.setHeader('Content-Type', 'application/vnd.microsoft.portable-executable');
+      return res.sendFile(exePath);
+    }
+  }
+
+  // Graceful fallback to official release download URL
+  res.redirect(302, GITHUB_RELEASE_URL);
+});
+
+publicRouter.get('/download/info', (_req, res) => {
+  const candidatePaths = [
+    path.join(process.cwd(), 'public', 'downloads', 'K-Connect-Portable.exe'),
+    path.join(process.cwd(), 'release', 'K-Connect-Portable.exe'),
+  ];
+
+  let localFileSize = 76193998; // Default build size ~72.6 MB
+  let hasLocal = false;
+
+  for (const exePath of candidatePaths) {
+    if (fs.existsSync(exePath)) {
+      try {
+        const stat = fs.statSync(exePath);
+        localFileSize = stat.size;
+        hasLocal = true;
+        break;
+      } catch {
+        // use default
+      }
+    }
+  }
+
+  res.json({
+    success: true,
+    data: {
+      appName: 'K-Connect',
+      version: '1.2.0',
+      fileName: 'K-Connect-Portable.exe',
+      platform: 'Windows 10 / 11 (64-bit)',
+      fileSizeBytes: localFileSize,
+      fileSizeFormatted: `${(localFileSize / (1024 * 1024)).toFixed(1)} MB`,
+      hasLocalBinary: hasLocal,
+      directUrl: '/downloads/K-Connect-Portable.exe',
+      downloadUrl: '/api/public/download/desktop',
+      githubReleaseUrl: GITHUB_RELEASE_URL,
+    },
+  });
 });

@@ -95,10 +95,10 @@ export function getDb(): LibSQLDatabase<typeof schema> {
   const dbUrl = process.env.DATABASE_URL;
   const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
-  if (isServerless && (!dbUrl || dbUrl.trim() === '')) {
+  if ((isServerless || process.env.NODE_ENV === 'production') && (!dbUrl || dbUrl.trim() === '')) {
     throw new Error(
-      'DATABASE_NOT_CONFIGURED: DATABASE_URL environment variable is required in Vercel serverless environment. ' +
-      'Please configure DATABASE_URL (e.g. libsql://your-db.turso.io) and DATABASE_AUTH_TOKEN in Vercel Project Settings.'
+      'DATABASE_NOT_CONFIGURED: DATABASE_URL environment variable is required in production and serverless environments. ' +
+      'Please configure DATABASE_URL (e.g. libsql://your-db.turso.io) and DATABASE_AUTH_TOKEN in Project Settings.'
     );
   }
 

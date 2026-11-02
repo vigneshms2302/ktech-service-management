@@ -62,8 +62,11 @@ export async function seedInitialPlatform(): Promise<void> {
   }
 
   await client.execute({
-    sql: `INSERT OR IGNORE INTO vendor_admins (id, username, password_hash, full_name, email)
-          VALUES ('VND-ROOT-01', ?, ?, 'Platform Administrator', 'vendor@ktech.com');`,
+    sql: `INSERT INTO vendor_admins (id, username, password_hash, full_name, email)
+          VALUES ('VND-ROOT-01', ?, ?, 'Platform Administrator', 'vendor@ktech.com')
+          ON CONFLICT(id) DO UPDATE SET
+            username = excluded.username,
+            password_hash = excluded.password_hash;`,
     args: [adminUsername, superAdminPasswordHash],
   });
 

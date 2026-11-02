@@ -39,7 +39,7 @@ app.use(
 
 // ── CORS Origin Allowlist ─────────────────────────────────────────
 export function isOriginAllowed(origin: string | undefined, nodeEnv: string, allowedOrigins: string[]): boolean {
-  if (!origin) return true;
+  if (!origin || origin === 'null' || origin === 'file://') return true;
   if (nodeEnv !== 'production') return true;
   if (allowedOrigins.includes(origin)) return true;
   // Automatically permit all Vercel deployment and preview URLs
@@ -147,6 +147,11 @@ app.use(['/api/subscription', '/subscription'], subscriptionRouter);
 app.use(['/api/devices', '/devices'], devicesRouter);
 app.use(['/api/shops', '/shops'], shopsRouter);
 app.use(['/api/storage', '/storage'], storageRouter);
+
+// ── Direct Desktop App Download Shortcuts ─────────────────────────
+app.get(['/api/download/desktop', '/download/desktop', '/download/app', '/download'], (_req, res) => {
+  res.redirect('/api/public/download/desktop');
+});
 
 // ── Health Check (Dual-compatible with /api/health and /health) ──
 app.get(['/api/health', '/health'], async (_req, res) => {

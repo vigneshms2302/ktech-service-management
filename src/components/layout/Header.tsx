@@ -8,11 +8,14 @@ import {
   ChevronDown,
   Check,
   PanelLeft,
+  Monitor,
+  Download,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { useTheme } from '../../context/ThemeContext.tsx';
 import { useShop } from '../../context/ShopContext.tsx';
 import { PricingModal } from '../pricing/PricingModal.tsx';
+import { DownloadAppModal } from '../common/DownloadAppModal.tsx';
 
 interface HeaderProps {
   onOpenPinModal: () => void;
@@ -37,6 +40,9 @@ export const Header: React.FC<HeaderProps> = ({
 
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
+
+  const isDesktop = Boolean(window.electronAPI?.isDesktop);
 
   const userDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -119,6 +125,24 @@ export const Header: React.FC<HeaderProps> = ({
               <Plus size={14} />
               <span>New Job</span>
             </button>
+          )}
+
+          {/* Desktop App Download Button (Visible in Web browser) */}
+          {!isDesktop ? (
+            <button
+              type="button"
+              onClick={() => setIsDownloadOpen(true)}
+              title="Download Windows Desktop App (.exe)"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#e5e5e5] dark:border-[#2f2f2f] hover:bg-emerald-50 dark:hover:bg-emerald-950/20 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:border-emerald-500/40 transition-colors cursor-pointer"
+            >
+              <Monitor size={13} />
+              <span className="hidden sm:inline">Desktop App</span>
+              <Download size={12} className="opacity-70" />
+            </button>
+          ) : (
+            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+              <Monitor size={12} /> Desktop v1.2
+            </span>
           )}
 
           {/* Upgrade Ghost Button */}
@@ -216,6 +240,7 @@ export const Header: React.FC<HeaderProps> = ({
       </header>
 
       <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
+      <DownloadAppModal isOpen={isDownloadOpen} onClose={() => setIsDownloadOpen(false)} />
     </>
   );
 };

@@ -1029,6 +1029,9 @@ export interface ElectronAPI {
     quitAndInstall: () => Promise<IPCResponse<void>>;
     onStatusChange: (callback: (status: UpdateStatusPayload) => void) => () => void;
   };
+  isDesktop?: boolean;
+  isElectron?: boolean;
+  platform?: string;
 }
 
 export type UpdateStatus =

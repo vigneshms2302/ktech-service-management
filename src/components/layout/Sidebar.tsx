@@ -13,11 +13,14 @@ import {
   Layers,
   BarChart3,
   Clock,
+  Monitor,
+  Download,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { useShop } from '../../context/ShopContext.tsx';
 import { PricingModal } from '../pricing/PricingModal.tsx';
+import { DownloadAppModal } from '../common/DownloadAppModal.tsx';
 import { saasApi } from '../../api/client.ts';
 
 export type NavTabId =
@@ -71,14 +74,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { currentUser, hasPermission } = useAuth();
   const { shopSettings } = useShop();
   const [isPricingOpen, setIsPricingOpen] = useState(false);
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const [recentJobs, setRecentJobs] = useState<RecentJobSummary[]>([]);
+
+  const isDesktop = Boolean(window.electronAPI?.isDesktop);
 
   // Fetch recent jobs to display in ChatGPT "Recent Chats" style
   useEffect(() => {
     let isMounted = true;
     const fetchRecentJobs = async () => {
       try {
-        const res = await saasApi.jobs.list({ limit: 6 });
+        const res = window.electronAPI?.jobs?.list
+          ? await window.electronAPI.jobs.list({ limit: 6 })
+          : await saasApi.jobs.list({ limit: 6 });
         if (res.success && Array.isArray(res.data) && isMounted) {
           setRecentJobs(
             res.data.slice(0, 6).map((j: any) => ({
@@ -272,6 +280,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Bottom Section: ChatGPT Plan & Profile */}
         <div className="p-2.5 border-t border-[#e5e5e5] dark:border-[#2f2f2f] flex flex-col gap-1.5">
+          {/* Desktop App Download Button (Visible in web browser) */}
+          {!isDesktop && (
+            <button
+              type="button"
+              onClick={() => setIsDownloadOpen(true)}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-[#e5e5e5] dark:border-[#2f2f2f] hover:bg-emerald-50 dark:hover:bg-emerald-950/20 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:border-emerald-500/40 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Monitor size={14} className="text-emerald-600 dark:text-emerald-400" />
+                <span>Desktop App (.exe)</span>
+              </div>
+              <Download size={13} className="opacity-70" />
+            </button>
+          )}
+
           {/* Upgrade Plan Button */}
           <button
             type="button"
@@ -311,6 +334,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Pricing Modal */}
       <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
+      {/* Desktop App Download Modal */}
+      <DownloadAppModal isOpen={isDownloadOpen} onClose={() => setIsDownloadOpen(false)} />
     </>
   );
 };
