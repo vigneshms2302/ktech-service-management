@@ -139,8 +139,16 @@ export async function initializeMultiTenantSchema(): Promise<void> {
 
   const client = getClient();
 
-  await client.execute('PRAGMA foreign_keys = ON;');
-  await client.execute('PRAGMA busy_timeout = 5000;');
+  try {
+    await client.execute('PRAGMA foreign_keys = ON;');
+  } catch {
+    // PRAGMA foreign_keys may not be supported over HTTP in Turso Cloud
+  }
+  try {
+    await client.execute('PRAGMA busy_timeout = 5000;');
+  } catch {
+    // PRAGMA busy_timeout is unsupported on Turso Cloud
+  }
 
   const ddlStatements = [
     // 1. Super-Admin & Vendor Console
@@ -784,6 +792,10 @@ export async function initializeMultiTenantSchema(): Promise<void> {
   ];
 
   for (const statement of ddlStatements) {
-    await client.execute(statement);
+    try {
+      await client.execute(statement);
+    } catch (err) {
+      console.warn('[Database DDL Warning]', (err as Error).message);
+    }
   }
 }

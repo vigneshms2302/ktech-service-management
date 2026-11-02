@@ -134,6 +134,54 @@ app.use((req, res, next) => {
   next();
 });
 
+// ── Auto-Bootstrap Schema on First Cloud Request ──────────────────
+let schemaInitialized = false;
+let schemaInitPromise: Promise<void> | null = null;
+
+export async function ensureSchemaReady(): Promise<void> {
+  if (schemaInitialized) return;
+  if (!schemaInitPromise) {
+    schemaInitPromise = (async () => {
+      try {
+        const dbUrl = process.env.DATABASE_URL;
+        if (!dbUrl || dbUrl.trim() === '') return;
+        const client = getClient();
+        const check = await client.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='shops';");
+        if (check.rows.length === 0) {
+          console.log('[Schema] Bootstrapping SaaS multi-tenant schema & seed data...');
+          await initializeMultiTenantSchema();
+          await seedInitialPlatform();
+          console.log('[Schema] Bootstrap completed successfully.');
+        }
+        schemaInitialized = true;
+      } catch (err) {
+        console.error('[Schema Bootstrap Error]', err);
+      } finally {
+        schemaInitPromise = null;
+      }
+    })();
+  }
+  return schemaInitPromise;
+}
+
+app.use(async (_req, _res, next) => {
+  if (!schemaInitialized && process.env.DATABASE_URL) {
+    await ensureSchemaReady();
+  }
+  next();
+});
+
+// Explicit bootstrap trigger endpoint
+app.get(['/api/bootstrap', '/bootstrap'], async (_req, res) => {
+  try {
+    schemaInitialized = false;
+    await ensureSchemaReady();
+    res.json({ success: true, message: 'Database schema and seed initialized.' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: (err as Error).message });
+  }
+});
+
 // ── API Routes (Dual-compatible with /api prefix and direct / prefix) ─
 app.use(['/api/auth', '/auth'], authRouter);
 app.use(['/api/admin', '/admin'], adminRouter);

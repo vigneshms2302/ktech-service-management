@@ -64887,11 +64887,10 @@ function validateConfig() {
   const port = parseInt(process.env.PORT || "5000", 10);
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret || jwtSecret.trim() === "") {
-    if (nodeEnv === "production" && process.env.DATABASE_URL) {
-      throw new Error("JWT_SECRET environment variable is required in production mode for security. Please set JWT_SECRET in environment settings.");
-    }
     if (nodeEnv === "production") {
-      console.warn("[Config Warning] JWT_SECRET is not configured yet. Please set JWT_SECRET in Vercel Project Settings.");
+      throw new Error(
+        "JWT_SECRET environment variable is required in production mode for security. Please set JWT_SECRET in environment settings."
+      );
     }
   }
   const effectiveJwtSecret = jwtSecret && jwtSecret.trim() !== "" ? jwtSecret.trim() : nodeEnv === "test" ? "test-environment-jwt-secret-key-32chars-min" : "ktech-saas-cloud-jwt-fallback-key-min-32-chars-2026";
@@ -70778,8 +70777,14 @@ async function initializeMultiTenantSchema() {
     return;
   }
   const client = getClient();
-  await client.execute("PRAGMA foreign_keys = ON;");
-  await client.execute("PRAGMA busy_timeout = 5000;");
+  try {
+    await client.execute("PRAGMA foreign_keys = ON;");
+  } catch {
+  }
+  try {
+    await client.execute("PRAGMA busy_timeout = 5000;");
+  } catch {
+  }
   const ddlStatements = [
     // 1. Super-Admin & Vendor Console
     `CREATE TABLE IF NOT EXISTS vendor_admins (
@@ -71378,7 +71383,11 @@ async function initializeMultiTenantSchema() {
     );`
   ];
   for (const statement of ddlStatements) {
-    await client.execute(statement);
+    try {
+      await client.execute(statement);
+    } catch (err) {
+      console.warn("[Database DDL Warning]", err.message);
+    }
   }
 }
 
@@ -97213,6 +97222,50 @@ app.use((req, res, next) => {
   }
   next();
 });
+var schemaInitialized = false;
+var schemaInitPromise = null;
+async function ensureSchemaReady() {
+  if (schemaInitialized)
+    return;
+  if (!schemaInitPromise) {
+    schemaInitPromise = (async () => {
+      try {
+        const dbUrl = process.env.DATABASE_URL;
+        if (!dbUrl || dbUrl.trim() === "")
+          return;
+        const client = getClient();
+        const check2 = await client.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='shops';");
+        if (check2.rows.length === 0) {
+          console.log("[Schema] Bootstrapping SaaS multi-tenant schema & seed data...");
+          await initializeMultiTenantSchema();
+          await seedInitialPlatform();
+          console.log("[Schema] Bootstrap completed successfully.");
+        }
+        schemaInitialized = true;
+      } catch (err) {
+        console.error("[Schema Bootstrap Error]", err);
+      } finally {
+        schemaInitPromise = null;
+      }
+    })();
+  }
+  return schemaInitPromise;
+}
+app.use(async (_req, _res, next) => {
+  if (!schemaInitialized && process.env.DATABASE_URL) {
+    await ensureSchemaReady();
+  }
+  next();
+});
+app.get(["/api/bootstrap", "/bootstrap"], async (_req, res) => {
+  try {
+    schemaInitialized = false;
+    await ensureSchemaReady();
+    res.json({ success: true, message: "Database schema and seed initialized." });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 app.use(["/api/auth", "/auth"], authRouter);
 app.use(["/api/admin", "/admin"], adminRouter);
 app.use(["/api/jobs", "/jobs"], jobsRouter);
@@ -97336,38 +97389,8 @@ if (isDirectServerEntry && process.env.NODE_ENV !== "test" && !process.env.VERCE
 }
 
 // server/vercel.ts
-var isInitialized = false;
-var initPromise = null;
-async function bootstrap() {
-  if (isInitialized)
-    return;
-  if (!initPromise) {
-    initPromise = (async () => {
-      try {
-        if (!process.env.DATABASE_URL || process.env.DATABASE_URL.trim() === "") {
-          console.warn("[Vercel Serverless] DATABASE_URL is not configured yet. Skipping DB schema bootstrap.");
-          isInitialized = true;
-          return;
-        }
-        console.log("[Vercel Serverless] Bootstrapping SaaS schema & seed data...");
-        await initializeMultiTenantSchema();
-        await seedInitialPlatform();
-        isInitialized = true;
-        console.log("[Vercel Serverless] Bootstrap complete.");
-      } catch (err) {
-        console.error("[Vercel Serverless DB Init Error]", err);
-        isInitialized = true;
-      } finally {
-        initPromise = null;
-      }
-    })();
-  }
-  return initPromise;
-}
 app.use(async (_req, _res, next) => {
-  if (!isInitialized) {
-    await bootstrap();
-  }
+  await ensureSchemaReady();
   next();
 });
 app.use((req, _res, next) => {

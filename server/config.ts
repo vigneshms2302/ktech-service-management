@@ -18,11 +18,10 @@ export function validateConfig(): ServerConfig {
   const jwtSecret = process.env.JWT_SECRET;
 
   if (!jwtSecret || jwtSecret.trim() === '') {
-    if (nodeEnv === 'production' && process.env.DATABASE_URL) {
-      throw new Error('JWT_SECRET environment variable is required in production mode for security. Please set JWT_SECRET in environment settings.');
-    }
     if (nodeEnv === 'production') {
-      console.warn('[Config Warning] JWT_SECRET is not configured yet. Please set JWT_SECRET in Vercel Project Settings.');
+      throw new Error(
+        'JWT_SECRET environment variable is required in production mode for security. Please set JWT_SECRET in environment settings.'
+      );
     }
   }
 
