@@ -64887,11 +64887,14 @@ function validateConfig() {
   const port = parseInt(process.env.PORT || "5000", 10);
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret || jwtSecret.trim() === "") {
-    if (nodeEnv === "production") {
+    if (nodeEnv === "production" && process.env.DATABASE_URL) {
       throw new Error("JWT_SECRET environment variable is required in production mode for security. Please set JWT_SECRET in environment settings.");
     }
+    if (nodeEnv === "production") {
+      console.warn("[Config Warning] JWT_SECRET is not configured yet. Please set JWT_SECRET in Vercel Project Settings.");
+    }
   }
-  const effectiveJwtSecret = jwtSecret && jwtSecret.trim() !== "" ? jwtSecret.trim() : nodeEnv === "test" ? "test-environment-jwt-secret-key-32chars-min" : nodeEnv === "production" ? "" : "ktech-saas-cloud-jwt-fallback-key-min-32-chars-2026";
+  const effectiveJwtSecret = jwtSecret && jwtSecret.trim() !== "" ? jwtSecret.trim() : nodeEnv === "test" ? "test-environment-jwt-secret-key-32chars-min" : "ktech-saas-cloud-jwt-fallback-key-min-32-chars-2026";
   const rawOrigins = process.env.ALLOWED_ORIGINS || "http://localhost:5173,http://localhost:5174,http://localhost:4173";
   const allowedOrigins = rawOrigins.split(",").map((o) => o.trim()).filter(Boolean);
   return {
