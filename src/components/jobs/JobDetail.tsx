@@ -235,7 +235,64 @@ export const JobDetail: React.FC<JobDetailProps> = ({
       if (window.electronAPI?.jobs?.getById) {
         const res = await window.electronAPI.jobs.getById({ jobId });
         if (res.success && res.data) {
-          setData(res.data);
+          const raw = res.data as Record<string, any>;
+          const rawJob = raw.job || raw;
+          let parsedAcc: string[] = [];
+          if (Array.isArray(rawJob.accessoriesReceived)) {
+            parsedAcc = rawJob.accessoriesReceived;
+          } else if (typeof rawJob.accessories_received === 'string') {
+            try { parsedAcc = JSON.parse(rawJob.accessories_received); } catch { parsedAcc = []; }
+          } else if (Array.isArray(rawJob.accessories_received)) {
+            parsedAcc = rawJob.accessories_received;
+          }
+
+          const normalized: JobDetailData = {
+            job: {
+              ...rawJob,
+              id: rawJob.id || jobId,
+              jobNumber: rawJob.jobNumber || rawJob.job_number || '',
+              customerId: rawJob.customerId || rawJob.customer_id || '',
+              customerName: rawJob.customerName || rawJob.customer_name || 'Customer',
+              customerPhone: rawJob.customerPhone || rawJob.customer_phone || '',
+              customerSecondaryPhone: rawJob.customerSecondaryPhone || rawJob.customer_secondary_phone || null,
+              customerEmail: rawJob.customerEmail || rawJob.customer_email || null,
+              customerCode: rawJob.customerCode || rawJob.customer_code || '',
+              deviceId: rawJob.deviceId || rawJob.device_id || '',
+              equipmentType: rawJob.equipmentType || rawJob.equipment_type || 'LAPTOP',
+              deviceBrand: rawJob.deviceBrand || rawJob.device_brand || '',
+              deviceModel: rawJob.deviceModel || rawJob.device_model || '',
+              deviceSerial: rawJob.deviceSerial || rawJob.device_serial || null,
+              deviceSpecs: rawJob.deviceSpecs || rawJob.device_specs || null,
+              hasPasscode: Boolean(rawJob.hasPasscode || rawJob.encrypted_security_passcode),
+              serviceCategory: rawJob.serviceCategory || rawJob.service_category || 'General Repair',
+              currentStatus: rawJob.currentStatus || rawJob.current_status || 'RECEIVED',
+              priority: (rawJob.priority as any) || 'NORMAL',
+              assignedTechnicianId: rawJob.assignedTechnicianId || rawJob.assigned_technician_id || null,
+              technicianName: rawJob.technicianName || rawJob.technician_name || null,
+              creatorName: rawJob.creatorName || rawJob.technician_name || 'Staff',
+              reportedIssue: rawJob.reportedIssue || rawJob.reported_issue || '',
+              accessoriesReceived: parsedAcc,
+              physicalConditionNotes: rawJob.physicalConditionNotes || rawJob.physical_condition_notes || null,
+              estimatedCost: Number(rawJob.estimatedCost || rawJob.estimated_cost || 0),
+              advanceDeposit: Number(rawJob.advanceDeposit || rawJob.advance_deposit || 0),
+              promisedDeliveryDate: rawJob.promisedDeliveryDate || rawJob.promised_delivery_date || null,
+              createdAt: rawJob.createdAt || rawJob.created_at || new Date().toISOString(),
+              updatedAt: rawJob.updatedAt || rawJob.updated_at || new Date().toISOString(),
+            },
+            inspection: raw.inspection || (Array.isArray(raw.inspections) && raw.inspections[0] ? raw.inspections[0] : null),
+            diagnoses: Array.isArray(raw.diagnoses) ? raw.diagnoses : [],
+            repairPlans: Array.isArray(raw.repairPlans) ? raw.repairPlans : (Array.isArray(raw.services) ? raw.services : []),
+            requiredParts: Array.isArray(raw.requiredParts) ? raw.requiredParts : (Array.isArray(raw.parts) ? raw.parts : []),
+            repairActivities: Array.isArray(raw.repairActivities) ? raw.repairActivities : (Array.isArray(raw.activities) ? raw.activities : []),
+            attachments: Array.isArray(raw.attachments) ? raw.attachments : [],
+            checklists: Array.isArray(raw.checklists) ? raw.checklists : [],
+            tests: Array.isArray(raw.tests) ? raw.tests : [],
+            timeline: Array.isArray(raw.timeline) ? raw.timeline : (Array.isArray(raw.history) ? raw.history : []),
+            statusHistory: Array.isArray(raw.statusHistory) ? raw.statusHistory : [],
+            notes: Array.isArray(raw.notes) ? raw.notes : [],
+            photos: Array.isArray(raw.photos) ? raw.photos : [],
+          };
+          setData(normalized);
           // Pre-populate inspection if existing
           if (res.data.inspection) {
             setInspPowerStatus(res.data.inspection.powerStatus || 'NORMAL_POWER');
@@ -1201,7 +1258,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({
   }
 
   const { job, inspection, diagnoses, repairPlans, requiredParts, repairActivities, attachments, timeline, notes, photos } = data;
-  const accessoriesList = Array.isArray(job.accessoriesReceived) ? job.accessoriesReceived : [];
+  const accessoriesList = Array.isArray(job?.accessoriesReceived) ? job.accessoriesReceived : [];
   const isTechnicianRole = currentUser?.roleId === 'ROLE_TECHNICIAN' || currentUser?.roleId === 'ROLE_OWNER' || hasPermission('jobs.diagnose');
 
   return (

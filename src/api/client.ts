@@ -218,7 +218,28 @@ export const saasApi = {
     },
 
     getById: async (params: { jobId: string }) => {
-      return apiFetch(`/api/jobs/${params.jobId}`);
+      const res = await apiFetch(`/api/jobs/${params.jobId}`);
+      if (res.success && res.data) {
+        if (!res.data.job && (res.data.jobNumber || res.data.job_number || res.data.id)) {
+          const raw = { ...res.data };
+          res.data = {
+            ...res.data,
+            job: {
+              ...raw,
+              jobNumber: raw.jobNumber || raw.job_number || '',
+              customerName: raw.customerName || raw.customer_name || 'Customer',
+              customerPhone: raw.customerPhone || raw.customer_phone || '',
+              equipmentType: raw.equipmentType || raw.equipment_type || 'Device',
+              deviceBrand: raw.deviceBrand || raw.device_brand || '',
+              deviceModel: raw.deviceModel || raw.device_model || '',
+              accessoriesReceived: Array.isArray(raw.accessoriesReceived)
+                ? raw.accessoriesReceived
+                : [],
+            },
+          };
+        }
+      }
+      return res;
     },
 
     search: async (params: { query: string; limit?: number }) => {

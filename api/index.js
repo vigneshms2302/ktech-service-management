@@ -94596,34 +94596,142 @@ jobsRouter.get("/:id", async (req, res) => {
       client.execute({ sql: `SELECT * FROM job_checklists WHERE shop_id = ? AND job_id = ?`, args: [shopId, targetJobId] }),
       client.execute({ sql: `SELECT * FROM quotations WHERE shop_id = ? AND job_id = ? ORDER BY created_at DESC`, args: [shopId, targetJobId] })
     ]);
+    let parsedAccessories = [];
+    try {
+      if (job.accessories_received) {
+        parsedAccessories = typeof job.accessories_received === "string" ? JSON.parse(job.accessories_received) : Array.isArray(job.accessories_received) ? job.accessories_received : [];
+      }
+    } catch {
+      parsedAccessories = [];
+    }
+    const jobObject = {
+      ...job,
+      id: job.id,
+      jobNumber: job.job_number,
+      customerId: job.customer_id,
+      customerName: job.customer_name || "Customer",
+      customerPhone: job.customer_phone || "",
+      customerSecondaryPhone: job.customer_secondary_phone || null,
+      customerEmail: job.customer_email || null,
+      customerGstin: job.customer_gstin || null,
+      customerCode: job.customer_code || "",
+      deviceId: job.device_id,
+      equipmentType: job.equipment_type || "Device",
+      deviceBrand: job.device_brand || "",
+      deviceModel: job.device_model || "",
+      deviceSerial: job.device_serial || null,
+      deviceColor: job.device_color || null,
+      deviceSpecs: job.device_specs || null,
+      hasPasscode: Boolean(job.encrypted_security_passcode),
+      serviceCategory: job.service_category,
+      currentStatus: job.current_status,
+      priority: job.priority,
+      assignedTechnicianId: job.assigned_technician_id,
+      technicianName: job.technician_name || null,
+      creatorName: job.technician_name || "Staff",
+      reportedIssue: job.reported_issue || "",
+      physicalConditionNotes: job.physical_condition_notes || null,
+      estimatedCost: Number(job.estimated_cost || 0),
+      advanceDeposit: Number(job.advance_deposit || 0),
+      promisedDeliveryDate: job.promised_delivery_date || null,
+      actualDeliveryDate: job.actual_delivery_date || null,
+      accessoriesReceived: parsedAccessories,
+      createdAt: job.created_at,
+      updatedAt: job.updated_at
+    };
+    const firstInspection = inspectionsRes.rows[0] ? inspectionsRes.rows[0] : null;
     res.json({
       success: true,
       data: {
-        ...job,
-        id: job.id,
-        jobNumber: job.job_number,
-        customerId: job.customer_id,
-        deviceId: job.device_id,
-        serviceCategory: job.service_category,
-        currentStatus: job.current_status,
-        priority: job.priority,
-        assignedTechnicianId: job.assigned_technician_id,
-        reportedIssue: job.reported_issue,
-        physicalConditionNotes: job.physical_condition_notes,
-        estimatedCost: Number(job.estimated_cost || 0),
-        advanceDeposit: Number(job.advance_deposit || 0),
-        promisedDeliveryDate: job.promised_delivery_date,
-        actualDeliveryDate: job.actual_delivery_date,
-        accessoriesReceived: job.accessories_received ? JSON.parse(String(job.accessories_received)) : [],
-        history: historyRes.rows,
+        ...jobObject,
+        job: jobObject,
+        inspection: firstInspection ? {
+          id: firstInspection.id,
+          powerStatus: firstInspection.power_status,
+          displayStatus: firstInspection.display_status,
+          motherboardStatus: firstInspection.motherboard_status,
+          bodyCondition: firstInspection.body_condition,
+          waterDamageDetected: Boolean(firstInspection.water_damage_detected),
+          shortCircuitDetected: Boolean(firstInspection.short_circuit_detected),
+          inspectionNotes: firstInspection.inspection_notes,
+          createdAt: firstInspection.created_at
+        } : null,
         inspections: inspectionsRes.rows,
-        diagnosis: diagnosisRes.rows[0] || null,
-        services: servicesRes.rows,
-        parts: partsRes.rows,
-        activities: activitiesRes.rows,
-        notes: notesRes.rows,
+        diagnoses: diagnosisRes.rows.map((r) => {
+          const row = r;
+          return {
+            id: row.id,
+            jobId: row.job_id,
+            technicianId: row.technician_id,
+            rootCauseAnalysis: row.root_cause_analysis,
+            voltageRailsChecked: row.voltage_rails_checked,
+            faultyComponentsIdentified: row.faulty_components_identified,
+            recommendedAction: row.recommended_action,
+            createdAt: row.created_at
+          };
+        }),
+        repairPlans: servicesRes.rows.map((r) => {
+          const row = r;
+          return {
+            id: row.id,
+            jobId: row.job_id,
+            serviceName: row.service_name,
+            sacCode: row.sac_code,
+            laborCharge: Number(row.labor_charge || 0),
+            discount: Number(row.discount || 0),
+            taxRate: Number(row.tax_rate || 0),
+            createdAt: row.created_at
+          };
+        }),
+        requiredParts: partsRes.rows.map((r) => {
+          const row = r;
+          return {
+            id: row.id,
+            jobId: row.job_id,
+            partName: row.part_name,
+            quantity: Number(row.quantity || 1),
+            unitSellingPrice: Number(row.unit_selling_price || 0),
+            createdAt: row.created_at
+          };
+        }),
+        repairActivities: activitiesRes.rows.map((r) => {
+          const row = r;
+          return {
+            id: row.id,
+            jobId: row.job_id,
+            technicianId: row.technician_id,
+            activityTitle: row.activity_title,
+            description: row.description,
+            timeSpentMinutes: Number(row.time_spent_minutes || 0),
+            createdAt: row.created_at
+          };
+        }),
+        attachments: [],
+        timeline: historyRes.rows.map((r) => {
+          const row = r;
+          return {
+            id: row.id,
+            eventType: "STATUS_CHANGE",
+            title: `Status changed to ${row.new_status}`,
+            description: row.reason_or_notes,
+            authorName: "Staff",
+            createdAt: row.created_at
+          };
+        }),
+        notes: notesRes.rows.map((r) => {
+          const row = r;
+          return {
+            id: row.id,
+            jobId: row.job_id,
+            userId: row.user_id,
+            content: row.content,
+            noteType: row.note_type,
+            createdAt: row.created_at
+          };
+        }),
         checklists: checklistsRes.rows,
-        quotations: quotationsRes.rows
+        quotations: quotationsRes.rows,
+        photos: []
       }
     });
   } catch (error62) {
