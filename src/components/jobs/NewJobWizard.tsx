@@ -24,6 +24,7 @@ import {
   handleAutoCorrectKeyDown,
 } from '../../utils/autoCorrect.ts';
 import { useShop } from '../../context/ShopContext.tsx';
+import { useToast } from '../../context/ToastContext.tsx';
 
 const FAULT_CATEGORY_OPTIONS = [
   'Motherboard / Chip-Level',
@@ -136,6 +137,8 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdJob, setCreatedJob] = useState<{ id: string; jobNumber: string; warning?: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [reportedIssueError, setReportedIssueError] = useState(false);
+  const { showError, showSuccess } = useToast();
   const [showPrintIntakeModal, setShowPrintIntakeModal] = useState(false);
 
   const estimatedCost = Number(estimatedCostStr) || 0;
@@ -260,7 +263,15 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
   const handleFinalSubmit = async () => {
     if (!selectedCustomer || !selectedDevice) return;
     if (!reportedIssue.trim()) {
+      setReportedIssueError(true);
       setErrorMessage('Customer reported issue is required');
+      showError('Customer reported issue is required');
+      setStep(3);
+      const el = document.getElementById('reportedIssueField');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (el as HTMLElement).focus();
+      }
       return;
     }
 
@@ -299,6 +310,7 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
           jobNumber: res.data.jobNumber,
           warning: res.data.warning,
         });
+        showSuccess(`Job #${res.data.jobNumber || ''} admitted successfully!`);
         setStep(5); // Success step
       } else {
         setErrorMessage(res.error || 'Failed to create service job');
@@ -714,10 +726,14 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                 CUSTOMER REPORTED ISSUE & SYMPTOMS *
               </label>
               <textarea
-                className="input-field"
+                id="reportedIssueField"
+                className={`input-field ${reportedIssueError ? 'input-error' : ''}`}
                 rows={3}
                 value={reportedIssue}
-                onChange={(e) => setReportedIssue(e.target.value)}
+                onChange={(e) => {
+                  setReportedIssue(e.target.value);
+                  if (e.target.value.trim()) setReportedIssueError(false);
+                }}
                 onKeyDown={(e) => handleAutoCorrectKeyDown(e, reportedIssue, setReportedIssue)}
                 onBlur={() => setReportedIssue(autoCorrectFaultText(reportedIssue))}
                 placeholder="e.g. Device does not turn on. Power light blinks orange. Customer states it happened after a lightning surge."
@@ -1057,9 +1073,17 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
                 className="btn btn-primary"
                 onClick={() => {
                   if (!reportedIssue.trim()) {
+                    setReportedIssueError(true);
                     setErrorMessage('Please describe the customer reported issue');
+                    showError('Please describe the customer reported issue before proceeding.');
+                    const el = document.getElementById('reportedIssueField');
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      (el as HTMLElement).focus();
+                    }
                     return;
                   }
+                  setReportedIssueError(false);
                   setErrorMessage(null);
                   setStep(4);
                 }}

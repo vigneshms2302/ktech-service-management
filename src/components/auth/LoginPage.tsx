@@ -24,6 +24,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
+import { useToast } from '../../context/ToastContext.tsx';
 import { useTheme } from '../../context/ThemeContext.tsx';
 import { getShopSlug, setShopSlug, getApiBaseUrl, setApiBaseUrl } from '../../api/client.ts';
 import { DownloadAppModal } from '../common/DownloadAppModal.tsx';
@@ -31,6 +32,7 @@ import { DownloadAppModal } from '../common/DownloadAppModal.tsx';
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { showError } = useToast();
   const { theme, toggleTheme } = useTheme();
 
   const isLight = theme === 'light';
@@ -112,6 +114,7 @@ export const LoginPage: React.FC = () => {
         isSuperAdmin,
       });
       if (!res.success) {
+        showError(res.error || 'Invalid credentials or shop not found');
         setError(res.error || 'Invalid credentials or shop not found');
       } else {
         navigate(isSuperAdmin ? '/admin' : '/app', { replace: true });

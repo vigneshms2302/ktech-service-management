@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, X, AlertTriangle } from 'lucide-react';
 import type { CustomerDuplicateCandidate } from '../../types/index.ts';
+import { useToast } from '../../context/ToastContext.tsx';
 import {
   autoCorrectName,
   autoCorrectPhone,
@@ -50,6 +51,9 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const [duplicates, setDuplicates] = useState<CustomerDuplicateCandidate[]>([]);
   const [isCheckingDupes, setIsCheckingDupes] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [fullNameError, setFullNameError] = useState(false);
+  const [phoneError, setPhoneError] = useState(false);
+  const { showError, showSuccess } = useToast();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -124,11 +128,19 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim()) {
+      setFullNameError(true);
       setError('Customer name is required');
+      showError('Customer name is required');
+      const el = document.getElementById('customerFullNameInput');
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); (el as HTMLElement).focus(); }
       return;
     }
     if (!primaryPhone.trim()) {
+      setPhoneError(true);
       setError('Primary phone number is required');
+      showError('Primary phone number is required');
+      const el = document.getElementById('customerPhoneInput');
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); (el as HTMLElement).focus(); }
       return;
     }
 
@@ -168,6 +180,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
         });
 
         if (res && res.success) {
+          showSuccess('Customer details updated successfully!');
           if (onCustomerUpdated) {
             onCustomerUpdated({ id: custId, fullName: fullName.trim(), primaryPhone: primaryPhone.trim() });
           }
@@ -205,6 +218,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       });
 
       if (res.success && res.data) {
+        showSuccess('Customer registered successfully!');
         onCustomerCreated(res.data);
         onClose();
       } else {
@@ -336,10 +350,12 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 FULL NAME *
               </label>
               <input
+                id="customerFullNameInput"
                 type="text"
-                className="input-field"
+                className={`input-field ${fullNameError ? 'input-error' : ''}`}
                 value={fullName}
                 onChange={(e) => {
+                  if (e.target.value.trim()) setFullNameError(false);
                   setFullName(e.target.value);
                   checkDupes(primaryPhone, e.target.value, email);
                 }}
@@ -361,10 +377,11 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 {isCheckingDupes && <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 400 }}> (checking duplicates...)</span>}
               </label>
               <input
+                id="customerPhoneInput"
                 type="tel"
-                className="input-field"
+                className={`input-field ${phoneError ? 'input-error' : ''}`}
                 value={primaryPhone}
-                onChange={(e) => handlePhoneChange(e.target.value)}
+                onChange={(e) => { handlePhoneChange(e.target.value); if (e.target.value.trim()) setPhoneError(false); }}
                 onBlur={() => setPrimaryPhone(autoCorrectPhone(primaryPhone))}
                 placeholder="e.g. 98430 11223"
                 required

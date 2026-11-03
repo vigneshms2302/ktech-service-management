@@ -751,3 +751,102 @@ select optgroup {
     padding: 0 !important;
   }
 }
+
+
+/* ==========================================================================
+   Input Error Highlight & Shake Animation
+   ========================================================================== */
+.input-error,
+.input-field.input-error,
+textarea.input-error,
+select.input-error {
+  border-color: var(--color-danger, #ef4444) !important;
+  background-color: rgba(239, 68, 68, 0.05) !important;
+  box-shadow: 0 0 0 1px var(--color-danger, #ef4444), 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+  animation: shakeError 0.35s ease-in-out;
+}
+
+[data-theme='light'] .input-error,
+[data-theme='light'] .input-field.input-error,
+[data-theme='light'] textarea.input-error,
+[data-theme='light'] select.input-error {
+  border-color: #ef4444 !important;
+  background-color: #fff5f5 !important;
+  box-shadow: 0 0 0 1px #ef4444, 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+@keyframes shakeError {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+/* ==========================================================================
+   Material Floating Toast / Snackbar (Bottom-Right)
+   ========================================================================== */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999999;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+  pointer-events: none;
+  max-width: min(440px, calc(100vw - 32px));
+}
+
+.toast-item {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md, 10px);
+  background-color: var(--bg-surface, #212121);
+  color: var(--text-main, #ececec);
+  box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-color-light, #383838);
+  animation: toastSlideIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.toast-item:hover {
+  transform: translateY(-2px);
+}
+
+[data-theme='light'] .toast-item {
+  background-color: #ffffff;
+  color: #0d0d0d;
+  box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #e5e5e5;
+}
+
+.toast-item.toast-error {
+  border-left: 4px solid var(--color-danger, #ef4444);
+}
+
+.toast-item.toast-success {
+  border-left: 4px solid var(--color-success, #10a37f);
+}
+
+.toast-item.toast-warning {
+  border-left: 4px solid var(--color-warning, #f59e0b);
+}
+
+.toast-item.toast-info {
+  border-left: 4px solid var(--color-info, #38bdf8);
+}
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateY(24px) scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}

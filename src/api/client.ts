@@ -105,8 +105,17 @@ async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}): P
       json.error = `HTTP error ${response.status}: ${response.statusText}`;
     }
 
+    if (!response.ok && json.error && typeof window !== 'undefined' && (window as any).showError) {
+      if (!endpoint.includes('check-duplicates') && response.status !== 404) {
+        (window as any).showError(json.error);
+      }
+    }
+
     return json;
   } catch (err: any) {
+    if (typeof window !== 'undefined' && (window as any).showError) {
+      (window as any).showError(err.message || 'Network communication error. Please check server connection.');
+    }
     return {
       success: false,
       error: err.message || 'Network communication error. Please check server connection.',

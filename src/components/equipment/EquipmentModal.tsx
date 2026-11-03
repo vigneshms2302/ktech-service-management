@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Laptop, Monitor, Smartphone, Wrench, X, AlertTriangle, Lock } from 'lucide-react';
 import type { DeviceDuplicateCandidate } from '../../types/index.ts';
+import { useToast } from '../../context/ToastContext.tsx';
 import {
   autoCorrectBrand,
   autoCorrectModel,
@@ -54,6 +55,9 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
 
   const [duplicates, setDuplicates] = useState<DeviceDuplicateCandidate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [brandError, setBrandError] = useState(false);
+  const [modelError, setModelError] = useState(false);
+  const { showError, showSuccess } = useToast();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -95,11 +99,19 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!brand.trim()) {
+      setBrandError(true);
       setError('Brand / Manufacturer is required (e.g. Dell, HP, Samsung, Apple)');
+      showError('Brand / Manufacturer is required');
+      const el = document.getElementById('equipmentBrandInput');
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); (el as HTMLElement).focus(); }
       return;
     }
     if (!modelName.trim()) {
+      setModelError(true);
       setError('Model name / number is required (e.g. Inspiron 15, Galaxy S23, iPhone 14)');
+      showError('Model name / number is required');
+      const el = document.getElementById('equipmentModelInput');
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); (el as HTMLElement).focus(); }
       return;
     }
     if (category === 'OTHER' && !customDeviceType.trim()) {
@@ -133,6 +145,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
       });
 
       if (res.success && res.data) {
+        showSuccess('Equipment registered successfully!');
         onEquipmentCreated(res.data);
         onClose();
       } else {
@@ -335,10 +348,12 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
                 BRAND / MAKE *
               </label>
               <input
+                id="equipmentBrandInput"
                 type="text"
-                className="input-field"
+                className={`input-field ${brandError ? 'input-error' : ''}`}
                 value={brand}
                 onChange={(e) => {
+                  if (e.target.value.trim()) setBrandError(false);
                   setBrand(e.target.value);
                   checkDuplicates(serialNumber, e.target.value, modelName);
                 }}
@@ -386,10 +401,12 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
                 MODEL NAME / NUMBER *
               </label>
               <input
+                id="equipmentModelInput"
                 type="text"
-                className="input-field"
+                className={`input-field ${modelError ? 'input-error' : ''}`}
                 value={modelName}
                 onChange={(e) => {
+                  if (e.target.value.trim()) setModelError(false);
                   setModelName(e.target.value);
                   checkDuplicates(serialNumber, brand, e.target.value);
                 }}
