@@ -7,6 +7,7 @@ import {
   Wrench,
   RefreshCw,
   Edit2,
+  Trash2,
 } from 'lucide-react';
 import type { CustomerSummary } from '../../types/index.ts';
 import { CustomerModal } from './CustomerModal.tsx';
@@ -221,6 +222,26 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                         <Edit2 size={11} />
                         <span>Edit</span>
                       </button>
+                      {c.totalJobsCount === 0 && (
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={async () => {
+                            if (window.confirm(`Delete customer "${c.fullName}" (${c.customerCode})?`)) {
+                              const res = await (window.electronAPI as any)?.customers?.delete({ customerId: c.id, id: c.id });
+                              if (res && res.success) {
+                                fetchCustomers(search);
+                              } else {
+                                alert(res?.error || 'Failed to delete customer');
+                              }
+                            }
+                          }}
+                          style={{ padding: '3px 6px', fontSize: '11px', color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                          title="Delete duplicate or unused customer"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      )}
                       <button
                         className="btn btn-primary"
                         onClick={() => onNewJobForCustomer(c.id)}

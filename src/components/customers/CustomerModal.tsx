@@ -102,7 +102,9 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           email: mail,
         });
         if (res.success && res.data) {
-          setDuplicates(res.data);
+          const rawData: any = res.data;
+          const list = Array.isArray(rawData) ? rawData : (Array.isArray(rawData.candidates) ? rawData.candidates : []);
+          setDuplicates(list);
         }
       }
     } finally {

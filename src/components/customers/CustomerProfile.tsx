@@ -10,6 +10,7 @@ import {
   Receipt,
   MessageSquare,
   Edit2,
+  Trash2,
 } from 'lucide-react';
 import type { CustomerProfileData } from '../../types/index.ts';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
@@ -297,6 +298,27 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
               <Edit2 size={13} />
               <span>Edit Customer Details</span>
             </button>
+            {jobs.length === 0 && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={async () => {
+                  if (window.confirm(`Are you sure you want to delete customer "${customer.fullName}" (${customer.customerCode})?`)) {
+                    const res = await (window.electronAPI as any)?.customers?.delete({ customerId: customer.id, id: customer.id });
+                    if (res && res.success) {
+                      onBack();
+                    } else {
+                      alert(res?.error || 'Failed to delete customer');
+                    }
+                  }
+                }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                title="Delete customer record"
+              >
+                <Trash2 size={13} />
+                <span>Delete Customer</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

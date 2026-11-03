@@ -87,6 +87,33 @@ customersRouter.post('/', validateBody(createCustomerSchema), async (req, res) =
     const client = getClient();
     const { fullName, primaryPhone, secondaryPhone, email, gstin, customerType = 'INDIVIDUAL', notes, addressLine1, addressLine2, city, state, pincode } = req.body;
 
+    // Reject duplicate customer creation by phone unless explicitly forced
+    const cleanDigits = primaryPhone.replace(/[^0-9]/g, '');
+    if (cleanDigits.length >= 6 && !req.body.forceDuplicate) {
+      const existingPhone = await client.execute({
+        sql: `SELECT id, customer_code, full_name, primary_phone FROM customers 
+              WHERE shop_id = ? AND (
+                primary_phone = ? OR 
+                REPLACE(REPLACE(REPLACE(primary_phone, ' ', ''), '-', ''), '+', '') = ?
+              ) LIMIT 1`,
+        args: [shopId, primaryPhone.trim(), cleanDigits],
+      });
+      if (existingPhone.rows.length > 0) {
+        const dup = existingPhone.rows[0] as Record<string, unknown>;
+        res.status(409).json({
+          success: false,
+          error: `A customer with this phone number already exists: ${dup.full_name} (${dup.customer_code}). Please use the existing customer.`,
+          data: {
+            id: dup.id,
+            customerCode: dup.customer_code,
+            fullName: dup.full_name,
+            primaryPhone: dup.primary_phone,
+          },
+        });
+        return;
+      }
+    }
+
     const countRes = await client.execute({
       sql: `SELECT COUNT(*) as count FROM customers WHERE shop_id = ?`,
       args: [shopId],
@@ -270,6 +297,110 @@ customersRouter.put('/:id', validateBody(updateCustomerSchema), async (req, res)
   }
 });
 
+
+// Check Customer Duplicates (Phone, Email, Full Name)
+customersRouter.get('/check-duplicates', async (req, res) => {
+  try {
+    const shopId = req.user!.shopId;
+    const client = getClient();
+    const phone = String(req.query.phone || '').trim();
+    const email = String(req.query.email || '').trim().toLowerCase();
+    const fullName = String(req.query.fullName || '').trim();
+
+    const cleanDigits = phone.replace(/[^0-9]/g, '');
+
+    const candidates: Array<{
+      id: string;
+      customerCode: string;
+      fullName: string;
+      primaryPhone: string;
+      email: string | null;
+      matchReason: string;
+    }> = [];
+
+    if (cleanDigits.length >= 5) {
+      const phoneRes = await client.execute({
+        sql: `SELECT id, customer_code, full_name, primary_phone, secondary_phone, email 
+              FROM customers 
+              WHERE shop_id = ? AND (
+                primary_phone = ? OR 
+                secondary_phone = ? OR 
+                REPLACE(REPLACE(REPLACE(primary_phone, ' ', ''), '-', ''), '+', '') LIKE ? OR
+                REPLACE(REPLACE(REPLACE(secondary_phone, ' ', ''), '-', ''), '+', '') LIKE ?
+              )`,
+        args: [shopId, phone, phone, `%${cleanDigits}%`, `%${cleanDigits}%`],
+      });
+
+      phoneRes.rows.forEach((r) => {
+        const row = r as Record<string, unknown>;
+        candidates.push({
+          id: String(row.id),
+          customerCode: String(row.customer_code),
+          fullName: String(row.full_name),
+          primaryPhone: String(row.primary_phone),
+          email: row.email ? String(row.email) : null,
+          matchReason: 'PHONE_MATCH',
+        });
+      });
+    }
+
+    if (email && email.length >= 5) {
+      const emailRes = await client.execute({
+        sql: `SELECT id, customer_code, full_name, primary_phone, secondary_phone, email 
+              FROM customers 
+              WHERE shop_id = ? AND LOWER(email) = ?`,
+        args: [shopId, email],
+      });
+
+      emailRes.rows.forEach((r) => {
+        const row = r as Record<string, unknown>;
+        const id = String(row.id);
+        if (!candidates.some((c) => c.id === id)) {
+          candidates.push({
+            id,
+            customerCode: String(row.customer_code),
+            fullName: String(row.full_name),
+            primaryPhone: String(row.primary_phone),
+            email: row.email ? String(row.email) : null,
+            matchReason: 'EMAIL_MATCH',
+          });
+        }
+      });
+    }
+
+    if (fullName && fullName.length >= 3) {
+      const nameRes = await client.execute({
+        sql: `SELECT id, customer_code, full_name, primary_phone, secondary_phone, email 
+              FROM customers 
+              WHERE shop_id = ? AND LOWER(full_name) = ?`,
+        args: [shopId, fullName.toLowerCase()],
+      });
+
+      nameRes.rows.forEach((r) => {
+        const row = r as Record<string, unknown>;
+        const id = String(row.id);
+        if (!candidates.some((c) => c.id === id)) {
+          candidates.push({
+            id,
+            customerCode: String(row.customer_code),
+            fullName: String(row.full_name),
+            primaryPhone: String(row.primary_phone),
+            email: row.email ? String(row.email) : null,
+            matchReason: 'NAME_MATCH',
+          });
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: candidates,
+    });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
 // Get Customer Profile with Registered Devices & History
 customersRouter.get('/:id', async (req, res) => {
   try {
@@ -436,6 +567,63 @@ customersRouter.post('/:id/devices', validateBody(addDeviceSchema), async (req, 
         modelName,
         serialNumber,
       },
+    });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
+// Delete Customer (Allowed if no service jobs exist)
+customersRouter.delete('/:id', async (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const shopId = req.user!.shopId;
+    const client = getClient();
+
+    const existingRes = await client.execute({
+      sql: `SELECT id, customer_code, full_name FROM customers WHERE shop_id = ? AND (id = ? OR customer_code = ?)`,
+      args: [shopId, id, id],
+    });
+
+    if (existingRes.rows.length === 0) {
+      res.status(404).json({ success: false, error: 'Customer not found.' });
+      return;
+    }
+
+    const actualCustomerId = String(existingRes.rows[0].id);
+
+    // Check if customer has any service jobs
+    const jobsCountRes = await client.execute({
+      sql: `SELECT COUNT(*) as count FROM service_jobs WHERE shop_id = ? AND customer_id = ?`,
+      args: [shopId, actualCustomerId],
+    });
+    const jobCount = Number((jobsCountRes.rows[0] as Record<string, unknown>).count || 0);
+
+    if (jobCount > 0) {
+      res.status(400).json({
+        success: false,
+        error: `Cannot delete customer: ${jobCount} service jobs are attached. Please archive or delete jobs first.`,
+      });
+      return;
+    }
+
+    // Delete devices and addresses
+    await client.execute({
+      sql: `DELETE FROM devices WHERE shop_id = ? AND customer_id = ?`,
+      args: [shopId, actualCustomerId],
+    });
+    await client.execute({
+      sql: `DELETE FROM customer_addresses WHERE shop_id = ? AND customer_id = ?`,
+      args: [shopId, actualCustomerId],
+    });
+    await client.execute({
+      sql: `DELETE FROM customers WHERE shop_id = ? AND id = ?`,
+      args: [shopId, actualCustomerId],
+    });
+
+    res.json({
+      success: true,
+      message: 'Customer and associated records deleted successfully.',
     });
   } catch (error: unknown) {
     res.status(500).json({ success: false, error: (error as Error).message });

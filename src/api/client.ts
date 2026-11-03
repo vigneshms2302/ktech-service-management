@@ -356,12 +356,56 @@ export const saasApi = {
       });
     },
 
-    checkDuplicate: async (_params: any) => {
-      return { success: true, data: { isDuplicate: false, candidates: [] } };
+        search: async (params: { query?: string; search?: string; limit?: number }) => {
+      const q = new URLSearchParams();
+      const queryStr = params.query || params.search || '';
+      if (queryStr) q.append('search', queryStr);
+      if (params.limit) q.append('limit', String(params.limit));
+      const query = q.toString() ? `?${q.toString()}` : '';
+      const res = await apiFetch(`/api/customers${query}`);
+      if (res.success && res.data) {
+        const rawList = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data.customers)
+          ? res.data.customers
+          : [];
+        return { success: true, data: rawList };
+      }
+      return res;
     },
 
-    checkDuplicates: async (_params: any) => {
-      return { success: true, data: { isDuplicate: false, candidates: [] } };
+    delete: async (params: { customerId?: string; id?: string }) => {
+      const id = params.customerId || params.id;
+      return apiFetch(`/api/customers/${id}`, {
+        method: 'DELETE',
+      });
+    },
+
+    checkDuplicates: async (params: { phone?: string; email?: string; fullName?: string }) => {
+      const q = new URLSearchParams();
+      if (params.phone) q.append('phone', params.phone);
+      if (params.email) q.append('email', params.email);
+      if (params.fullName) q.append('fullName', params.fullName);
+      const res = await apiFetch(`/api/customers/check-duplicates?${q.toString()}`);
+      return res;
+    },
+
+    checkDuplicate: async (params: { phone?: string; email?: string; fullName?: string }) => {
+      const q = new URLSearchParams();
+      if (params.phone) q.append('phone', params.phone);
+      if (params.email) q.append('email', params.email);
+      if (params.fullName) q.append('fullName', params.fullName);
+      const res = await apiFetch(`/api/customers/check-duplicates?${q.toString()}`);
+      if (res.success && Array.isArray(res.data)) {
+        return {
+          success: true,
+          data: {
+            isDuplicate: res.data.length > 0,
+            candidates: res.data,
+          },
+        };
+      }
+      return res;
     },
   },
 

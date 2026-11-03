@@ -180,10 +180,24 @@ export const NewJobWizard: React.FC<NewJobWizardProps> = ({
       setCustomerResults([]);
       return;
     }
-    if (window.electronAPI?.customers?.search) {
-      const res = await window.electronAPI.customers.search({ query: val });
+    const searchApi = window.electronAPI?.customers?.search || (window.electronAPI?.customers?.list as any);
+    if (searchApi) {
+      const res = await searchApi({ query: val, search: val });
       if (res.success && res.data) {
-        setCustomerResults(res.data);
+        const rawList = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data.customers)
+          ? res.data.customers
+          : [];
+        const normalized = rawList.map((c: any) => ({
+          id: c.id,
+          customerCode: c.customerCode || c.customer_code || '',
+          fullName: c.fullName || c.full_name || '',
+          primaryPhone: c.primaryPhone || c.primary_phone || '',
+          email: c.email || null,
+          deviceCount: Number(c.deviceCount || c.device_count || 0),
+        }));
+        setCustomerResults(normalized);
       }
     }
   };
