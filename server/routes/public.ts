@@ -18,12 +18,18 @@ const publicRegistrationSchema = z.object({
     .regex(/^[a-z0-9-_]+$/i, 'Slug must contain only alphanumeric characters, dashes, or underscores'),
   ownerName: z.string().trim().min(2, 'Owner name must be at least 2 characters').max(100),
   phone: z.string().trim().min(10, 'Valid 10-digit mobile number required').max(20),
-  email: z.string().trim().email('Please enter a valid email address').optional().or(z.literal('')).nullable(),
+  email: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : typeof val === 'string' ? val.trim() : val),
+    z.string().email('Please enter a valid email address').optional()
+  ),
   username: z.string().trim().min(3).max(50).default('admin'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   city: z.string().trim().min(2, 'City is required').max(100).default('Coimbatore'),
   state: z.string().trim().min(2, 'State is required').max(100).default('Tamil Nadu'),
-  pincode: z.string().trim().max(10).optional().or(z.literal('')).nullable(),
+  pincode: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : typeof val === 'string' ? val.trim() : val),
+    z.string().max(10).optional()
+  ),
 });
 
 const contactInquirySchema = z.object({

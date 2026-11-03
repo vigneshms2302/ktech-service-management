@@ -296,10 +296,24 @@ export const SignupPage: React.FC = () => {
     setFieldErrors({});
 
     try {
-      const res = await saasApi.public.register({
-        ...formData,
+      const payload: Record<string, any> = {
+        shopName: formData.shopName.trim(),
         slug: cleanSlug,
-      });
+        ownerName: formData.ownerName.trim(),
+        phone: formData.phone.trim(),
+        username: formData.username || 'admin',
+        password: formData.password,
+        city: formData.city.trim() || 'Coimbatore',
+        state: formData.state.trim() || 'Tamil Nadu',
+      };
+      if (formData.email && formData.email.trim()) {
+        payload.email = formData.email.trim().toLowerCase();
+      }
+      if (formData.pincode && formData.pincode.trim()) {
+        payload.pincode = formData.pincode.trim();
+      }
+
+      const res = await saasApi.public.register(payload);
 
       if (res.success) {
         showSuccess(`Shop workspace "${formData.shopName}" created successfully! Starting free trial.`);

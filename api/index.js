@@ -96240,12 +96240,18 @@ var publicRegistrationSchema = external_exports.object({
   slug: external_exports.string().trim().min(3, "Shop URL handle must be at least 3 characters").max(50).regex(/^[a-z0-9-_]+$/i, "Slug must contain only alphanumeric characters, dashes, or underscores"),
   ownerName: external_exports.string().trim().min(2, "Owner name must be at least 2 characters").max(100),
   phone: external_exports.string().trim().min(10, "Valid 10-digit mobile number required").max(20),
-  email: external_exports.string().trim().email("Please enter a valid email address").optional().or(external_exports.literal("")).nullable(),
+  email: external_exports.preprocess(
+    (val) => val === "" || val === null ? void 0 : typeof val === "string" ? val.trim() : val,
+    external_exports.string().email("Please enter a valid email address").optional()
+  ),
   username: external_exports.string().trim().min(3).max(50).default("admin"),
   password: external_exports.string().min(6, "Password must be at least 6 characters"),
   city: external_exports.string().trim().min(2, "City is required").max(100).default("Coimbatore"),
   state: external_exports.string().trim().min(2, "State is required").max(100).default("Tamil Nadu"),
-  pincode: external_exports.string().trim().max(10).optional().or(external_exports.literal("")).nullable()
+  pincode: external_exports.preprocess(
+    (val) => val === "" || val === null ? void 0 : typeof val === "string" ? val.trim() : val,
+    external_exports.string().max(10).optional()
+  )
 });
 var contactInquirySchema = external_exports.object({
   name: external_exports.string().min(2).max(100),
