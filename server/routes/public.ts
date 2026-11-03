@@ -333,7 +333,9 @@ publicRouter.get('/track/:jobNumber', async (req, res) => {
 });
 
 // 7. Desktop Application Binary Download & Info
-const GITHUB_RELEASE_URL = 'https://github.com/vigneshms2302/ktech-service-management/releases/latest/download/K-Connect-Portable.exe';
+const GITHUB_RELEASE_URL =
+  process.env.DESKTOP_DOWNLOAD_URL ||
+  'https://github.com/vigneshms2302/ktech-service-management/releases/latest/download/K-Connect-Portable.exe';
 
 publicRouter.get(['/download/desktop', '/download/desktop-app'], (_req, res) => {
   const candidatePaths = [

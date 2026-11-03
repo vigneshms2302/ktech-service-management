@@ -54,7 +54,7 @@ export function getApiBaseUrl(): string {
   }
 
   // Packaged desktop app running from local file (file://): default to active local backend
-  return 'http://localhost:5000';
+  return 'https://ktech-service-management.vercel.app';
 }
 
 export function setApiBaseUrl(url: string): void {
@@ -210,6 +210,19 @@ export const saasApi = {
 
     getById: async (params: { jobId: string }) => {
       return apiFetch(`/api/jobs/${params.jobId}`);
+    },
+
+    search: async (params: { query: string; limit?: number }) => {
+      const q = new URLSearchParams();
+      if (params.query) q.append('search', params.query);
+      if (params.limit) q.append('limit', String(params.limit));
+      const query = q.toString() ? `?${q.toString()}` : '';
+      const res = await apiFetch(`/api/customers${query}`);
+      if (res.success && res.data) {
+        const customers = Array.isArray(res.data) ? res.data : (res.data?.customers || []);
+        return { success: true, data: customers };
+      }
+      return res;
     },
 
     create: async (payload: any) => {

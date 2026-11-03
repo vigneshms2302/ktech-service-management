@@ -94920,8 +94920,20 @@ customersRouter.get("/", async (req, res) => {
     const args = [shopId];
     if (search) {
       const q = `%${String(search).trim()}%`;
-      query += ` AND (c.full_name LIKE ? OR c.primary_phone LIKE ? OR c.customer_code LIKE ? OR c.email LIKE ?)`;
-      args.push(q, q, q, q);
+      const cleanDigits = String(search).replace(/[^0-9]/g, "");
+      if (cleanDigits.length >= 4) {
+        query += ` AND (
+          c.full_name LIKE ? OR 
+          c.primary_phone LIKE ? OR 
+          c.customer_code LIKE ? OR 
+          c.email LIKE ? OR 
+          REPLACE(REPLACE(REPLACE(c.primary_phone, ' ', ''), '-', ''), '+', '') LIKE ?
+        )`;
+        args.push(q, q, q, q, `%${cleanDigits}%`);
+      } else {
+        query += ` AND (c.full_name LIKE ? OR c.primary_phone LIKE ? OR c.customer_code LIKE ? OR c.email LIKE ?)`;
+        args.push(q, q, q, q);
+      }
     }
     query += ` ORDER BY c.created_at DESC LIMIT ? OFFSET ?`;
     args.push(Number(limit), Number(offset));
@@ -96040,7 +96052,7 @@ publicRouter.get("/track/:jobNumber", async (req, res) => {
     res.status(500).json({ success: false, error: error62.message });
   }
 });
-var GITHUB_RELEASE_URL = "https://github.com/vigneshms2302/ktech-service-management/releases/latest/download/K-Connect-Portable.exe";
+var GITHUB_RELEASE_URL = process.env.DESKTOP_DOWNLOAD_URL || "https://github.com/vigneshms2302/ktech-service-management/releases/latest/download/K-Connect-Portable.exe";
 publicRouter.get(["/download/desktop", "/download/desktop-app"], (_req, res) => {
   const candidatePaths = [
     import_node_path2.default.join(process.cwd(), "public", "downloads", "K-Connect-Portable.exe"),
