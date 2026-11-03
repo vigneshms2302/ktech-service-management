@@ -72,6 +72,19 @@ inventoryRouter.post('/items', async (req, res) => {
     const itemId = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const finalSku = sku ? sku.trim().toUpperCase() : `SKU-${Date.now().toString().slice(-6)}`;
 
+    // Verify SKU uniqueness in current shop
+    const dupSku = await client.execute({
+      sql: `SELECT id, name FROM inventory_items WHERE shop_id = ? AND UPPER(sku) = ? LIMIT 1`,
+      args: [shopId, finalSku],
+    });
+    if (dupSku.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        field: 'sku',
+        error: `SKU code "${finalSku}" is already in use by item "${dupSku.rows[0].name}". Please use a unique SKU.`,
+      });
+    }
+
     // Ensure category exists or create default
     let catId = categoryId;
     if (!catId) {

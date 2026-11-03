@@ -93492,6 +93492,18 @@ authRouter.post("/users", authenticateToken, validateBody(createUserSchema), asy
   try {
     const { username, fullName, roleId, password, pinCode, phone } = req.body;
     const client = getClient();
+    const cleanUsername = username.trim().toLowerCase();
+    const dupUser = await client.execute({
+      sql: `SELECT id FROM users WHERE shop_id = ? AND LOWER(username) = ?`,
+      args: [req.user.shopId, cleanUsername]
+    });
+    if (dupUser.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        field: "username",
+        error: `Username "${cleanUsername}" is already taken in this shop. Please choose another username.`
+      });
+    }
     const userId = `USR-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const passwordHash = hashPassword(password && password.trim() ? password.trim() : "kconnect123");
     const pin = pinCode && pinCode.trim() ? pinCode.trim() : "1234";
@@ -93501,7 +93513,7 @@ authRouter.post("/users", authenticateToken, validateBody(createUserSchema), asy
       args: [
         userId,
         req.user.shopId,
-        username.trim().toLowerCase(),
+        cleanUsername,
         fullName.trim(),
         roleId || "ROLE_TECHNICIAN",
         passwordHash,
@@ -93509,7 +93521,7 @@ authRouter.post("/users", authenticateToken, validateBody(createUserSchema), asy
         phone ? phone.trim() : null
       ]
     });
-    res.json({ success: true, data: { id: userId, username, fullName, roleId } });
+    res.json({ success: true, data: { id: userId, username: cleanUsername, fullName, roleId } });
   } catch (error62) {
     res.status(500).json({ success: false, error: error62.message });
   }
@@ -94706,6 +94718,10 @@ jobsRouter.get("/:id", async (req, res) => {
             createdAt: row.created_at
           };
         }),
+        history: historyRes.rows,
+        services: servicesRes.rows,
+        parts: partsRes.rows,
+        activities: activitiesRes.rows,
         attachments: [],
         timeline: historyRes.rows.map((r) => {
           const row = r;
@@ -95100,7 +95116,8 @@ customersRouter.post("/", validateBody(createCustomerSchema), async (req, res) =
         const dup = existingPhone.rows[0];
         res.status(409).json({
           success: false,
-          error: `A customer with this phone number already exists: ${dup.full_name} (${dup.customer_code}). Please use the existing customer.`,
+          field: "primaryPhone",
+          error: `A customer with this phone number already exists: ${dup.full_name} (${dup.customer_code}). Please use the existing customer profile.`,
           data: {
             id: dup.id,
             customerCode: dup.customer_code,
@@ -95109,6 +95126,36 @@ customersRouter.post("/", validateBody(createCustomerSchema), async (req, res) =
           }
         });
         return;
+      }
+    }
+    if (email3 && email3.trim() && !req.body.forceDuplicate) {
+      const cleanEmail = email3.trim().toLowerCase();
+      const existingEmail = await client.execute({
+        sql: `SELECT id, customer_code, full_name FROM customers WHERE shop_id = ? AND LOWER(email) = ? LIMIT 1`,
+        args: [shopId, cleanEmail]
+      });
+      if (existingEmail.rows.length > 0) {
+        const dup = existingEmail.rows[0];
+        return res.status(409).json({
+          success: false,
+          field: "email",
+          error: `A customer with email "${cleanEmail}" already exists: ${dup.full_name} (${dup.customer_code}).`
+        });
+      }
+    }
+    if (gstin && gstin.trim() && !req.body.forceDuplicate) {
+      const cleanGstin = gstin.trim().toUpperCase();
+      const existingGstin = await client.execute({
+        sql: `SELECT id, customer_code, full_name FROM customers WHERE shop_id = ? AND UPPER(gstin) = ? LIMIT 1`,
+        args: [shopId, cleanGstin]
+      });
+      if (existingGstin.rows.length > 0) {
+        const dup = existingGstin.rows[0];
+        return res.status(409).json({
+          success: false,
+          field: "gstin",
+          error: `A customer with GSTIN "${cleanGstin}" already exists: ${dup.full_name} (${dup.customer_code}).`
+        });
       }
     }
     const countRes = await client.execute({
@@ -95180,6 +95227,55 @@ customersRouter.put("/:id", validateBody(updateCustomerSchema), async (req, res)
     const customer = existingRes.rows[0];
     const actualCustomerId = String(customer.id);
     const { fullName, primaryPhone, secondaryPhone, email: email3, gstin, customerType, notes, addressLine1, addressLine2, city, state, pincode } = req.body;
+    if (primaryPhone !== void 0 && primaryPhone.trim()) {
+      const cleanDigits = primaryPhone.replace(/[^0-9]/g, "");
+      const existingPhone = await client.execute({
+        sql: `SELECT id, customer_code, full_name FROM customers 
+              WHERE shop_id = ? AND id != ? AND (
+                primary_phone = ? OR 
+                REPLACE(REPLACE(REPLACE(primary_phone, ' ', ''), '-', ''), '+', '') = ?
+              ) LIMIT 1`,
+        args: [shopId, actualCustomerId, primaryPhone.trim(), cleanDigits]
+      });
+      if (existingPhone.rows.length > 0) {
+        const dup = existingPhone.rows[0];
+        return res.status(409).json({
+          success: false,
+          field: "primaryPhone",
+          error: `Phone number is already used by another customer: ${dup.full_name} (${dup.customer_code}).`
+        });
+      }
+    }
+    if (email3 !== void 0 && email3 && email3.trim()) {
+      const cleanEmail = email3.trim().toLowerCase();
+      const existingEmail = await client.execute({
+        sql: `SELECT id, customer_code, full_name FROM customers WHERE shop_id = ? AND id != ? AND LOWER(email) = ? LIMIT 1`,
+        args: [shopId, actualCustomerId, cleanEmail]
+      });
+      if (existingEmail.rows.length > 0) {
+        const dup = existingEmail.rows[0];
+        return res.status(409).json({
+          success: false,
+          field: "email",
+          error: `Email is already used by another customer: ${dup.full_name} (${dup.customer_code}).`
+        });
+      }
+    }
+    if (gstin !== void 0 && gstin && gstin.trim()) {
+      const cleanGstin = gstin.trim().toUpperCase();
+      const existingGstin = await client.execute({
+        sql: `SELECT id, customer_code, full_name FROM customers WHERE shop_id = ? AND id != ? AND UPPER(gstin) = ? LIMIT 1`,
+        args: [shopId, actualCustomerId, cleanGstin]
+      });
+      if (existingGstin.rows.length > 0) {
+        const dup = existingGstin.rows[0];
+        return res.status(409).json({
+          success: false,
+          field: "gstin",
+          error: `GSTIN is already used by another customer: ${dup.full_name} (${dup.customer_code}).`
+        });
+      }
+    }
     const updates = [];
     const args = [];
     if (fullName !== void 0) {
@@ -95478,6 +95574,24 @@ customersRouter.post("/:id/devices", validateBody(addDeviceSchema), async (req, 
     }
     const actualCustomerId = String(custRes.rows[0].id);
     const { equipmentType, brand, modelName, serialNumber, colorFinish, passcode, specsSummary } = req.body;
+    if (serialNumber && serialNumber.trim()) {
+      const cleanSerial = serialNumber.trim();
+      const dupDev = await client.execute({
+        sql: `SELECT d.id, d.brand, d.model_name, c.full_name as customer_name, c.customer_code
+              FROM devices d
+              JOIN customers c ON d.customer_id = c.id
+              WHERE d.shop_id = ? AND LOWER(TRIM(d.serial_number)) = LOWER(TRIM(?)) LIMIT 1`,
+        args: [shopId, cleanSerial]
+      });
+      if (dupDev.rows.length > 0) {
+        const existing = dupDev.rows[0];
+        return res.status(409).json({
+          success: false,
+          field: "serialNumber",
+          error: `A device with Serial Number "${cleanSerial}" is already registered: ${existing.brand} ${existing.model_name} under customer ${existing.customer_name} (${existing.customer_code}).`
+        });
+      }
+    }
     const deviceId = `DEV-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     await client.execute({
       sql: `INSERT INTO devices (id, shop_id, customer_id, equipment_type, brand, model_name, serial_number, color_finish, encrypted_security_passcode, specs_summary)
@@ -95897,6 +96011,17 @@ inventoryRouter.post("/items", async (req, res) => {
     } = req.body;
     const itemId = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const finalSku = sku ? sku.trim().toUpperCase() : `SKU-${Date.now().toString().slice(-6)}`;
+    const dupSku = await client.execute({
+      sql: `SELECT id, name FROM inventory_items WHERE shop_id = ? AND UPPER(sku) = ? LIMIT 1`,
+      args: [shopId, finalSku]
+    });
+    if (dupSku.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        field: "sku",
+        error: `SKU code "${finalSku}" is already in use by item "${dupSku.rows[0].name}". Please use a unique SKU.`
+      });
+    }
     let catId = categoryId;
     if (!catId) {
       const catRes = await client.execute({
@@ -96111,16 +96236,16 @@ var import_node_path2 = __toESM(require("node:path"));
 var import_node_fs2 = __toESM(require("node:fs"));
 var publicRouter = (0, import_express7.Router)();
 var publicRegistrationSchema = external_exports.object({
-  shopName: external_exports.string().min(2, "Shop name must be at least 2 characters").max(100),
-  slug: external_exports.string().min(3, "Shop slug must be at least 3 characters").max(50).regex(/^[a-z0-9-_]+$/i, "Slug must contain only alphanumeric characters, dashes, or underscores"),
-  ownerName: external_exports.string().min(2, "Owner name must be at least 2 characters").max(100),
-  phone: external_exports.string().min(10, "Valid 10-digit mobile number required").max(15),
-  email: external_exports.string().email("Invalid email address").optional(),
-  username: external_exports.string().min(3).max(50).default("admin"),
+  shopName: external_exports.string().trim().min(2, "Shop name must be at least 2 characters").max(100),
+  slug: external_exports.string().trim().min(3, "Shop URL handle must be at least 3 characters").max(50).regex(/^[a-z0-9-_]+$/i, "Slug must contain only alphanumeric characters, dashes, or underscores"),
+  ownerName: external_exports.string().trim().min(2, "Owner name must be at least 2 characters").max(100),
+  phone: external_exports.string().trim().min(10, "Valid 10-digit mobile number required").max(20),
+  email: external_exports.string().trim().email("Please enter a valid email address").optional().or(external_exports.literal("")).nullable(),
+  username: external_exports.string().trim().min(3).max(50).default("admin"),
   password: external_exports.string().min(6, "Password must be at least 6 characters"),
-  city: external_exports.string().max(100).default("Coimbatore"),
-  state: external_exports.string().max(100).default("Tamil Nadu"),
-  pincode: external_exports.string().max(10).optional()
+  city: external_exports.string().trim().min(2, "City is required").max(100).default("Coimbatore"),
+  state: external_exports.string().trim().min(2, "State is required").max(100).default("Tamil Nadu"),
+  pincode: external_exports.string().trim().max(10).optional().or(external_exports.literal("")).nullable()
 });
 var contactInquirySchema = external_exports.object({
   name: external_exports.string().min(2).max(100),
@@ -96129,19 +96254,74 @@ var contactInquirySchema = external_exports.object({
   subject: external_exports.string().min(2).max(150),
   message: external_exports.string().min(10).max(2e3)
 });
+publicRouter.get("/check-availability", async (req, res) => {
+  try {
+    const { slug, email: email3, phone } = req.query;
+    const client = getClient();
+    const result = {};
+    if (slug) {
+      const cleanSlug = String(slug).trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+      const shopId = `shop_${cleanSlug}`;
+      if (cleanSlug.length < 3) {
+        result.slug = { available: false, message: "URL handle must be at least 3 characters." };
+      } else {
+        const checkRes = await client.execute({
+          sql: `SELECT id FROM shops WHERE slug = ? OR id = ?`,
+          args: [cleanSlug, shopId]
+        });
+        if (checkRes.rows.length > 0) {
+          result.slug = { available: false, message: `Shop handle "${cleanSlug}" is already taken.` };
+        } else {
+          result.slug = { available: true, message: `"${cleanSlug}" is available!` };
+        }
+      }
+    }
+    if (email3 && String(email3).trim()) {
+      const cleanEmail = String(email3).trim().toLowerCase();
+      const emailRes = await client.execute({
+        sql: `SELECT id, name FROM shops WHERE LOWER(email) = ? LIMIT 1`,
+        args: [cleanEmail]
+      });
+      if (emailRes.rows.length > 0) {
+        result.email = { available: false, message: `Email "${cleanEmail}" is already registered to a shop.` };
+      } else {
+        result.email = { available: true, message: "Email is available" };
+      }
+    }
+    if (phone && String(phone).trim()) {
+      const cleanDigits = String(phone).replace(/[^0-9]/g, "");
+      if (cleanDigits.length >= 10) {
+        const last10 = cleanDigits.slice(-10);
+        const phoneRes = await client.execute({
+          sql: `SELECT id, name FROM shops WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') LIKE ? LIMIT 1`,
+          args: [`%${last10}`]
+        });
+        if (phoneRes.rows.length > 0) {
+          result.phone = { available: false, message: `Mobile number is already registered with shop "${phoneRes.rows[0].name}".` };
+        } else {
+          result.phone = { available: true, message: "Mobile number is available" };
+        }
+      }
+    }
+    res.json({ success: true, data: result });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
 publicRouter.post("/register", validateBody(publicRegistrationSchema), async (req, res) => {
   try {
     const { shopName, slug, ownerName, phone, email: email3, username, password, city, state, pincode } = req.body;
     const client = getClient();
     const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
     const shopId = `shop_${cleanSlug}`;
-    const checkRes = await client.execute({
-      sql: `SELECT id FROM shops WHERE slug = ? OR id = ?`,
+    const checkSlug = await client.execute({
+      sql: `SELECT id, name FROM shops WHERE slug = ? OR id = ?`,
       args: [cleanSlug, shopId]
     });
-    if (checkRes.rows.length > 0) {
+    if (checkSlug.rows.length > 0) {
       res.status(400).json({
         success: false,
+        field: "slug",
         error: `Shop address URL "${cleanSlug}" is already taken. Please choose another shop handle.`
       });
       return;

@@ -738,6 +738,14 @@ export const saasApi = {
 
   // Public Visitor & Customer Status Tracking
   public: {
+    checkAvailability: async (params: { slug?: string; email?: string; phone?: string }) => {
+      const q = new URLSearchParams();
+      if (params.slug) q.append('slug', params.slug);
+      if (params.email) q.append('email', params.email);
+      if (params.phone) q.append('phone', params.phone);
+      return apiFetch(`/api/public/check-availability?${q.toString()}`);
+    },
+
     register: async (payload: any) => {
       const res = await apiFetch('/api/public/register', {
         method: 'POST',

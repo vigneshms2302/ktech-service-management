@@ -9,20 +9,21 @@ import { z } from 'zod';
 export const publicRouter = Router();
 
 const publicRegistrationSchema = z.object({
-  shopName: z.string().min(2, 'Shop name must be at least 2 characters').max(100),
+  shopName: z.string().trim().min(2, 'Shop name must be at least 2 characters').max(100),
   slug: z
     .string()
-    .min(3, 'Shop slug must be at least 3 characters')
+    .trim()
+    .min(3, 'Shop URL handle must be at least 3 characters')
     .max(50)
     .regex(/^[a-z0-9-_]+$/i, 'Slug must contain only alphanumeric characters, dashes, or underscores'),
-  ownerName: z.string().min(2, 'Owner name must be at least 2 characters').max(100),
-  phone: z.string().min(10, 'Valid 10-digit mobile number required').max(15),
-  email: z.string().email('Invalid email address').optional(),
-  username: z.string().min(3).max(50).default('admin'),
+  ownerName: z.string().trim().min(2, 'Owner name must be at least 2 characters').max(100),
+  phone: z.string().trim().min(10, 'Valid 10-digit mobile number required').max(20),
+  email: z.string().trim().email('Please enter a valid email address').optional().or(z.literal('')).nullable(),
+  username: z.string().trim().min(3).max(50).default('admin'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  city: z.string().max(100).default('Coimbatore'),
-  state: z.string().max(100).default('Tamil Nadu'),
-  pincode: z.string().max(10).optional(),
+  city: z.string().trim().min(2, 'City is required').max(100).default('Coimbatore'),
+  state: z.string().trim().min(2, 'State is required').max(100).default('Tamil Nadu'),
+  pincode: z.string().trim().max(10).optional().or(z.literal('')).nullable(),
 });
 
 const contactInquirySchema = z.object({
@@ -31,6 +32,70 @@ const contactInquirySchema = z.object({
   phone: z.string().min(10).max(15).optional(),
   subject: z.string().min(2).max(150),
   message: z.string().min(10).max(2000),
+});
+
+// 0. Live Availability & Duplication Pre-Check (For Real-Time Validation on /signup)
+publicRouter.get('/check-availability', async (req, res) => {
+  try {
+    const { slug, email, phone } = req.query;
+    const client = getClient();
+    const result: {
+      slug?: { available: boolean; message?: string };
+      email?: { available: boolean; message?: string };
+      phone?: { available: boolean; message?: string };
+    } = {};
+
+    if (slug) {
+      const cleanSlug = String(slug).trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+      const shopId = `shop_${cleanSlug}`;
+      if (cleanSlug.length < 3) {
+        result.slug = { available: false, message: 'URL handle must be at least 3 characters.' };
+      } else {
+        const checkRes = await client.execute({
+          sql: `SELECT id FROM shops WHERE slug = ? OR id = ?`,
+          args: [cleanSlug, shopId],
+        });
+        if (checkRes.rows.length > 0) {
+          result.slug = { available: false, message: `Shop handle "${cleanSlug}" is already taken.` };
+        } else {
+          result.slug = { available: true, message: `"${cleanSlug}" is available!` };
+        }
+      }
+    }
+
+    if (email && String(email).trim()) {
+      const cleanEmail = String(email).trim().toLowerCase();
+      const emailRes = await client.execute({
+        sql: `SELECT id, name FROM shops WHERE LOWER(email) = ? LIMIT 1`,
+        args: [cleanEmail],
+      });
+      if (emailRes.rows.length > 0) {
+        result.email = { available: false, message: `Email "${cleanEmail}" is already registered to a shop.` };
+      } else {
+        result.email = { available: true, message: 'Email is available' };
+      }
+    }
+
+    if (phone && String(phone).trim()) {
+      const cleanDigits = String(phone).replace(/[^0-9]/g, '');
+      if (cleanDigits.length >= 10) {
+        const last10 = cleanDigits.slice(-10);
+        const phoneRes = await client.execute({
+          sql: `SELECT id, name FROM shops WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') LIKE ? LIMIT 1`,
+          args: [`%${last10}`],
+        });
+        if (phoneRes.rows.length > 0) {
+          result.phone = { available: false, message: `Mobile number is already registered with shop "${phoneRes.rows[0].name}".` };
+        } else {
+          result.phone = { available: true, message: 'Mobile number is available' };
+        }
+      }
+    }
+
+    res.json({ success: true, data: result });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
 });
 
 // 1. Self-Service Customer Registration & Instant 14-Day Free Trial Provisioning
@@ -42,15 +107,16 @@ publicRouter.post('/register', validateBody(publicRegistrationSchema), async (re
     const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
     const shopId = `shop_${cleanSlug}`;
 
-    // Verify slug uniqueness
-    const checkRes = await client.execute({
-      sql: `SELECT id FROM shops WHERE slug = ? OR id = ?`,
+    // 1. Verify slug uniqueness
+    const checkSlug = await client.execute({
+      sql: `SELECT id, name FROM shops WHERE slug = ? OR id = ?`,
       args: [cleanSlug, shopId],
     });
 
-    if (checkRes.rows.length > 0) {
+    if (checkSlug.rows.length > 0) {
       res.status(400).json({
         success: false,
+        field: 'slug',
         error: `Shop address URL "${cleanSlug}" is already taken. Please choose another shop handle.`,
       });
       return;

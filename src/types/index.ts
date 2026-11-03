@@ -401,6 +401,7 @@ export interface IPCResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+  field?: string;
 }
 
 export interface ElectronAPI {

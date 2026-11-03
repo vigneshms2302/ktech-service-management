@@ -102,7 +102,8 @@ customersRouter.post('/', validateBody(createCustomerSchema), async (req, res) =
         const dup = existingPhone.rows[0] as Record<string, unknown>;
         res.status(409).json({
           success: false,
-          error: `A customer with this phone number already exists: ${dup.full_name} (${dup.customer_code}). Please use the existing customer.`,
+          field: 'primaryPhone',
+          error: `A customer with this phone number already exists: ${dup.full_name} (${dup.customer_code}). Please use the existing customer profile.`,
           data: {
             id: dup.id,
             customerCode: dup.customer_code,
@@ -111,6 +112,40 @@ customersRouter.post('/', validateBody(createCustomerSchema), async (req, res) =
           },
         });
         return;
+      }
+    }
+
+    // Check duplicate email in this shop
+    if (email && email.trim() && !req.body.forceDuplicate) {
+      const cleanEmail = email.trim().toLowerCase();
+      const existingEmail = await client.execute({
+        sql: `SELECT id, customer_code, full_name FROM customers WHERE shop_id = ? AND LOWER(email) = ? LIMIT 1`,
+        args: [shopId, cleanEmail],
+      });
+      if (existingEmail.rows.length > 0) {
+        const dup = existingEmail.rows[0] as Record<string, unknown>;
+        return res.status(409).json({
+          success: false,
+          field: 'email',
+          error: `A customer with email "${cleanEmail}" already exists: ${dup.full_name} (${dup.customer_code}).`,
+        });
+      }
+    }
+
+    // Check duplicate GSTIN in this shop
+    if (gstin && gstin.trim() && !req.body.forceDuplicate) {
+      const cleanGstin = gstin.trim().toUpperCase();
+      const existingGstin = await client.execute({
+        sql: `SELECT id, customer_code, full_name FROM customers WHERE shop_id = ? AND UPPER(gstin) = ? LIMIT 1`,
+        args: [shopId, cleanGstin],
+      });
+      if (existingGstin.rows.length > 0) {
+        const dup = existingGstin.rows[0] as Record<string, unknown>;
+        return res.status(409).json({
+          success: false,
+          field: 'gstin',
+          error: `A customer with GSTIN "${cleanGstin}" already exists: ${dup.full_name} (${dup.customer_code}).`,
+        });
       }
     }
 
@@ -194,6 +229,61 @@ customersRouter.put('/:id', validateBody(updateCustomerSchema), async (req, res)
     const actualCustomerId = String(customer.id);
 
     const { fullName, primaryPhone, secondaryPhone, email, gstin, customerType, notes, addressLine1, addressLine2, city, state, pincode } = req.body;
+
+    // Check duplicate phone if updating phone
+    if (primaryPhone !== undefined && primaryPhone.trim()) {
+      const cleanDigits = primaryPhone.replace(/[^0-9]/g, '');
+      const existingPhone = await client.execute({
+        sql: `SELECT id, customer_code, full_name FROM customers 
+              WHERE shop_id = ? AND id != ? AND (
+                primary_phone = ? OR 
+                REPLACE(REPLACE(REPLACE(primary_phone, ' ', ''), '-', ''), '+', '') = ?
+              ) LIMIT 1`,
+        args: [shopId, actualCustomerId, primaryPhone.trim(), cleanDigits],
+      });
+      if (existingPhone.rows.length > 0) {
+        const dup = existingPhone.rows[0] as Record<string, unknown>;
+        return res.status(409).json({
+          success: false,
+          field: 'primaryPhone',
+          error: `Phone number is already used by another customer: ${dup.full_name} (${dup.customer_code}).`,
+        });
+      }
+    }
+
+    // Check duplicate email if updating email
+    if (email !== undefined && email && email.trim()) {
+      const cleanEmail = email.trim().toLowerCase();
+      const existingEmail = await client.execute({
+        sql: `SELECT id, customer_code, full_name FROM customers WHERE shop_id = ? AND id != ? AND LOWER(email) = ? LIMIT 1`,
+        args: [shopId, actualCustomerId, cleanEmail],
+      });
+      if (existingEmail.rows.length > 0) {
+        const dup = existingEmail.rows[0] as Record<string, unknown>;
+        return res.status(409).json({
+          success: false,
+          field: 'email',
+          error: `Email is already used by another customer: ${dup.full_name} (${dup.customer_code}).`,
+        });
+      }
+    }
+
+    // Check duplicate GSTIN if updating GSTIN
+    if (gstin !== undefined && gstin && gstin.trim()) {
+      const cleanGstin = gstin.trim().toUpperCase();
+      const existingGstin = await client.execute({
+        sql: `SELECT id, customer_code, full_name FROM customers WHERE shop_id = ? AND id != ? AND UPPER(gstin) = ? LIMIT 1`,
+        args: [shopId, actualCustomerId, cleanGstin],
+      });
+      if (existingGstin.rows.length > 0) {
+        const dup = existingGstin.rows[0] as Record<string, unknown>;
+        return res.status(409).json({
+          success: false,
+          field: 'gstin',
+          error: `GSTIN is already used by another customer: ${dup.full_name} (${dup.customer_code}).`,
+        });
+      }
+    }
 
     const updates: string[] = [];
     const args: (string | null)[] = [];
@@ -537,6 +627,26 @@ customersRouter.post('/:id/devices', validateBody(addDeviceSchema), async (req, 
     const actualCustomerId = String(custRes.rows[0].id);
 
     const { equipmentType, brand, modelName, serialNumber, colorFinish, passcode, specsSummary } = req.body;
+
+    // Verify serial number uniqueness in this shop if provided
+    if (serialNumber && serialNumber.trim()) {
+      const cleanSerial = serialNumber.trim();
+      const dupDev = await client.execute({
+        sql: `SELECT d.id, d.brand, d.model_name, c.full_name as customer_name, c.customer_code
+              FROM devices d
+              JOIN customers c ON d.customer_id = c.id
+              WHERE d.shop_id = ? AND LOWER(TRIM(d.serial_number)) = LOWER(TRIM(?)) LIMIT 1`,
+        args: [shopId, cleanSerial],
+      });
+      if (dupDev.rows.length > 0) {
+        const existing = dupDev.rows[0] as Record<string, unknown>;
+        return res.status(409).json({
+          success: false,
+          field: 'serialNumber',
+          error: `A device with Serial Number "${cleanSerial}" is already registered: ${existing.brand} ${existing.model_name} under customer ${existing.customer_name} (${existing.customer_code}).`,
+        });
+      }
+    }
 
     const deviceId = `DEV-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 

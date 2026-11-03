@@ -57,6 +57,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [brandError, setBrandError] = useState(false);
   const [modelError, setModelError] = useState(false);
+  const [serialError, setSerialError] = useState(false);
   const { showError, showSuccess } = useToast();
   const [error, setError] = useState<string | null>(null);
 
@@ -149,7 +150,14 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
         onEquipmentCreated(res.data);
         onClose();
       } else {
-        setError(res.error || 'Failed to create equipment record');
+        const err = res.error || 'Failed to create equipment record';
+        setError(err);
+        showError(err);
+        if (res.field === 'serialNumber') {
+          setSerialError(true);
+          const el = document.getElementById('equipmentSerialInput');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }
     } finally {
       setIsLoading(false);
@@ -434,11 +442,13 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
                 {category === 'MOBILE' ? 'IMEI / SERIAL NUMBER' : 'SERIAL NUMBER / SERVICE TAG'}
               </label>
               <input
+                id="equipmentSerialInput"
                 type="text"
-                className="input-field"
+                className={`input-field ${serialError ? 'input-error' : ''}`}
                 value={serialNumber}
                 onChange={(e) => {
                   setSerialNumber(e.target.value);
+                  setSerialError(false);
                   checkDuplicates(e.target.value, brand, modelName);
                 }}
                 onBlur={() => {

@@ -470,6 +470,10 @@ jobsRouter.get('/:id', async (req, res) => {
             createdAt: row.created_at,
           };
         }),
+        history: historyRes.rows,
+        services: servicesRes.rows,
+        parts: partsRes.rows,
+        activities: activitiesRes.rows,
         attachments: [],
         timeline: historyRes.rows.map((r) => {
           const row = r as Record<string, unknown>;

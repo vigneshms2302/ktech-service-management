@@ -287,6 +287,21 @@ authRouter.post('/users', authenticateToken, validateBody(createUserSchema), asy
   try {
     const { username, fullName, roleId, password, pinCode, phone } = req.body;
     const client = getClient();
+    const cleanUsername = username.trim().toLowerCase();
+
+    // Check username uniqueness in current shop
+    const dupUser = await client.execute({
+      sql: `SELECT id FROM users WHERE shop_id = ? AND LOWER(username) = ?`,
+      args: [req.user!.shopId, cleanUsername],
+    });
+    if (dupUser.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        field: 'username',
+        error: `Username "${cleanUsername}" is already taken in this shop. Please choose another username.`,
+      });
+    }
+
     const userId = `USR-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const passwordHash = hashPassword(password && password.trim() ? password.trim() : 'kconnect123');
     const pin = pinCode && pinCode.trim() ? pinCode.trim() : '1234';
@@ -297,7 +312,7 @@ authRouter.post('/users', authenticateToken, validateBody(createUserSchema), asy
       args: [
         userId,
         req.user!.shopId,
-        username.trim().toLowerCase(),
+        cleanUsername,
         fullName.trim(),
         roleId || 'ROLE_TECHNICIAN',
         passwordHash,
@@ -306,7 +321,7 @@ authRouter.post('/users', authenticateToken, validateBody(createUserSchema), asy
       ],
     });
 
-    res.json({ success: true, data: { id: userId, username, fullName, roleId } });
+    res.json({ success: true, data: { id: userId, username: cleanUsername, fullName, roleId } });
   } catch (error: unknown) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }

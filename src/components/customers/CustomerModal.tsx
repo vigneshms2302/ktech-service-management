@@ -53,6 +53,8 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [fullNameError, setFullNameError] = useState(false);
   const [phoneError, setPhoneError] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+  const [gstinError, setGstinError] = useState(false);
   const { showError, showSuccess } = useToast();
   const [error, setError] = useState<string | null>(null);
 
@@ -127,19 +129,41 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFullNameError(false);
+    setPhoneError(false);
+    setEmailError(false);
+    setGstinError(false);
+
     if (!fullName.trim()) {
       setFullNameError(true);
-      setError('Customer name is required');
-      showError('Customer name is required');
+      setError('Customer full name is required');
+      showError('Customer full name is required');
       const el = document.getElementById('customerFullNameInput');
       if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); (el as HTMLElement).focus(); }
       return;
     }
-    if (!primaryPhone.trim()) {
+    const cleanDigits = primaryPhone.replace(/[^0-9]/g, '');
+    if (!primaryPhone.trim() || cleanDigits.length < 10) {
       setPhoneError(true);
-      setError('Primary phone number is required');
-      showError('Primary phone number is required');
+      setError('Valid 10-digit primary phone number is required');
+      showError('Valid 10-digit primary phone number is required');
       const el = document.getElementById('customerPhoneInput');
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); (el as HTMLElement).focus(); }
+      return;
+    }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setEmailError(true);
+      setError('Please enter a valid email format (e.g. client@gmail.com)');
+      showError('Please enter a valid email format');
+      const el = document.getElementById('customerEmailInput');
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); (el as HTMLElement).focus(); }
+      return;
+    }
+    if (gstin.trim() && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(gstin.trim())) {
+      setGstinError(true);
+      setError('Please enter a valid 15-character GSTIN format (e.g. 33AAAAA0000A1Z5)');
+      showError('Please enter a valid 15-character GSTIN format');
+      const el = document.getElementById('customerGstinInput');
       if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); (el as HTMLElement).focus(); }
       return;
     }
@@ -186,13 +210,29 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           }
           onClose();
         } else {
-          setError(res?.error || 'Failed to update customer record');
+          const err = res?.error || 'Failed to update customer record';
+          setError(err);
+          showError(err);
+          if (res?.field === 'primaryPhone') {
+            setPhoneError(true);
+            const el = document.getElementById('customerPhoneInput');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else if (res?.field === 'email') {
+            setEmailError(true);
+            const el = document.getElementById('customerEmailInput');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else if (res?.field === 'gstin') {
+            setGstinError(true);
+            const el = document.getElementById('customerGstinInput');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
         }
         return;
       }
 
       if (!window.electronAPI?.customers?.create) {
-        setError('Electron customer API unavailable');
+        setError('Customer API unavailable');
+        showError('Customer API unavailable');
         return;
       }
 
@@ -222,7 +262,22 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
         onCustomerCreated(res.data);
         onClose();
       } else {
-        setError(res.error || 'Failed to create customer');
+        const err = res?.error || 'Failed to create customer';
+        setError(err);
+        showError(err);
+        if (res?.field === 'primaryPhone') {
+          setPhoneError(true);
+          const el = document.getElementById('customerPhoneInput');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (res?.field === 'email') {
+          setEmailError(true);
+          const el = document.getElementById('customerEmailInput');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (res?.field === 'gstin') {
+          setGstinError(true);
+          const el = document.getElementById('customerGstinInput');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }
     } finally {
       setIsLoading(false);
@@ -409,11 +464,13 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 EMAIL ADDRESS
               </label>
               <input
+                id="customerEmailInput"
                 type="email"
-                className="input-field"
+                className={`input-field ${emailError ? 'input-error' : ''}`}
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
+                  setEmailError(false);
                   checkDupes(primaryPhone, fullName, e.target.value);
                 }}
                 onBlur={() => setEmail(autoCorrectEmail(email))}
@@ -470,10 +527,14 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 GSTIN (IF APPLICABLE)
               </label>
               <input
+                id="customerGstinInput"
                 type="text"
-                className="input-field"
+                className={`input-field ${gstinError ? 'input-error' : ''}`}
                 value={gstin}
-                onChange={(e) => setGstin(e.target.value)}
+                onChange={(e) => {
+                  setGstin(e.target.value);
+                  setGstinError(false);
+                }}
                 onBlur={() => setGstin(autoCorrectCode(gstin))}
                 placeholder="33AAAAA0000A1Z5"
               />
