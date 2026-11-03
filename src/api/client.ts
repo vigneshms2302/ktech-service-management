@@ -345,10 +345,14 @@ export const saasApi = {
       return res;
     },
 
-    update: async (params: { customerId: string; data: any }) => {
-      return apiFetch(`/api/customers/${params.customerId}`, {
+    update: async (params: { customerId?: string; id?: string; data?: any; [key: string]: any }) => {
+      const customerId = params.customerId || params.id;
+      const data = params.data ? { ...params.data } : { ...params };
+      delete data.customerId;
+      delete data.id;
+      return apiFetch(`/api/customers/${customerId}`, {
         method: 'PUT',
-        body: JSON.stringify(params.data),
+        body: JSON.stringify(data),
       });
     },
 

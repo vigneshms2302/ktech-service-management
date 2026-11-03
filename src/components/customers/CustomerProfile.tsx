@@ -9,10 +9,12 @@ import {
   ArrowLeft,
   Receipt,
   MessageSquare,
+  Edit2,
 } from 'lucide-react';
 import type { CustomerProfileData } from '../../types/index.ts';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
 import { EquipmentModal } from '../equipment/EquipmentModal.tsx';
+import { CustomerModal } from './CustomerModal.tsx';
 import { useShop } from '../../context/ShopContext.tsx';
 
 interface CustomerProfileProps {
@@ -38,6 +40,7 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'devices' | 'jobs' | 'invoices'>('devices');
   const [isEquipmentModalOpen, setIsEquipmentModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const fetchProfile = useCallback(async () => {
     setIsLoading(true);
@@ -161,7 +164,19 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
               {customer.fullName.charAt(0)}
             </div>
             <div>
-              <h1 style={{ fontSize: '18px', fontWeight: 700, lineHeight: 1.2 }}>{customer.fullName}</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h1 style={{ fontSize: '18px', fontWeight: 700, lineHeight: 1.2 }}>{customer.fullName}</h1>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setIsEditModalOpen(true)}
+                  style={{ padding: '2px 7px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  title="Edit Customer Profile"
+                >
+                  <Edit2 size={11} />
+                  <span>Edit</span>
+                </button>
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px' }}>
                 <span className="badge badge-info" style={{ fontSize: '10px' }}>
                   {customer.customerType}
@@ -272,6 +287,15 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
             >
               <Plus size={14} />
               <span>Register Equipment</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setIsEditModalOpen(true)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+            >
+              <Edit2 size={13} />
+              <span>Edit Customer Details</span>
             </button>
           </div>
         </div>
@@ -575,6 +599,15 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
           )}
         </div>
       )}
+
+      {/* Edit Customer Modal */}
+      <CustomerModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        customerToEdit={{ ...customer, address }}
+        onCustomerUpdated={() => fetchProfile()}
+        onCustomerCreated={() => {}}
+      />
 
       {/* Register Equipment Modal */}
       <EquipmentModal

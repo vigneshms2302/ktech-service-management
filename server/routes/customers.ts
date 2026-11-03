@@ -85,7 +85,7 @@ customersRouter.post('/', validateBody(createCustomerSchema), async (req, res) =
   try {
     const shopId = req.user!.shopId;
     const client = getClient();
-    const { fullName, primaryPhone, secondaryPhone, email, gstin, customerType = 'INDIVIDUAL', notes } = req.body;
+    const { fullName, primaryPhone, secondaryPhone, email, gstin, customerType = 'INDIVIDUAL', notes, addressLine1, addressLine2, city, state, pincode } = req.body;
 
     const countRes = await client.execute({
       sql: `SELECT COUNT(*) as count FROM customers WHERE shop_id = ?`,
@@ -111,6 +111,25 @@ customersRouter.post('/', validateBody(createCustomerSchema), async (req, res) =
         notes || null,
       ],
     });
+
+    // Insert address if provided
+    if (addressLine1 && addressLine1.trim()) {
+      const newAddrId = `ADDR-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      await client.execute({
+        sql: `INSERT INTO customer_addresses (id, shop_id, customer_id, address_line1, address_line2, city, state, pincode, is_default)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        args: [
+          newAddrId,
+          shopId,
+          customerId,
+          addressLine1.trim(),
+          addressLine2 ? addressLine2.trim() : null,
+          city ? city.trim() : 'Coimbatore',
+          state ? state.trim() : 'Tamil Nadu',
+          pincode ? pincode.trim() : null,
+        ],
+      });
+    }
 
     res.json({
       success: true,
@@ -147,7 +166,7 @@ customersRouter.put('/:id', validateBody(updateCustomerSchema), async (req, res)
     const customer = existingRes.rows[0] as Record<string, unknown>;
     const actualCustomerId = String(customer.id);
 
-    const { fullName, primaryPhone, secondaryPhone, email, gstin, customerType, notes } = req.body;
+    const { fullName, primaryPhone, secondaryPhone, email, gstin, customerType, notes, addressLine1, addressLine2, city, state, pincode } = req.body;
 
     const updates: string[] = [];
     const args: (string | null)[] = [];
@@ -188,6 +207,51 @@ customersRouter.put('/:id', validateBody(updateCustomerSchema), async (req, res)
         sql: `UPDATE customers SET ${updates.join(', ')} WHERE shop_id = ? AND id = ?`,
         args,
       });
+    }
+
+    // Update or insert address
+    if (addressLine1 !== undefined || city !== undefined || state !== undefined || pincode !== undefined) {
+      const addrRes = await client.execute({
+        sql: `SELECT id FROM customer_addresses WHERE shop_id = ? AND customer_id = ? LIMIT 1`,
+        args: [shopId, actualCustomerId],
+      });
+      if (addrRes.rows.length > 0) {
+        const addrId = String(addrRes.rows[0].id);
+        await client.execute({
+          sql: `UPDATE customer_addresses SET
+                  address_line1 = COALESCE(?, address_line1),
+                  address_line2 = COALESCE(?, address_line2),
+                  city = COALESCE(?, city),
+                  state = COALESCE(?, state),
+                  pincode = COALESCE(?, pincode)
+                WHERE shop_id = ? AND id = ?`,
+          args: [
+            addressLine1 || null,
+            addressLine2 || null,
+            city || null,
+            state || null,
+            pincode || null,
+            shopId,
+            addrId,
+          ],
+        });
+      } else if (addressLine1) {
+        const newAddrId = `ADDR-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+        await client.execute({
+          sql: `INSERT INTO customer_addresses (id, shop_id, customer_id, address_line1, address_line2, city, state, pincode, is_default)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+          args: [
+            newAddrId,
+            shopId,
+            actualCustomerId,
+            addressLine1.trim(),
+            addressLine2 ? addressLine2.trim() : null,
+            city ? city.trim() : 'Coimbatore',
+            state ? state.trim() : 'Tamil Nadu',
+            pincode ? pincode.trim() : null,
+          ],
+        });
+      }
     }
 
     // Return the updated customer record
@@ -248,6 +312,8 @@ customersRouter.get('/:id', async (req, res) => {
       full_name: rawCustomer.full_name,
       customer_code: rawCustomer.customer_code,
       primary_phone: rawCustomer.primary_phone,
+      secondary_phone: rawCustomer.secondary_phone,
+      customer_type: rawCustomer.customer_type,
     };
 
     const devices = devicesRes.rows.map((r) => {

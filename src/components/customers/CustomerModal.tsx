@@ -19,6 +19,8 @@ interface CustomerModalProps {
   onSelectExisting?: (customerId: string) => void;
   initialPhone?: string;
   initialName?: string;
+  customerToEdit?: any;
+  onCustomerUpdated?: (customer: any) => void;
 }
 
 export const CustomerModal: React.FC<CustomerModalProps> = ({
@@ -28,6 +30,8 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   onSelectExisting,
   initialPhone = '',
   initialName = '',
+  customerToEdit,
+  onCustomerUpdated,
 }) => {
   const [fullName, setFullName] = useState(initialName);
   const [primaryPhone, setPrimaryPhone] = useState(initialPhone);
@@ -50,21 +54,40 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setFullName(initialName);
-      setPrimaryPhone(initialPhone);
-      setSecondaryPhone('');
-      setEmail('');
-      setGstin('');
-      setNotes('');
-      setAddressLine1('');
-      setPincode('');
-      setDuplicates([]);
-      setError(null);
-      if (initialPhone) {
-        checkDupes(initialPhone, initialName, '');
+      if (customerToEdit) {
+        setFullName(customerToEdit.fullName || customerToEdit.full_name || '');
+        setPrimaryPhone(customerToEdit.primaryPhone || customerToEdit.primary_phone || '');
+        setSecondaryPhone(customerToEdit.secondaryPhone || customerToEdit.secondary_phone || '');
+        setEmail(customerToEdit.email || '');
+        setGstin(customerToEdit.gstin || '');
+        const cType = customerToEdit.customerType || customerToEdit.customer_type || 'INDIVIDUAL';
+        setCustomerType(cType === 'COMMERCIAL' || cType === 'BUSINESS' ? 'COMMERCIAL' : 'INDIVIDUAL');
+        setSelectedTypeOption(cType === 'COMMERCIAL' || cType === 'BUSINESS' ? 'COMMERCIAL' : 'INDIVIDUAL');
+        setNotes(customerToEdit.notes || '');
+        const addr = customerToEdit.address || {};
+        setAddressLine1(customerToEdit.addressLine1 || addr.addressLine1 || addr.address_line1 || '');
+        setCity(customerToEdit.city || addr.city || 'Coimbatore');
+        setState(customerToEdit.state || addr.state || 'Tamil Nadu');
+        setPincode(customerToEdit.pincode || addr.pincode || '');
+        setDuplicates([]);
+        setError(null);
+      } else {
+        setFullName(initialName);
+        setPrimaryPhone(initialPhone);
+        setSecondaryPhone('');
+        setEmail('');
+        setGstin('');
+        setNotes('');
+        setAddressLine1('');
+        setPincode('');
+        setDuplicates([]);
+        setError(null);
+        if (initialPhone) {
+          checkDupes(initialPhone, initialName, '');
+        }
       }
     }
-  }, [isOpen, initialPhone, initialName]);
+  }, [isOpen, initialPhone, initialName, customerToEdit]);
 
   const checkDupes = async (phone: string, name: string, mail: string) => {
     if (!phone && !mail && !name) return;
@@ -110,6 +133,49 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
     setIsLoading(true);
     setError(null);
     try {
+      if (customerToEdit) {
+        const custId = customerToEdit.id;
+        let finalNotes = notes.trim();
+        if (selectedTypeOption === 'OTHER' && customCustomerType.trim()) {
+          finalNotes = finalNotes ? `[Category: ${customCustomerType.trim()}] ${finalNotes}` : `[Category: ${customCustomerType.trim()}]`;
+        }
+
+        const res = await (window.electronAPI as any)?.customers?.update({
+          id: custId,
+          customerId: custId,
+          data: {
+            fullName: fullName.trim(),
+            primaryPhone: primaryPhone.trim(),
+            secondaryPhone: secondaryPhone.trim() || null,
+            email: email.trim() || null,
+            gstin: gstin.trim() || null,
+            customerType,
+            notes: finalNotes || null,
+            addressLine1: addressLine1.trim() || null,
+            city: city.trim() || null,
+            state: state.trim() || null,
+            pincode: pincode.trim() || null,
+          },
+          fullName: fullName.trim(),
+          primaryPhone: primaryPhone.trim(),
+          secondaryPhone: secondaryPhone.trim() || null,
+          email: email.trim() || null,
+          gstin: gstin.trim() || null,
+          customerType,
+          notes: finalNotes || null,
+        });
+
+        if (res && res.success) {
+          if (onCustomerUpdated) {
+            onCustomerUpdated({ id: custId, fullName: fullName.trim(), primaryPhone: primaryPhone.trim() });
+          }
+          onClose();
+        } else {
+          setError(res?.error || 'Failed to update customer record');
+        }
+        return;
+      }
+
       if (!window.electronAPI?.customers?.create) {
         setError('Electron customer API unavailable');
         return;
@@ -182,7 +248,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <User size={18} color="var(--brand-primary)" />
-            <span style={{ fontWeight: 700, fontSize: '16px' }}>Add New Customer</span>
+            <span style={{ fontWeight: 700, fontSize: '16px' }}>{customerToEdit ? 'Edit Customer Details' : 'Add New Customer'}</span>
           </div>
           <button
             onClick={onClose}
@@ -492,7 +558,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               className="btn btn-primary"
               disabled={isLoading}
             >
-              {isLoading ? 'Creating Record...' : 'Save & Continue'}
+              {isLoading ? (customerToEdit ? 'Saving Changes...' : 'Creating Record...') : (customerToEdit ? 'Save Changes' : 'Save & Continue')}
             </button>
           </div>
         </form>

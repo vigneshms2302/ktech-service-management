@@ -79,8 +79,13 @@ export const createCustomerSchema = z.object({
   secondaryPhone: z.string().optional().nullable(),
   email: z.string().email('Invalid email address').optional().nullable().or(z.literal('')),
   gstin: z.string().optional().nullable(),
-  customerType: z.enum(['INDIVIDUAL', 'BUSINESS', 'DEALER', 'VIP']).optional(),
+  customerType: z.enum(['INDIVIDUAL', 'BUSINESS', 'COMMERCIAL', 'DEALER', 'VIP']).optional(),
   notes: z.string().optional().nullable(),
+  addressLine1: z.string().optional().nullable(),
+  addressLine2: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  state: z.string().optional().nullable(),
+  pincode: z.string().optional().nullable(),
 });
 
 export const updateCustomerSchema = z.object({
@@ -89,8 +94,13 @@ export const updateCustomerSchema = z.object({
   secondaryPhone: z.string().optional().nullable(),
   email: z.string().email('Invalid email address').optional().nullable().or(z.literal('')),
   gstin: z.string().optional().nullable(),
-  customerType: z.enum(['INDIVIDUAL', 'BUSINESS', 'DEALER', 'VIP']).optional(),
+  customerType: z.enum(['INDIVIDUAL', 'BUSINESS', 'COMMERCIAL', 'DEALER', 'VIP']).optional(),
   notes: z.string().optional().nullable(),
+  addressLine1: z.string().optional().nullable(),
+  addressLine2: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  state: z.string().optional().nullable(),
+  pincode: z.string().optional().nullable(),
 });
 
 export const addDeviceSchema = z.object({

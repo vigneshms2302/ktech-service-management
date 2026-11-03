@@ -93171,8 +93171,13 @@ var createCustomerSchema = external_exports.object({
   secondaryPhone: external_exports.string().optional().nullable(),
   email: external_exports.string().email("Invalid email address").optional().nullable().or(external_exports.literal("")),
   gstin: external_exports.string().optional().nullable(),
-  customerType: external_exports.enum(["INDIVIDUAL", "BUSINESS", "DEALER", "VIP"]).optional(),
-  notes: external_exports.string().optional().nullable()
+  customerType: external_exports.enum(["INDIVIDUAL", "BUSINESS", "COMMERCIAL", "DEALER", "VIP"]).optional(),
+  notes: external_exports.string().optional().nullable(),
+  addressLine1: external_exports.string().optional().nullable(),
+  addressLine2: external_exports.string().optional().nullable(),
+  city: external_exports.string().optional().nullable(),
+  state: external_exports.string().optional().nullable(),
+  pincode: external_exports.string().optional().nullable()
 });
 var updateCustomerSchema = external_exports.object({
   fullName: external_exports.string().min(1, "Full name is required").optional(),
@@ -93180,8 +93185,13 @@ var updateCustomerSchema = external_exports.object({
   secondaryPhone: external_exports.string().optional().nullable(),
   email: external_exports.string().email("Invalid email address").optional().nullable().or(external_exports.literal("")),
   gstin: external_exports.string().optional().nullable(),
-  customerType: external_exports.enum(["INDIVIDUAL", "BUSINESS", "DEALER", "VIP"]).optional(),
-  notes: external_exports.string().optional().nullable()
+  customerType: external_exports.enum(["INDIVIDUAL", "BUSINESS", "COMMERCIAL", "DEALER", "VIP"]).optional(),
+  notes: external_exports.string().optional().nullable(),
+  addressLine1: external_exports.string().optional().nullable(),
+  addressLine2: external_exports.string().optional().nullable(),
+  city: external_exports.string().optional().nullable(),
+  state: external_exports.string().optional().nullable(),
+  pincode: external_exports.string().optional().nullable()
 });
 var addDeviceSchema = external_exports.object({
   equipmentType: external_exports.string().optional(),
@@ -94967,7 +94977,7 @@ customersRouter.post("/", validateBody(createCustomerSchema), async (req, res) =
   try {
     const shopId = req.user.shopId;
     const client = getClient();
-    const { fullName, primaryPhone, secondaryPhone, email: email3, gstin, customerType = "INDIVIDUAL", notes } = req.body;
+    const { fullName, primaryPhone, secondaryPhone, email: email3, gstin, customerType = "INDIVIDUAL", notes, addressLine1, addressLine2, city, state, pincode } = req.body;
     const countRes = await client.execute({
       sql: `SELECT COUNT(*) as count FROM customers WHERE shop_id = ?`,
       args: [shopId]
@@ -94991,6 +95001,23 @@ customersRouter.post("/", validateBody(createCustomerSchema), async (req, res) =
         notes || null
       ]
     });
+    if (addressLine1 && addressLine1.trim()) {
+      const newAddrId = `ADDR-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      await client.execute({
+        sql: `INSERT INTO customer_addresses (id, shop_id, customer_id, address_line1, address_line2, city, state, pincode, is_default)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        args: [
+          newAddrId,
+          shopId,
+          customerId,
+          addressLine1.trim(),
+          addressLine2 ? addressLine2.trim() : null,
+          city ? city.trim() : "Coimbatore",
+          state ? state.trim() : "Tamil Nadu",
+          pincode ? pincode.trim() : null
+        ]
+      });
+    }
     res.json({
       success: true,
       data: {
@@ -95019,7 +95046,7 @@ customersRouter.put("/:id", validateBody(updateCustomerSchema), async (req, res)
     }
     const customer = existingRes.rows[0];
     const actualCustomerId = String(customer.id);
-    const { fullName, primaryPhone, secondaryPhone, email: email3, gstin, customerType, notes } = req.body;
+    const { fullName, primaryPhone, secondaryPhone, email: email3, gstin, customerType, notes, addressLine1, addressLine2, city, state, pincode } = req.body;
     const updates = [];
     const args = [];
     if (fullName !== void 0) {
@@ -95057,6 +95084,49 @@ customersRouter.put("/:id", validateBody(updateCustomerSchema), async (req, res)
         sql: `UPDATE customers SET ${updates.join(", ")} WHERE shop_id = ? AND id = ?`,
         args
       });
+    }
+    if (addressLine1 !== void 0 || city !== void 0 || state !== void 0 || pincode !== void 0) {
+      const addrRes = await client.execute({
+        sql: `SELECT id FROM customer_addresses WHERE shop_id = ? AND customer_id = ? LIMIT 1`,
+        args: [shopId, actualCustomerId]
+      });
+      if (addrRes.rows.length > 0) {
+        const addrId = String(addrRes.rows[0].id);
+        await client.execute({
+          sql: `UPDATE customer_addresses SET
+                  address_line1 = COALESCE(?, address_line1),
+                  address_line2 = COALESCE(?, address_line2),
+                  city = COALESCE(?, city),
+                  state = COALESCE(?, state),
+                  pincode = COALESCE(?, pincode)
+                WHERE shop_id = ? AND id = ?`,
+          args: [
+            addressLine1 || null,
+            addressLine2 || null,
+            city || null,
+            state || null,
+            pincode || null,
+            shopId,
+            addrId
+          ]
+        });
+      } else if (addressLine1) {
+        const newAddrId = `ADDR-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+        await client.execute({
+          sql: `INSERT INTO customer_addresses (id, shop_id, customer_id, address_line1, address_line2, city, state, pincode, is_default)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+          args: [
+            newAddrId,
+            shopId,
+            actualCustomerId,
+            addressLine1.trim(),
+            addressLine2 ? addressLine2.trim() : null,
+            city ? city.trim() : "Coimbatore",
+            state ? state.trim() : "Tamil Nadu",
+            pincode ? pincode.trim() : null
+          ]
+        });
+      }
     }
     const updatedRes = await client.execute({
       sql: `SELECT * FROM customers WHERE shop_id = ? AND id = ?`,
@@ -95106,7 +95176,9 @@ customersRouter.get("/:id", async (req, res) => {
       // snake_case compatibility
       full_name: rawCustomer.full_name,
       customer_code: rawCustomer.customer_code,
-      primary_phone: rawCustomer.primary_phone
+      primary_phone: rawCustomer.primary_phone,
+      secondary_phone: rawCustomer.secondary_phone,
+      customer_type: rawCustomer.customer_type
     };
     const devices2 = devicesRes.rows.map((r) => {
       const row = r;

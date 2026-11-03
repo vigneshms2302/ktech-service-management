@@ -6,6 +6,7 @@ import {
   Laptop,
   Wrench,
   RefreshCw,
+  Edit2,
 } from 'lucide-react';
 import type { CustomerSummary } from '../../types/index.ts';
 import { CustomerModal } from './CustomerModal.tsx';
@@ -24,6 +25,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [customerToEdit, setCustomerToEdit] = useState<CustomerSummary | null>(null);
 
   const fetchCustomers = async (searchQuery = '') => {
     setIsLoading(true);
@@ -87,7 +89,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
           </button>
           <button
             className="btn btn-primary"
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => { setCustomerToEdit(null); setIsModalOpen(true); }}
           >
             <Plus size={14} />
             <span>Add New Customer</span>
@@ -210,6 +212,16 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                         Profile
                       </button>
                       <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => { setCustomerToEdit(c); setIsModalOpen(true); }}
+                        style={{ padding: '3px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                        title="Edit Customer Details"
+                      >
+                        <Edit2 size={11} />
+                        <span>Edit</span>
+                      </button>
+                      <button
                         className="btn btn-primary"
                         onClick={() => onNewJobForCustomer(c.id)}
                         style={{ padding: '3px 8px', fontSize: '11px' }}
@@ -229,7 +241,9 @@ export const CustomerList: React.FC<CustomerListProps> = ({
       {/* Customer Create Modal */}
       <CustomerModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); setCustomerToEdit(null); }}
+        customerToEdit={customerToEdit}
+        onCustomerUpdated={() => { fetchCustomers(search); setCustomerToEdit(null); }}
         onCustomerCreated={(newCust) => {
           fetchCustomers();
           onSelectCustomer(newCust.id);
