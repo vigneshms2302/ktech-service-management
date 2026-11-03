@@ -42,10 +42,22 @@ export const CustomerProfile: React.FC<CustomerProfileProps> = ({
   const fetchProfile = useCallback(async () => {
     setIsLoading(true);
     try {
-      if (window.electronAPI?.customers?.getById) {
-        const res = await window.electronAPI.customers.getById({ customerId });
+      const api = window.electronAPI?.customers;
+      const getter = api?.getById || (api as any)?.getProfile;
+      if (getter) {
+        const res = await getter({ customerId });
         if (res.success && res.data) {
-          setProfile(res.data);
+          const d = res.data;
+          if (d.customer) {
+            d.customer.fullName = d.customer.fullName || d.customer.full_name || 'Customer';
+            d.customer.customerCode = d.customer.customerCode || d.customer.customer_code || '';
+            d.customer.primaryPhone = d.customer.primaryPhone || d.customer.primary_phone || '';
+            d.customer.customerType = d.customer.customerType || d.customer.customer_type || 'INDIVIDUAL';
+          }
+          if (!d.address && Array.isArray(d.addresses)) {
+            d.address = d.addresses[0] || null;
+          }
+          setProfile(d);
         }
       }
       if (window.electronAPI?.billing?.listInvoices) {

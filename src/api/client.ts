@@ -290,11 +290,44 @@ export const saasApi = {
       });
     },
 
-    getProfile: async (params: { customerId: string }) => {
-      const res = await apiFetch(`/api/customers/${params.customerId}`);
+    getById: async (params: { customerId?: string; id?: string }) => {
+      const id = params.customerId || params.id;
+      const res = await apiFetch(`/api/customers/${id}`);
       if (res.success && res.data) {
         if (!Array.isArray(res.data.devices)) res.data.devices = [];
         if (!Array.isArray(res.data.jobs)) res.data.jobs = [];
+        if (res.data.customer) {
+          const c = res.data.customer;
+          c.fullName = c.fullName || c.full_name || '';
+          c.customerCode = c.customerCode || c.customer_code || '';
+          c.primaryPhone = c.primaryPhone || c.primary_phone || '';
+          c.secondaryPhone = c.secondaryPhone || c.secondary_phone || null;
+          c.customerType = c.customerType || c.customer_type || 'INDIVIDUAL';
+        }
+        if (!res.data.address && Array.isArray(res.data.addresses)) {
+          res.data.address = res.data.addresses[0] || null;
+        }
+      }
+      return res;
+    },
+
+    getProfile: async (params: { customerId?: string; id?: string }) => {
+      const id = params.customerId || params.id;
+      const res = await apiFetch(`/api/customers/${id}`);
+      if (res.success && res.data) {
+        if (!Array.isArray(res.data.devices)) res.data.devices = [];
+        if (!Array.isArray(res.data.jobs)) res.data.jobs = [];
+        if (res.data.customer) {
+          const c = res.data.customer;
+          c.fullName = c.fullName || c.full_name || '';
+          c.customerCode = c.customerCode || c.customer_code || '';
+          c.primaryPhone = c.primaryPhone || c.primary_phone || '';
+          c.secondaryPhone = c.secondaryPhone || c.secondary_phone || null;
+          c.customerType = c.customerType || c.customer_type || 'INDIVIDUAL';
+        }
+        if (!res.data.address && Array.isArray(res.data.addresses)) {
+          res.data.address = res.data.addresses[0] || null;
+        }
       }
       return res;
     },

@@ -95072,20 +95072,89 @@ customersRouter.get("/:id", async (req, res) => {
       res.status(404).json({ success: false, error: "Customer not found in current shop organization." });
       return;
     }
-    const customer = custRes.rows[0];
-    const targetCustId = String(customer.id);
+    const rawCustomer = custRes.rows[0];
+    const targetCustId = String(rawCustomer.id);
     const [devicesRes, jobsRes, addressesRes] = await Promise.all([
       client.execute({ sql: `SELECT * FROM devices WHERE shop_id = ? AND customer_id = ? ORDER BY created_at DESC`, args: [shopId, targetCustId] }),
       client.execute({ sql: `SELECT * FROM service_jobs WHERE shop_id = ? AND customer_id = ? ORDER BY created_at DESC`, args: [shopId, targetCustId] }),
       client.execute({ sql: `SELECT * FROM customer_addresses WHERE shop_id = ? AND customer_id = ?`, args: [shopId, targetCustId] })
     ]);
+    const customer = {
+      id: rawCustomer.id,
+      customerCode: rawCustomer.customer_code,
+      fullName: rawCustomer.full_name,
+      primaryPhone: rawCustomer.primary_phone,
+      secondaryPhone: rawCustomer.secondary_phone,
+      email: rawCustomer.email,
+      gstin: rawCustomer.gstin,
+      customerType: rawCustomer.customer_type,
+      notes: rawCustomer.notes,
+      createdAt: rawCustomer.created_at,
+      updatedAt: rawCustomer.updated_at,
+      // snake_case compatibility
+      full_name: rawCustomer.full_name,
+      customer_code: rawCustomer.customer_code,
+      primary_phone: rawCustomer.primary_phone
+    };
+    const devices2 = devicesRes.rows.map((r) => {
+      const row = r;
+      return {
+        id: row.id,
+        customerId: row.customer_id,
+        equipmentType: row.equipment_type,
+        brand: row.brand,
+        modelName: row.model_name,
+        serialNumber: row.serial_number,
+        colorFinish: row.color_finish,
+        specsSummary: row.specs_summary,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        // snake_case compatibility
+        equipment_type: row.equipment_type,
+        model_name: row.model_name,
+        serial_number: row.serial_number
+      };
+    });
+    const jobs = jobsRes.rows.map((r) => {
+      const row = r;
+      return {
+        id: row.id,
+        ticketNumber: row.job_number,
+        jobNumber: row.job_number,
+        status: row.current_status,
+        currentStatus: row.current_status,
+        priority: row.priority,
+        reportedIssue: row.reported_issue,
+        estimatedCost: Number(row.estimated_cost || 0),
+        advanceDeposit: Number(row.advance_deposit || 0),
+        promisedDeliveryDate: row.promised_delivery_date,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        // snake_case compatibility
+        job_number: row.job_number,
+        current_status: row.current_status,
+        reported_issue: row.reported_issue
+      };
+    });
+    const primaryAddress = addressesRes.rows[0] ? addressesRes.rows[0] : null;
+    const address = primaryAddress ? {
+      id: primaryAddress.id,
+      customerId: primaryAddress.customer_id,
+      addressLine1: primaryAddress.address_line1,
+      addressLine2: primaryAddress.address_line2,
+      city: primaryAddress.city,
+      state: primaryAddress.state,
+      pincode: primaryAddress.pincode,
+      isPrimary: Boolean(primaryAddress.is_primary)
+    } : null;
     res.json({
       success: true,
       data: {
         customer,
-        devices: devicesRes.rows,
-        jobs: jobsRes.rows,
-        addresses: addressesRes.rows
+        address,
+        addresses: addressesRes.rows,
+        devices: devices2,
+        jobs
       }
     });
   } catch (error62) {
