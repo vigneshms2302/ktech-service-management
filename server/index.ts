@@ -21,6 +21,15 @@ import { shopsRouter } from './routes/shops.ts';
 export const app = express();
 app.set('trust proxy', 1);
 
+// ── Serverless Path Normalizer (Restores original route from Vercel rewrites) ──
+app.use((req, _res, next) => {
+  const vercelPath = req.headers['x-matched-path'] || req.headers['x-vercel-matched-path'];
+  if (typeof vercelPath === 'string' && vercelPath.startsWith('/api') && req.url === '/api') {
+    req.url = vercelPath;
+  }
+  next();
+});
+
 // ── Security Headers ──────────────────────────────────────────────
 app.use(
   helmet({

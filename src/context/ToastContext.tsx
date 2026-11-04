@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { AlertCircle, CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
+import { formatUserFriendlyError } from '../utils/formatError.ts';
 
 export type ToastType = 'error' | 'success' | 'warning' | 'info';
 
@@ -25,6 +26,7 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const recentToastsRef = useRef<Map<string, number>>(new Map());
 
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -32,12 +34,36 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const showToast = useCallback(
     (message: string, type: ToastType = 'info', options?: { title?: string; duration?: number }) => {
+      if (!message || !message.trim()) return;
+
+      const cleanMessage = type === 'error'
+        ? formatUserFriendlyError(message)
+        : message.trim();
+
+      // Deduplication: prevent stacking identical messages within 3 seconds
+      const now = Date.now();
+      const dedupKey = `${type}:${cleanMessage}`;
+      const lastShown = recentToastsRef.current.get(dedupKey);
+
+      if (lastShown && now - lastShown < 3000) {
+        // Already active or shown within last 3s; ignore duplicate trigger
+        return;
+      }
+      recentToastsRef.current.set(dedupKey, now);
+
+      // Clean up aged entries from map
+      for (const [key, timestamp] of recentToastsRef.current.entries()) {
+        if (now - timestamp > 10000) {
+          recentToastsRef.current.delete(key);
+        }
+      }
+
       const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
       const duration = options?.duration ?? (type === 'error' ? 5000 : 4000);
       const title =
         options?.title ??
         (type === 'error'
-          ? 'Validation Error'
+          ? 'Action Required'
           : type === 'success'
           ? 'Success'
           : type === 'warning'
@@ -47,12 +73,17 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const newToast: Toast = {
         id,
         type,
-        message,
+        message: cleanMessage,
         title,
         duration,
       };
 
-      setToasts((prev) => [...prev.slice(-4), newToast]); // keep max 5 on screen
+      setToasts((prev) => {
+        // Also ensure not currently already in active array with same message
+        const alreadyInList = prev.some((t) => t.type === type && t.message === cleanMessage);
+        if (alreadyInList) return prev;
+        return [...prev.slice(-2), newToast]; // keep max 3 on screen
+      });
 
       if (duration > 0) {
         setTimeout(() => {
@@ -65,7 +96,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const showError = useCallback(
     (message: string, title?: string, duration?: number) => {
-      showToast(message, 'error', { title: title || 'Action Required', duration: duration || 5000 });
+      const friendly = formatUserFriendlyError(message);
+      showToast(friendly, 'error', { title: title || 'Action Required', duration: duration || 5000 });
     },
     [showToast]
   );

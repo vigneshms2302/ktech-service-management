@@ -15,6 +15,7 @@ import { useTheme } from '../../context/ThemeContext.tsx';
 import { saasApi, setShopSlug } from '../../api/client.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { useToast } from '../../context/ToastContext.tsx';
+import { formatUserFriendlyError } from '../../utils/formatError.ts';
 
 export const SignupPage: React.FC = () => {
   const { theme } = useTheme();
@@ -347,7 +348,7 @@ export const SignupPage: React.FC = () => {
         // Redirect directly to the /app dashboard
         navigate('/app', { replace: true });
       } else {
-        const errorMsg = res.error || 'Failed to create shop account. Please verify details.';
+        const errorMsg = formatUserFriendlyError(res.error || 'Failed to create shop account. Please verify details.');
         setError(errorMsg);
         showError(errorMsg);
 
@@ -359,7 +360,7 @@ export const SignupPage: React.FC = () => {
         }
       }
     } catch (err: unknown) {
-      const msg = (err as Error).message || 'Registration communication error.';
+      const msg = formatUserFriendlyError(err);
       setError(msg);
       showError(msg);
     } finally {

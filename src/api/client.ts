@@ -5,6 +5,8 @@
  * Cloud Database in real-time with zero divergence.
  */
 
+import { formatUserFriendlyError } from '../utils/formatError.ts';
+
 const TOKEN_KEY = 'kconnect_saas_token';
 const SHOP_SLUG_KEY = 'kconnect_shop_slug';
 const API_BASE_URL_KEY = 'kconnect_cloud_api_url';
@@ -67,7 +69,11 @@ export function setApiBaseUrl(url: string): void {
   }
 }
 
-async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}): Promise<{ success: boolean; data?: T; error?: string }> {
+export interface ApiFetchOptions extends RequestInit {
+  skipGlobalToast?: boolean;
+}
+
+async function apiFetch<T = any>(endpoint: string, options: ApiFetchOptions = {}): Promise<{ success: boolean; data?: T; error?: string }> {
   try {
     const token = getAuthToken();
     const headers: Record<string, string> = {
@@ -97,28 +103,37 @@ async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}): P
       const text = await response.text();
       json = {
         success: response.ok,
-        error: !response.ok ? `Server error (${response.status}): ${text.slice(0, 100)}` : undefined,
+        error: !response.ok ? formatUserFriendlyError(text, response.status) : undefined,
       };
     }
 
     if (!response.ok && !json.error) {
-      json.error = `HTTP error ${response.status}: ${response.statusText}`;
+      json.error = formatUserFriendlyError(response.statusText, response.status);
+    } else if (json.error) {
+      json.error = formatUserFriendlyError(json.error, response.status);
     }
 
-    if (!response.ok && json.error && typeof window !== 'undefined' && (window as any).showError) {
-      if (!endpoint.includes('check-duplicates') && response.status !== 404) {
-        (window as any).showError(json.error);
-      }
+    const isAuthOrDirectHandled =
+      options.skipGlobalToast ||
+      endpoint.includes('/api/auth/login') ||
+      endpoint.includes('/api/auth/pin') ||
+      endpoint.includes('/api/public/register') ||
+      endpoint.includes('check-duplicates') ||
+      response.status === 404;
+
+    if (!response.ok && json.error && !isAuthOrDirectHandled && typeof window !== 'undefined' && (window as any).showError) {
+      (window as any).showError(json.error);
     }
 
     return json;
   } catch (err: any) {
-    if (typeof window !== 'undefined' && (window as any).showError) {
-      (window as any).showError(err.message || 'Network communication error. Please check server connection.');
+    const friendlyError = formatUserFriendlyError(err?.message || 'Network communication error.');
+    if (!options.skipGlobalToast && typeof window !== 'undefined' && (window as any).showError) {
+      (window as any).showError(friendlyError);
     }
     return {
       success: false,
-      error: err.message || 'Network communication error. Please check server connection.',
+      error: friendlyError,
     };
   }
 }

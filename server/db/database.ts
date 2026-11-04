@@ -29,6 +29,13 @@ export function createLibsqlClient(url: string, authToken?: string): Client {
     return createClient({ url, authToken });
   }
 
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  if (isServerless && !isRemote) {
+    throw new Error(
+      'DATABASE_NOT_CONFIGURED: Remote DATABASE_URL (libsql://...) is required on Vercel. Please configure DATABASE_URL in Vercel Project Settings.'
+    );
+  }
+
   // Local file SQLite (used for local development, desktop app, and automated tests)
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { createClient } = require('@libsql/client');

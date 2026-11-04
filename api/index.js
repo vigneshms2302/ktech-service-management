@@ -70704,6 +70704,12 @@ function createLibsqlClient(url2, authToken) {
     const { createClient: createClient3 } = require("@libsql/client/web");
     return createClient3({ url: url2, authToken });
   }
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  if (isServerless && !isRemote) {
+    throw new Error(
+      "DATABASE_NOT_CONFIGURED: Remote DATABASE_URL (libsql://...) is required on Vercel. Please configure DATABASE_URL in Vercel Project Settings."
+    );
+  }
   const { createClient: createClient2 } = require("@libsql/client");
   return createClient2({ url: url2, authToken });
 }
@@ -97839,6 +97845,13 @@ storageRouter.use("/files", async (req, res) => {
 // server/index.ts
 var app = (0, import_express13.default)();
 app.set("trust proxy", 1);
+app.use((req, _res, next) => {
+  const vercelPath = req.headers["x-matched-path"] || req.headers["x-vercel-matched-path"];
+  if (typeof vercelPath === "string" && vercelPath.startsWith("/api") && req.url === "/api") {
+    req.url = vercelPath;
+  }
+  next();
+});
 app.use(
   helmet({
     crossOriginEmbedderPolicy: false,
@@ -98091,17 +98104,6 @@ if (isDirectServerEntry && process.env.NODE_ENV !== "test" && !process.env.VERCE
 }
 
 // server/vercel.ts
-app.use(async (_req, _res, next) => {
-  await ensureSchemaReady();
-  next();
-});
-app.use((req, _res, next) => {
-  const vercelPath = req.headers["x-matched-path"] || req.headers["x-vercel-matched-path"];
-  if (typeof vercelPath === "string" && vercelPath.startsWith("/api") && req.url === "/api") {
-    req.url = vercelPath;
-  }
-  next();
-});
 var vercel_default = app;
 /*! Bundled license information:
 

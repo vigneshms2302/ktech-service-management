@@ -28,6 +28,7 @@ import { useAuth } from '../../context/AuthContext.tsx';
 import { useToast } from '../../context/ToastContext.tsx';
 import { useTheme } from '../../context/ThemeContext.tsx';
 import { getShopSlug, setShopSlug, getApiBaseUrl, setApiBaseUrl } from '../../api/client.ts';
+import { formatUserFriendlyError } from '../../utils/formatError.ts';
 import { DownloadAppModal } from '../common/DownloadAppModal.tsx';
 
 export const LoginPage: React.FC = () => {
@@ -127,13 +128,16 @@ export const LoginPage: React.FC = () => {
         isSuperAdmin,
       });
       if (!res.success) {
-        showError(res.error || 'Invalid credentials or shop not found');
-        setError(res.error || 'Invalid credentials or shop not found');
+        const friendlyError = formatUserFriendlyError(res.error || 'Invalid credentials or shop not found', 401);
+        setError(friendlyError);
+        showError(friendlyError);
       } else {
         navigate(isSuperAdmin ? '/admin' : '/app', { replace: true });
       }
     } catch (err: unknown) {
-      setError((err as Error).message || 'Authentication failed. Please check network connection.');
+      const friendlyError = formatUserFriendlyError(err);
+      setError(friendlyError);
+      showError(friendlyError);
     } finally {
       setIsLoading(false);
     }
