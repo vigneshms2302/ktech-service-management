@@ -24,13 +24,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <ThemeProvider>
         <ToastProvider>
-          <ShopProvider>
-            <AuthProvider>
+          <AuthProvider>
+            <ShopProvider>
               <Router>
                 <App />
               </Router>
-            </AuthProvider>
-          </ShopProvider>
+            </ShopProvider>
+          </AuthProvider>
         </ToastProvider>
       </ThemeProvider>
     </ErrorBoundary>

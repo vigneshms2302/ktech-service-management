@@ -95,7 +95,7 @@ export const Phase1Dashboard: React.FC = () => {
       >
         <div>
           <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>{shopSettings.shopName || 'KTech Computers'}</span>
+            <span>{shopSettings.shopName || 'Service & Repair Lab'}</span>
             <span className="badge badge-success" style={{ fontSize: '11px' }}>Phase 1 Foundation Active</span>
           </h1>
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>

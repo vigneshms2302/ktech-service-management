@@ -97324,7 +97324,27 @@ shopsRouter.get("/me", async (req, res) => {
       res.status(404).json({ success: false, error: "Shop not found." });
       return;
     }
-    res.json({ success: true, data: result.rows[0] });
+    const shopRow = result.rows[0];
+    const settingsRes = await client.execute({
+      sql: `SELECT key, value FROM shop_settings WHERE shop_id = ?`,
+      args: [shopId]
+    });
+    const settingsMap = {};
+    for (const row of settingsRes.rows) {
+      const r = row;
+      if (typeof r.key === "string" && typeof r.value === "string") {
+        settingsMap[r.key] = r.value;
+      }
+    }
+    const tagline = settingsMap["shop.tagline"] || shopRow.tagline || "Chip-Level Laptop, Desktop & Mobile Repair Lab";
+    res.json({
+      success: true,
+      data: {
+        ...shopRow,
+        tagline,
+        settings: settingsMap
+      }
+    });
   } catch (error62) {
     res.status(500).json({ success: false, error: error62.message });
   }
@@ -97373,7 +97393,7 @@ shopsRouter.post("/onboarding", async (req, res) => {
 shopsRouter.put("/me", async (req, res) => {
   try {
     const shopId = req.user.shopId;
-    const { name, phone, email: email3, address, city, state, pincode, gstin, upiId, logoUrl } = req.body;
+    const { name, phone, email: email3, address, city, state, pincode, gstin, upiId, logoUrl, tagline } = req.body;
     const client = getClient();
     await client.execute({
       sql: `
@@ -97392,24 +97412,103 @@ shopsRouter.put("/me", async (req, res) => {
         WHERE id = ?
       `,
       args: [
-        name || null,
-        phone || null,
-        email3 || null,
-        address || null,
-        city || null,
-        state || null,
-        pincode || null,
-        gstin ? String(gstin).toUpperCase() : null,
-        upiId || null,
-        logoUrl || null,
+        name !== void 0 ? name : null,
+        phone !== void 0 ? phone : null,
+        email3 !== void 0 ? email3 : null,
+        address !== void 0 ? address : null,
+        city !== void 0 ? city : null,
+        state !== void 0 ? state : null,
+        pincode !== void 0 ? pincode : null,
+        gstin !== void 0 ? gstin ? String(gstin).toUpperCase() : "" : null,
+        upiId !== void 0 ? upiId : null,
+        logoUrl !== void 0 ? logoUrl : null,
         shopId
       ]
     });
+    if (tagline !== void 0) {
+      await client.execute({
+        sql: `
+          INSERT INTO shop_settings (shop_id, key, value, category, updated_at)
+          VALUES (?, 'shop.tagline', ?, 'GENERAL', CURRENT_TIMESTAMP)
+          ON CONFLICT(shop_id, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        `,
+        args: [shopId, String(tagline).trim()]
+      });
+    }
+    if (name !== void 0) {
+      await client.execute({
+        sql: `
+          INSERT INTO shop_settings (shop_id, key, value, category, updated_at)
+          VALUES (?, 'shop.name', ?, 'GENERAL', CURRENT_TIMESTAMP)
+          ON CONFLICT(shop_id, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        `,
+        args: [shopId, String(name).trim()]
+      });
+    }
+    if (phone !== void 0) {
+      await client.execute({
+        sql: `
+          INSERT INTO shop_settings (shop_id, key, value, category, updated_at)
+          VALUES (?, 'shop.phone', ?, 'GENERAL', CURRENT_TIMESTAMP)
+          ON CONFLICT(shop_id, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        `,
+        args: [shopId, String(phone).trim()]
+      });
+    }
+    if (address !== void 0) {
+      await client.execute({
+        sql: `
+          INSERT INTO shop_settings (shop_id, key, value, category, updated_at)
+          VALUES (?, 'shop.address', ?, 'GENERAL', CURRENT_TIMESTAMP)
+          ON CONFLICT(shop_id, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        `,
+        args: [shopId, String(address).trim()]
+      });
+    }
+    if (gstin !== void 0) {
+      await client.execute({
+        sql: `
+          INSERT INTO shop_settings (shop_id, key, value, category, updated_at)
+          VALUES (?, 'shop.gstin', ?, 'GENERAL', CURRENT_TIMESTAMP)
+          ON CONFLICT(shop_id, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        `,
+        args: [shopId, String(gstin).trim().toUpperCase()]
+      });
+    }
+    if (upiId !== void 0) {
+      await client.execute({
+        sql: `
+          INSERT INTO shop_settings (shop_id, key, value, category, updated_at)
+          VALUES (?, 'shop.upi_id', ?, 'GENERAL', CURRENT_TIMESTAMP)
+          ON CONFLICT(shop_id, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        `,
+        args: [shopId, String(upiId).trim()]
+      });
+    }
     const updated = await client.execute({
       sql: `SELECT * FROM shops WHERE id = ?`,
       args: [shopId]
     });
-    res.json({ success: true, message: "Shop details updated.", data: updated.rows[0] });
+    const settingsRes = await client.execute({
+      sql: `SELECT key, value FROM shop_settings WHERE shop_id = ?`,
+      args: [shopId]
+    });
+    const settingsMap = {};
+    for (const row of settingsRes.rows) {
+      const r = row;
+      if (typeof r.key === "string" && typeof r.value === "string") {
+        settingsMap[r.key] = r.value;
+      }
+    }
+    res.json({
+      success: true,
+      message: "Shop details updated.",
+      data: {
+        ...updated.rows[0],
+        tagline: settingsMap["shop.tagline"] || "",
+        settings: settingsMap
+      }
+    });
   } catch (error62) {
     res.status(500).json({ success: false, error: error62.message });
   }

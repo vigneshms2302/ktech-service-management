@@ -867,10 +867,50 @@ export const saasApi = {
     },
 
     getSettings: async () => {
+      try {
+        const res = await apiFetch('/api/shops/me');
+        if (res.success && res.data) {
+          const s = res.data;
+          const settings = s.settings || {};
+          return {
+            success: true,
+            data: {
+              'shop.name': s.name || '',
+              'shop.tagline': s.tagline || settings['shop.tagline'] || '',
+              'shop.phone': s.phone || '',
+              'shop.address': s.address || (s.city ? `${s.city}${s.state ? ', ' + s.state : ''}` : ''),
+              'shop.gstin': s.gstin || '',
+              'shop.upi_id': s.upi_id || '',
+              ...settings,
+            },
+          };
+        }
+      } catch (e) {
+        console.warn('Could not load shop settings from /api/shops/me:', e);
+      }
       return { success: true, data: {} };
     },
 
-    updateSetting: async (_params: any) => {
+    updateSetting: async (params: { key: string; value: string }) => {
+      try {
+        const keyMap: Record<string, string> = {
+          'shop.name': 'name',
+          'shop.phone': 'phone',
+          'shop.address': 'address',
+          'shop.gstin': 'gstin',
+          'shop.upi_id': 'upiId',
+          'shop.tagline': 'tagline',
+        };
+        const field = keyMap[params.key];
+        if (field) {
+          return await apiFetch('/api/shops/me', {
+            method: 'PUT',
+            body: JSON.stringify({ [field]: params.value }),
+          });
+        }
+      } catch (e) {
+        console.warn('Could not update setting via /api/shops/me:', e);
+      }
       return { success: true };
     },
 
@@ -932,6 +972,27 @@ export const saasApi = {
     globalSearch: async (params: { query: string }) => {
       return apiFetch(`/api/jobs?search=${encodeURIComponent(params.query)}`);
     },
+  },
+
+  shops: {
+    getMe: async () => apiFetch('/api/shops/me'),
+    updateMe: async (payload: {
+      name?: string;
+      tagline?: string;
+      phone?: string;
+      address?: string;
+      gstin?: string;
+      upiId?: string;
+      email?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
+      logoUrl?: string;
+    }) =>
+      apiFetch('/api/shops/me', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }),
   },
 
   updater: {

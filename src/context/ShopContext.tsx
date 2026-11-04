@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { useAuth } from './AuthContext.tsx';
+import { saasApi } from '../api/client.ts';
 
 export interface ShopSettings {
   shopName: string;
@@ -12,112 +14,182 @@ export interface ShopSettings {
 interface ShopContextType {
   shopSettings: ShopSettings;
   updateShopSettings: (settings: Partial<ShopSettings>) => void;
+  refreshShopSettings: () => Promise<void>;
 }
 
-const DEFAULT_SHOP_SETTINGS: ShopSettings = {
-  shopName: 'KTech Computers',
-  tagline: 'Chip-Level Laptop, Desktop & Mobile Repair Lab',
-  phone: '+91 98400 12345',
-  address: '1st Floor, Gandhi Road, Main Market',
-  gstin: '33AAAAA0000A1Z5',
-  upiId: 'ktech@upi',
-};
+const DEFAULT_SHOP_TAGLINE = 'Chip-Level Laptop, Desktop & Mobile Repair Lab';
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
 
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [shopSettings, setShopSettings] = useState<ShopSettings>(() => {
+  let currentUser: any = null;
+  try {
+    const auth = useAuth();
+    currentUser = auth.currentUser;
+  } catch {
+    // Graceful fallback if rendered outside AuthProvider
+  }
+
+  const shopId = currentUser?.shopId || 'default';
+  const fallbackName = currentUser?.shopName || '';
+
+  const loadStoredSettings = useCallback((sid: string, defaultName = ''): ShopSettings => {
+    const p = `ktech_${sid}_`;
     return {
-      shopName: localStorage.getItem('ktech_shop_name') || DEFAULT_SHOP_SETTINGS.shopName,
-      tagline: localStorage.getItem('ktech_shop_tagline') || DEFAULT_SHOP_SETTINGS.tagline,
-      phone: localStorage.getItem('ktech_shop_phone') || DEFAULT_SHOP_SETTINGS.phone,
-      address: localStorage.getItem('ktech_shop_address') || DEFAULT_SHOP_SETTINGS.address,
-      gstin: localStorage.getItem('ktech_shop_gstin') || DEFAULT_SHOP_SETTINGS.gstin,
-      upiId: localStorage.getItem('ktech_shop_upi') || DEFAULT_SHOP_SETTINGS.upiId,
+      shopName: localStorage.getItem(`${p}shop_name`) || defaultName || '',
+      tagline: localStorage.getItem(`${p}shop_tagline`) || DEFAULT_SHOP_TAGLINE,
+      phone: localStorage.getItem(`${p}shop_phone`) || '',
+      address: localStorage.getItem(`${p}shop_address`) || '',
+      gstin: localStorage.getItem(`${p}shop_gstin`) || '',
+      upiId: localStorage.getItem(`${p}shop_upi`) || '',
     };
-  });
+  }, []);
 
-  // Sync with DB settings if available
+  const [shopSettings, setShopSettings] = useState<ShopSettings>(() =>
+    loadStoredSettings(shopId, fallbackName)
+  );
+
+  // Sync state whenever the authenticated tenant changes
   useEffect(() => {
-    const fetchDbSettings = async () => {
-      try {
-        if (window.electronAPI?.system?.getSettings) {
-          const res = await window.electronAPI.system.getSettings();
-          if (res.success && res.data) {
-            const dbSettings = res.data;
-            setShopSettings((prev) => {
-              const updated: ShopSettings = {
-                shopName: dbSettings['shop.name'] || localStorage.getItem('ktech_shop_name') || prev.shopName,
-                tagline: dbSettings['shop.tagline'] || localStorage.getItem('ktech_shop_tagline') || prev.tagline,
-                phone: dbSettings['shop.phone'] || localStorage.getItem('ktech_shop_phone') || prev.phone,
-                address: dbSettings['shop.address'] || localStorage.getItem('ktech_shop_address') || prev.address,
-                gstin: dbSettings['shop.gstin'] || localStorage.getItem('ktech_shop_gstin') || prev.gstin,
-                upiId: dbSettings['shop.upi_id'] || localStorage.getItem('ktech_shop_upi') || prev.upiId,
-              };
+    if (currentUser?.shopId) {
+      setShopSettings(loadStoredSettings(currentUser.shopId, currentUser.shopName));
+    }
+  }, [currentUser?.shopId, currentUser?.shopName, loadStoredSettings]);
 
-              // Keep localStorage updated with DB
-              if (updated.shopName) localStorage.setItem('ktech_shop_name', updated.shopName);
-              if (updated.tagline) localStorage.setItem('ktech_shop_tagline', updated.tagline);
-              if (updated.phone) localStorage.setItem('ktech_shop_phone', updated.phone);
-              if (updated.address) localStorage.setItem('ktech_shop_address', updated.address);
-              if (updated.gstin) localStorage.setItem('ktech_shop_gstin', updated.gstin);
-              if (updated.upiId) localStorage.setItem('ktech_shop_upi', updated.upiId);
+  const fetchDbSettings = useCallback(async () => {
+    try {
+      // 1. Try fetching from Cloud /api/shops/me
+      if (saasApi.shops?.getMe) {
+        const res = await saasApi.shops.getMe();
+        if (res.success && res.data) {
+          const s = res.data;
+          const settings = s.settings || {};
+          const currentShopId = currentUser?.shopId || s.id || 'default';
+          const p = `ktech_${currentShopId}_`;
 
-              return updated;
-            });
-          }
+          const updated: ShopSettings = {
+            shopName: s.name || currentUser?.shopName || '',
+            tagline: s.tagline || settings['shop.tagline'] || DEFAULT_SHOP_TAGLINE,
+            phone: s.phone || '',
+            address: s.address || (s.city ? `${s.city}${s.state ? ', ' + s.state : ''}` : ''),
+            gstin: s.gstin || '',
+            upiId: s.upi_id || '',
+          };
+
+          setShopSettings(updated);
+
+          // Keep scoped localStorage updated
+          if (updated.shopName) localStorage.setItem(`${p}shop_name`, updated.shopName);
+          if (updated.tagline) localStorage.setItem(`${p}shop_tagline`, updated.tagline);
+          if (updated.phone) localStorage.setItem(`${p}shop_phone`, updated.phone);
+          if (updated.address) localStorage.setItem(`${p}shop_address`, updated.address);
+          if (updated.gstin) localStorage.setItem(`${p}shop_gstin`, updated.gstin);
+          if (updated.upiId) localStorage.setItem(`${p}shop_upi`, updated.upiId);
+
+          return;
         }
-      } catch (err) {
-        console.warn('Could not load shop settings from DB:', err);
       }
-    };
 
+      // 2. Fallback to electronAPI.system.getSettings
+      if (window.electronAPI?.system?.getSettings) {
+        const res = await window.electronAPI.system.getSettings();
+        if (res.success && res.data) {
+          const dbSettings = res.data;
+          const currentShopId = currentUser?.shopId || 'default';
+          const p = `ktech_${currentShopId}_`;
+
+          setShopSettings((prev) => {
+            const updated: ShopSettings = {
+              shopName: dbSettings['shop.name'] || prev.shopName || fallbackName,
+              tagline: dbSettings['shop.tagline'] || prev.tagline || DEFAULT_SHOP_TAGLINE,
+              phone: dbSettings['shop.phone'] || prev.phone,
+              address: dbSettings['shop.address'] || prev.address,
+              gstin: dbSettings['shop.gstin'] || prev.gstin,
+              upiId: dbSettings['shop.upi_id'] || prev.upiId,
+            };
+
+            if (updated.shopName) localStorage.setItem(`${p}shop_name`, updated.shopName);
+            if (updated.tagline) localStorage.setItem(`${p}shop_tagline`, updated.tagline);
+            if (updated.phone) localStorage.setItem(`${p}shop_phone`, updated.phone);
+            if (updated.address) localStorage.setItem(`${p}shop_address`, updated.address);
+            if (updated.gstin) localStorage.setItem(`${p}shop_gstin`, updated.gstin);
+            if (updated.upiId) localStorage.setItem(`${p}shop_upi`, updated.upiId);
+
+            return updated;
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load shop settings from DB:', err);
+    }
+  }, [currentUser?.shopId, currentUser?.shopName, fallbackName]);
+
+  // Sync with DB settings on mount and whenever tenant user logs in or changes
+  useEffect(() => {
     fetchDbSettings();
-  }, []);
+  }, [fetchDbSettings, currentUser?.shopId]);
 
-  const updateShopSettings = useCallback((newSettings: Partial<ShopSettings>) => {
-    setShopSettings((prev) => {
-      const updated = { ...prev, ...newSettings };
-      if (newSettings.shopName !== undefined) localStorage.setItem('ktech_shop_name', newSettings.shopName);
-      if (newSettings.tagline !== undefined) localStorage.setItem('ktech_shop_tagline', newSettings.tagline);
-      if (newSettings.phone !== undefined) localStorage.setItem('ktech_shop_phone', newSettings.phone);
-      if (newSettings.address !== undefined) localStorage.setItem('ktech_shop_address', newSettings.address);
-      if (newSettings.gstin !== undefined) localStorage.setItem('ktech_shop_gstin', newSettings.gstin);
-      if (newSettings.upiId !== undefined) localStorage.setItem('ktech_shop_upi', newSettings.upiId);
+  const updateShopSettings = useCallback(
+    (newSettings: Partial<ShopSettings>) => {
+      setShopSettings((prev) => {
+        const updated = { ...prev, ...newSettings };
+        const p = `ktech_${shopId}_`;
+        if (newSettings.shopName !== undefined) localStorage.setItem(`${p}shop_name`, newSettings.shopName);
+        if (newSettings.tagline !== undefined) localStorage.setItem(`${p}shop_tagline`, newSettings.tagline);
+        if (newSettings.phone !== undefined) localStorage.setItem(`${p}shop_phone`, newSettings.phone);
+        if (newSettings.address !== undefined) localStorage.setItem(`${p}shop_address`, newSettings.address);
+        if (newSettings.gstin !== undefined) localStorage.setItem(`${p}shop_gstin`, newSettings.gstin);
+        if (newSettings.upiId !== undefined) localStorage.setItem(`${p}shop_upi`, newSettings.upiId);
 
-      // Async persist to SQLite backend
-      if (window.electronAPI?.system?.updateSetting) {
-        const promises: Promise<unknown>[] = [];
-        if (newSettings.shopName !== undefined) {
-          promises.push(window.electronAPI.system.updateSetting({ key: 'shop.name', value: newSettings.shopName }));
+        // 1. Persist directly to Cloud database via REST PUT /api/shops/me
+        if (saasApi.shops?.updateMe) {
+          saasApi.shops
+            .updateMe({
+              name: newSettings.shopName,
+              tagline: newSettings.tagline,
+              phone: newSettings.phone,
+              address: newSettings.address,
+              gstin: newSettings.gstin,
+              upiId: newSettings.upiId,
+            })
+            .catch((err) => console.warn('Could not persist shop settings to Cloud DB:', err));
         }
-        if (newSettings.tagline !== undefined) {
-          promises.push(window.electronAPI.system.updateSetting({ key: 'shop.tagline', value: newSettings.tagline }));
-        }
-        if (newSettings.phone !== undefined) {
-          promises.push(window.electronAPI.system.updateSetting({ key: 'shop.phone', value: newSettings.phone }));
-        }
-        if (newSettings.address !== undefined) {
-          promises.push(window.electronAPI.system.updateSetting({ key: 'shop.address', value: newSettings.address }));
-        }
-        if (newSettings.gstin !== undefined) {
-          promises.push(window.electronAPI.system.updateSetting({ key: 'shop.gstin', value: newSettings.gstin }));
-        }
-        if (newSettings.upiId !== undefined) {
-          promises.push(window.electronAPI.system.updateSetting({ key: 'shop.upi_id', value: newSettings.upiId }));
-        }
-        Promise.all(promises).catch((err) => console.warn('Could not persist shop settings to DB:', err));
-      }
 
-      // Notify any listeners
-      window.dispatchEvent(new CustomEvent('ktech:shop-settings-updated', { detail: updated }));
+        // 2. Also persist to electron desktop offline SQLite if running
+        if (window.electronAPI?.system?.updateSetting) {
+          const promises: Promise<unknown>[] = [];
+          if (newSettings.shopName !== undefined) {
+            promises.push(window.electronAPI.system.updateSetting({ key: 'shop.name', value: newSettings.shopName }));
+          }
+          if (newSettings.tagline !== undefined) {
+            promises.push(window.electronAPI.system.updateSetting({ key: 'shop.tagline', value: newSettings.tagline }));
+          }
+          if (newSettings.phone !== undefined) {
+            promises.push(window.electronAPI.system.updateSetting({ key: 'shop.phone', value: newSettings.phone }));
+          }
+          if (newSettings.address !== undefined) {
+            promises.push(window.electronAPI.system.updateSetting({ key: 'shop.address', value: newSettings.address }));
+          }
+          if (newSettings.gstin !== undefined) {
+            promises.push(window.electronAPI.system.updateSetting({ key: 'shop.gstin', value: newSettings.gstin }));
+          }
+          if (newSettings.upiId !== undefined) {
+            promises.push(window.electronAPI.system.updateSetting({ key: 'shop.upi_id', value: newSettings.upiId }));
+          }
+          Promise.all(promises).catch((err) => console.warn('Could not persist shop settings to DB:', err));
+        }
 
-      return updated;
-    });
-  }, []);
+        // Notify any listeners
+        window.dispatchEvent(new CustomEvent('ktech:shop-settings-updated', { detail: updated }));
+
+        return updated;
+      });
+    },
+    [shopId]
+  );
 
   return (
-    <ShopContext.Provider value={{ shopSettings, updateShopSettings }}>
+    <ShopContext.Provider value={{ shopSettings, updateShopSettings, refreshShopSettings: fetchDbSettings }}>
       {children}
     </ShopContext.Provider>
   );

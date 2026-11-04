@@ -53,7 +53,7 @@ const ROLES = [
 ];
 
 export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, onClose }) => {
-  const { shopSettings, updateShopSettings } = useShop();
+  const { shopSettings, updateShopSettings, refreshShopSettings } = useShop();
   const { refreshUsers, logout, checkSetupStatus } = useAuth();
   const [isResetting, setIsResetting] = useState(false);
 
@@ -103,13 +103,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
 
   useEffect(() => {
     if (!isOpen) return;
-    setShopName(shopSettings.shopName);
-    setTagline(shopSettings.tagline);
-    setPhone(shopSettings.phone);
-    setAddress(shopSettings.address);
-    setGstin(shopSettings.gstin);
-    setUpiId(shopSettings.upiId);
-
+    refreshShopSettings?.();
     fetchStaffList();
     fetchHealth();
     fetchUpdaterStatus();
@@ -139,7 +133,18 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
       if (unsubscribe) unsubscribe();
       window.removeEventListener('keydown', handleModalKeyDown);
     };
-  }, [isOpen, shopSettings, onClose]);
+  }, [isOpen, refreshShopSettings, onClose]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShopName(shopSettings.shopName);
+      setTagline(shopSettings.tagline);
+      setPhone(shopSettings.phone);
+      setAddress(shopSettings.address);
+      setGstin(shopSettings.gstin);
+      setUpiId(shopSettings.upiId);
+    }
+  }, [isOpen, shopSettings]);
 
   const fetchUpdaterStatus = async () => {
     try {

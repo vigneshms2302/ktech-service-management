@@ -496,13 +496,12 @@ export const SignupPage: React.FC = () => {
                       width: '100%',
                       padding: '10px 32px 10px 12px',
                       borderRadius: '8px',
-                      border: `1px solid ${
-                        fieldErrors.slug || slugStatus === 'taken'
+                      border: `1px solid ${fieldErrors.slug || slugStatus === 'taken'
                           ? '#ef4444'
                           : slugStatus === 'available'
-                          ? '#10a37f'
-                          : borderCol
-                      }`,
+                            ? '#10a37f'
+                            : borderCol
+                        }`,
                       backgroundColor: inputBg,
                       color: textMain,
                       fontSize: '13.5px',
@@ -595,13 +594,12 @@ export const SignupPage: React.FC = () => {
                       width: '100%',
                       padding: '10px 32px 10px 12px',
                       borderRadius: '8px',
-                      border: `1px solid ${
-                        fieldErrors.phone || phoneStatus === 'taken'
+                      border: `1px solid ${fieldErrors.phone || phoneStatus === 'taken'
                           ? '#ef4444'
                           : phoneStatus === 'available'
-                          ? '#10a37f'
-                          : borderCol
-                      }`,
+                            ? '#10a37f'
+                            : borderCol
+                        }`,
                       backgroundColor: inputBg,
                       color: textMain,
                       fontSize: '13.5px',
@@ -654,13 +652,12 @@ export const SignupPage: React.FC = () => {
                       width: '100%',
                       padding: '10px 32px 10px 12px',
                       borderRadius: '8px',
-                      border: `1px solid ${
-                        fieldErrors.email || emailStatus === 'taken'
+                      border: `1px solid ${fieldErrors.email || emailStatus === 'taken'
                           ? '#ef4444'
                           : emailStatus === 'available'
-                          ? '#10a37f'
-                          : borderCol
-                      }`,
+                            ? '#10a37f'
+                            : borderCol
+                        }`,
                       backgroundColor: inputBg,
                       color: textMain,
                       fontSize: '13.5px',
