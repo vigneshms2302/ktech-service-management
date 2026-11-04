@@ -984,8 +984,11 @@ export const saasApi = {
   },
 
   search: {
+    global: async (params: { query: string }) => {
+      return apiFetch(`/api/search?q=${encodeURIComponent(params.query)}`);
+    },
     globalSearch: async (params: { query: string }) => {
-      return apiFetch(`/api/jobs?search=${encodeURIComponent(params.query)}`);
+      return apiFetch(`/api/search?q=${encodeURIComponent(params.query)}`);
     },
   },
 

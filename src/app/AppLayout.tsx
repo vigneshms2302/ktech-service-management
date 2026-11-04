@@ -67,6 +67,7 @@ export const AppLayout: React.FC = () => {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isPinOpen, setIsPinOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchInitialQuery, setSearchInitialQuery] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [licenseError, setLicenseError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -449,7 +450,10 @@ export const AppLayout: React.FC = () => {
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
           onOpenPinModal={() => setIsPinOpen(true)}
           onOpenLoginModal={() => setIsLoginOpen(true)}
-          onOpenSearch={() => setIsSearchOpen(true)}
+          onOpenSearch={() => {
+            setSearchInitialQuery('');
+            setIsSearchOpen(true);
+          }}
           onNewJob={() => handleOpenNewJob()}
         />
 
@@ -472,6 +476,7 @@ export const AppLayout: React.FC = () => {
                   if (q.toLowerCase() === 'new' || q.toLowerCase() === 'new job' || q.toLowerCase() === 'new repair') {
                     handleOpenNewJob();
                   } else {
+                    setSearchInitialQuery(q);
                     setIsSearchOpen(true);
                   }
                   setQuickInputValue('');
@@ -518,6 +523,7 @@ export const AppLayout: React.FC = () => {
       {/* Global Search Command Palette (Ctrl+K) */}
       <GlobalSearchModal
         isOpen={isSearchOpen}
+        initialQuery={searchInitialQuery}
         onClose={() => setIsSearchOpen(false)}
         onSelectCustomer={(custId) => {
           setSelectedCustomerId(custId);

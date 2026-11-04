@@ -17,6 +17,7 @@ import { reportsRouter } from './routes/reports.ts';
 import { subscriptionRouter } from './routes/subscription.ts';
 import { devicesRouter } from './routes/devices.ts';
 import { shopsRouter } from './routes/shops.ts';
+import { searchRouter } from './routes/search.ts';
 
 export const app = express();
 app.set('trust proxy', 1);
@@ -204,6 +205,7 @@ app.use(['/api/subscription', '/subscription'], subscriptionRouter);
 app.use(['/api/devices', '/devices'], devicesRouter);
 app.use(['/api/shops', '/shops'], shopsRouter);
 app.use(['/api/storage', '/storage'], storageRouter);
+app.use(['/api/search', '/search'], searchRouter);
 
 // ── Direct Desktop App Download Shortcuts ─────────────────────────
 app.get(['/api/download/desktop', '/download/desktop', '/download/app', '/download'], (_req, res) => {

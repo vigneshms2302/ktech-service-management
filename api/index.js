@@ -34197,11 +34197,11 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module2.exports = Router13;
+    module2.exports = Router14;
     module2.exports.Route = Route;
-    function Router13(options) {
-      if (!(this instanceof Router13)) {
-        return new Router13(options);
+    function Router14(options) {
+      if (!(this instanceof Router14)) {
+        return new Router14(options);
       }
       const opts = options || {};
       function router(req, res, next) {
@@ -34215,9 +34215,9 @@ var require_router = __commonJS({
       router.stack = [];
       return router;
     }
-    Router13.prototype = function() {
+    Router14.prototype = function() {
     };
-    Router13.prototype.param = function param(name, fn) {
+    Router14.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -34237,7 +34237,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router13.prototype.handle = function handle(req, res, callback) {
+    Router14.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -34364,7 +34364,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router13.prototype.use = function use(handler) {
+    Router14.prototype.use = function use(handler) {
       let offset = 0;
       let path5 = "/";
       if (typeof handler !== "function") {
@@ -34397,7 +34397,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router13.prototype.route = function route(path5) {
+    Router14.prototype.route = function route(path5) {
       const route2 = new Route(path5);
       const layer = new Layer(path5, {
         sensitive: this.caseSensitive,
@@ -34412,7 +34412,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router13.prototype[method] = function(path5) {
+      Router14.prototype[method] = function(path5) {
         const route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -34596,7 +34596,7 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = require("node:path").resolve;
     var once = require_once();
-    var Router13 = require_router();
+    var Router14 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports2 = module2.exports = {};
@@ -34612,7 +34612,7 @@ var require_application = __commonJS({
         enumerable: true,
         get: function getrouter() {
           if (router === null) {
-            router = new Router13({
+            router = new Router14({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
@@ -56342,7 +56342,7 @@ var require_express = __commonJS({
     var EventEmitter = require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router13 = require_router();
+    var Router14 = require_router();
     var req = require_request();
     var res = require_response();
     exports2 = module2.exports = createApplication;
@@ -56364,8 +56364,8 @@ var require_express = __commonJS({
     exports2.application = proto;
     exports2.request = req;
     exports2.response = res;
-    exports2.Route = Router13.Route;
-    exports2.Router = Router13;
+    exports2.Route = Router14.Route;
+    exports2.Router = Router14;
     exports2.json = bodyParser.json;
     exports2.raw = bodyParser.raw;
     exports2.static = require_serve_static();
@@ -63272,7 +63272,7 @@ __export(vercel_exports, {
 module.exports = __toCommonJS(vercel_exports);
 
 // server/index.ts
-var import_express13 = __toESM(require_express2());
+var import_express14 = __toESM(require_express2());
 var import_cors = __toESM(require_lib4());
 
 // node_modules/helmet/index.mjs
@@ -94452,8 +94452,17 @@ jobsRouter.get("/", async (req, res) => {
     }
     if (search) {
       const q = `%${String(search).trim()}%`;
-      query += ` AND (j.job_number LIKE ? OR c.full_name LIKE ? OR c.primary_phone LIKE ? OR d.serial_number LIKE ? OR d.model_name LIKE ?)`;
-      args.push(q, q, q, q, q);
+      const cleanDigits = String(search).replace(/[^0-9]/g, "");
+      const phoneQ = cleanDigits.length >= 4 ? `%${cleanDigits}%` : q;
+      query += ` AND (
+        j.job_number LIKE ? OR
+        c.full_name LIKE ? OR
+        c.primary_phone LIKE ? OR
+        REPLACE(REPLACE(REPLACE(c.primary_phone, ' ', ''), '-', ''), '+', '') LIKE ? OR
+        d.serial_number LIKE ? OR
+        d.model_name LIKE ?
+      )`;
+      args.push(q, q, q, phoneQ, q, q);
     }
     query += ` ORDER BY j.created_at DESC LIMIT ? OFFSET ?`;
     args.push(Number(limit), Number(offset));
@@ -97520,8 +97529,148 @@ shopsRouter.put("/me", async (req, res) => {
   }
 });
 
-// server/routes/storage.ts
+// server/routes/search.ts
 var import_express12 = __toESM(require_express2());
+var searchRouter = (0, import_express12.Router)();
+searchRouter.get("/", authenticateToken, async (req, res) => {
+  try {
+    const rawQuery = String(req.query.query || req.query.q || req.query.search || "").trim();
+    const shopId = req.user?.shopId;
+    if (!shopId) {
+      res.status(401).json({ success: false, error: "Unauthorized: Shop context missing." });
+      return;
+    }
+    if (!rawQuery || rawQuery.length < 1) {
+      res.json({
+        success: true,
+        data: { customers: [], devices: [], jobs: [] }
+      });
+      return;
+    }
+    const client = getClient();
+    const wildcard = `%${rawQuery}%`;
+    const cleanDigits = rawQuery.replace(/[^0-9]/g, "");
+    const phoneWildcard = cleanDigits.length >= 4 ? `%${cleanDigits}%` : wildcard;
+    const customerSql = `
+      SELECT id, customer_code, full_name, primary_phone, email, customer_type
+      FROM customers
+      WHERE shop_id = ? AND (
+        full_name LIKE ? OR
+        customer_code LIKE ? OR
+        primary_phone LIKE ? OR
+        secondary_phone LIKE ? OR
+        email LIKE ? OR
+        REPLACE(REPLACE(REPLACE(primary_phone, ' ', ''), '-', ''), '+', '') LIKE ?
+      )
+      ORDER BY created_at DESC
+      LIMIT 8
+    `;
+    const customerRes = await client.execute({
+      sql: customerSql,
+      args: [shopId, wildcard, wildcard, wildcard, wildcard, wildcard, phoneWildcard]
+    });
+    const customers2 = customerRes.rows.map((r) => {
+      const row = r;
+      return {
+        id: String(row.id),
+        customerCode: String(row.customer_code || ""),
+        fullName: String(row.full_name || ""),
+        primaryPhone: String(row.primary_phone || ""),
+        email: row.email ? String(row.email) : null,
+        customerType: String(row.customer_type || "INDIVIDUAL")
+      };
+    });
+    const deviceSql = `
+      SELECT d.id, d.equipment_type, d.brand, d.model_name, d.serial_number,
+             c.id as customer_id, c.full_name as customer_name, c.primary_phone as customer_phone
+      FROM devices d
+      LEFT JOIN customers c ON d.customer_id = c.id
+      WHERE d.shop_id = ? AND (
+        d.brand LIKE ? OR
+        d.model_name LIKE ? OR
+        d.serial_number LIKE ? OR
+        d.equipment_type LIKE ? OR
+        c.full_name LIKE ? OR
+        REPLACE(REPLACE(REPLACE(c.primary_phone, ' ', ''), '-', ''), '+', '') LIKE ?
+      )
+      ORDER BY d.created_at DESC
+      LIMIT 8
+    `;
+    const deviceRes = await client.execute({
+      sql: deviceSql,
+      args: [shopId, wildcard, wildcard, wildcard, wildcard, wildcard, phoneWildcard]
+    });
+    const devices2 = deviceRes.rows.map((r) => {
+      const row = r;
+      return {
+        id: String(row.id),
+        equipmentType: String(row.equipment_type || "Laptop"),
+        brand: String(row.brand || ""),
+        modelName: String(row.model_name || ""),
+        serialNumber: String(row.serial_number || ""),
+        customerId: String(row.customer_id || ""),
+        customerName: String(row.customer_name || ""),
+        customerPhone: String(row.customer_phone || "")
+      };
+    });
+    const jobsSql = `
+      SELECT j.id, j.job_number, j.current_status, j.priority, j.service_category, j.reported_issue,
+             c.id as customer_id, c.full_name as customer_name, c.primary_phone as customer_phone,
+             d.equipment_type, d.brand as device_brand, d.model_name as device_model, d.serial_number as device_serial
+      FROM service_jobs j
+      LEFT JOIN customers c ON j.customer_id = c.id
+      LEFT JOIN devices d ON j.device_id = d.id
+      WHERE j.shop_id = ? AND (
+        j.job_number LIKE ? OR
+        j.reported_issue LIKE ? OR
+        j.service_category LIKE ? OR
+        c.full_name LIKE ? OR
+        c.primary_phone LIKE ? OR
+        REPLACE(REPLACE(REPLACE(c.primary_phone, ' ', ''), '-', ''), '+', '') LIKE ? OR
+        d.serial_number LIKE ? OR
+        d.model_name LIKE ? OR
+        d.brand LIKE ?
+      )
+      ORDER BY j.created_at DESC
+      LIMIT 8
+    `;
+    const jobsRes = await client.execute({
+      sql: jobsSql,
+      args: [shopId, wildcard, wildcard, wildcard, wildcard, wildcard, phoneWildcard, wildcard, wildcard, wildcard]
+    });
+    const jobs = jobsRes.rows.map((r) => {
+      const row = r;
+      return {
+        id: String(row.id),
+        jobNumber: String(row.job_number || ""),
+        currentStatus: String(row.current_status || "RECEIVED"),
+        priority: String(row.priority || "NORMAL"),
+        serviceCategory: String(row.service_category || "General"),
+        reportedIssue: String(row.reported_issue || ""),
+        customerId: String(row.customer_id || ""),
+        customerName: String(row.customer_name || ""),
+        customerPhone: String(row.customer_phone || ""),
+        equipmentType: String(row.equipment_type || "Device"),
+        deviceBrand: String(row.device_brand || ""),
+        deviceModel: String(row.device_model || ""),
+        deviceSerial: String(row.device_serial || "")
+      };
+    });
+    res.json({
+      success: true,
+      data: {
+        customers: customers2,
+        devices: devices2,
+        jobs
+      }
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+
+// server/routes/storage.ts
+var import_express13 = __toESM(require_express2());
 
 // server/storage/storageAdapter.ts
 var import_node_fs3 = __toESM(require("node:fs"));
@@ -97733,7 +97882,7 @@ function getStorageProvider() {
 }
 
 // server/routes/storage.ts
-var storageRouter = (0, import_express12.Router)();
+var storageRouter = (0, import_express13.Router)();
 var ALLOWED_MIME_TYPES = [
   "image/jpeg",
   "image/png",
@@ -97843,7 +97992,7 @@ storageRouter.use("/files", async (req, res) => {
 });
 
 // server/index.ts
-var app = (0, import_express13.default)();
+var app = (0, import_express14.default)();
 app.set("trust proxy", 1);
 app.use((req, _res, next) => {
   const vercelPath = req.headers["x-matched-path"] || req.headers["x-vercel-matched-path"];
@@ -97891,8 +98040,8 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
   })
 );
-app.use(import_express13.default.json({ limit: "10mb" }));
-app.use(import_express13.default.urlencoded({ extended: true, limit: "10mb" }));
+app.use(import_express14.default.json({ limit: "10mb" }));
+app.use(import_express14.default.urlencoded({ extended: true, limit: "10mb" }));
 var globalLimiter = rate_limit_default({
   windowMs: 15 * 60 * 1e3,
   max: 500,
@@ -97921,7 +98070,7 @@ var publicLimiter = rate_limit_default({
   message: { success: false, error: "Too many tracking requests. Please wait a few minutes." }
 });
 app.use("/api/public/track", publicLimiter);
-app.use("/storage", import_express13.default.static(import_node_path4.default.join(process.cwd(), "storage")));
+app.use("/storage", import_express14.default.static(import_node_path4.default.join(process.cwd(), "storage")));
 app.use((req, res, next) => {
   if (req.path === "/api/health" || req.path === "/health" || req.path === "/api/health/" || req.path === "/health/") {
     return next();
@@ -97993,6 +98142,7 @@ app.use(["/api/subscription", "/subscription"], subscriptionRouter);
 app.use(["/api/devices", "/devices"], devicesRouter);
 app.use(["/api/shops", "/shops"], shopsRouter);
 app.use(["/api/storage", "/storage"], storageRouter);
+app.use(["/api/search", "/search"], searchRouter);
 app.get(["/api/download/desktop", "/download/desktop", "/download/app", "/download"], (_req, res) => {
   res.redirect("/api/public/download/desktop");
 });

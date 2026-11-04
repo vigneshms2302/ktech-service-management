@@ -166,8 +166,17 @@ jobsRouter.get('/', async (req, res) => {
 
     if (search) {
       const q = `%${String(search).trim()}%`;
-      query += ` AND (j.job_number LIKE ? OR c.full_name LIKE ? OR c.primary_phone LIKE ? OR d.serial_number LIKE ? OR d.model_name LIKE ?)`;
-      args.push(q, q, q, q, q);
+      const cleanDigits = String(search).replace(/[^0-9]/g, '');
+      const phoneQ = cleanDigits.length >= 4 ? `%${cleanDigits}%` : q;
+      query += ` AND (
+        j.job_number LIKE ? OR
+        c.full_name LIKE ? OR
+        c.primary_phone LIKE ? OR
+        REPLACE(REPLACE(REPLACE(c.primary_phone, ' ', ''), '-', ''), '+', '') LIKE ? OR
+        d.serial_number LIKE ? OR
+        d.model_name LIKE ?
+      )`;
+      args.push(q, q, q, phoneQ, q, q);
     }
 
     query += ` ORDER BY j.created_at DESC LIMIT ? OFFSET ?`;

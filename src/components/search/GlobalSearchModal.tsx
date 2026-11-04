@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, User, Laptop, Wrench, CornerDownLeft } from 'lucide-react';
 import type { GlobalSearchResults } from '../../types/index.ts';
 import { formatPhoneDisplay } from '../../utils/phone.ts';
+import { saasApi } from '../../api/client.ts';
 
 interface GlobalSearchModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface GlobalSearchModalProps {
   onSelectCustomer: (customerId: string) => void;
   onSelectDevice: (deviceId: string) => void;
   onSelectJob: (jobId: string) => void;
+  initialQuery?: string;
 }
 
 export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
@@ -17,17 +19,11 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
   onSelectCustomer,
   onSelectDevice,
   onSelectJob,
+  initialQuery = '',
 }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GlobalSearchResults | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      setQuery('');
-      setResults(null);
-    }
-  }, [isOpen]);
 
   const handleSearch = async (val: string) => {
     setQuery(val);
@@ -38,16 +34,34 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
 
     setIsSearching(true);
     try {
-      if (window.electronAPI?.search?.global) {
-        const res = await window.electronAPI.search.global({ query: val.trim() });
+      const searchFn =
+        window.electronAPI?.search?.global ||
+        saasApi.search.global;
+
+      if (searchFn) {
+        const res = await searchFn({ query: val.trim() });
         if (res.success && res.data) {
           setResults(res.data);
         }
       }
+    } catch (err) {
+      console.warn('Global search failed:', err);
     } finally {
       setIsSearching(false);
     }
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      const startVal = (initialQuery || '').trim();
+      setQuery(startVal);
+      if (startVal) {
+        handleSearch(startVal);
+      } else {
+        setResults(null);
+      }
+    }
+  }, [isOpen, initialQuery]);
 
   if (!isOpen) return null;
 
