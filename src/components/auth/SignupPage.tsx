@@ -384,57 +384,59 @@ export const SignupPage: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
-        padding: '40px 20px',
+        alignItems: 'center',
+        padding: '12px 16px',
+        boxSizing: 'border-box',
       }}
     >
-      <div style={{ maxWidth: '580px', width: '100%', margin: '0 auto' }}>
-        {/* Brand Header */}
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+      <div style={{ maxWidth: '640px', width: '100%', margin: '0 auto' }}>
+        {/* Compact Brand Header */}
+        <div style={{ textAlign: 'center', marginBottom: '12px' }}>
           <Link
             to="/"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '10px',
+              gap: '8px',
               textDecoration: 'none',
               color: 'inherit',
-              marginBottom: '16px',
+              marginBottom: '4px',
             }}
           >
             <div
               style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '11px',
+                width: '30px',
+                height: '30px',
+                borderRadius: '8px',
                 background: 'linear-gradient(135deg, #10a37f, #059669)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#ffffff',
-                boxShadow: '0 4px 14px rgba(16, 163, 127, 0.28)',
+                boxShadow: '0 2px 8px rgba(16, 163, 127, 0.28)',
               }}
             >
-              <Wrench size={22} />
+              <Wrench size={16} />
             </div>
-            <span style={{ fontSize: '21px', fontWeight: 800 }}>K-Connect SaaS</span>
+            <span style={{ fontSize: '18px', fontWeight: 800 }}>K-Connect SaaS</span>
           </Link>
 
-          <h1 style={{ fontSize: '26px', fontWeight: 800, marginBottom: '8px', letterSpacing: '-0.5px' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 2px 0', letterSpacing: '-0.3px' }}>
             Start Your 14-Day Free Trial
           </h1>
-          <p style={{ fontSize: '14px', color: textMuted }}>
-            Full multi-workstation cloud workspace for your computer & mobile service laboratory.
+          <p style={{ fontSize: '12px', color: textMuted, margin: 0 }}>
+            Multi-workstation cloud workspace for your computer &amp; mobile service laboratory.
           </p>
         </div>
 
         {/* Card Form */}
         <div
           style={{
-            padding: '36px',
-            borderRadius: '16px',
+            padding: '18px 22px',
+            borderRadius: '14px',
             backgroundColor: cardBg,
             border: `1px solid ${borderCol}`,
-            boxShadow: '0 20px 50px rgba(0,0,0,0.1)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
           }}
         >
           {error && (
@@ -442,26 +444,26 @@ export const SignupPage: React.FC = () => {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
-                padding: '12px 14px',
-                borderRadius: '8px',
+                gap: '8px',
+                padding: '8px 12px',
+                borderRadius: '7px',
                 backgroundColor: 'rgba(239, 68, 68, 0.12)',
                 border: '1px solid #ef4444',
                 color: '#ef4444',
-                fontSize: '13px',
-                marginBottom: '20px',
+                fontSize: '12px',
+                marginBottom: '10px',
               }}
             >
-              <AlertCircle size={17} style={{ flexShrink: 0 }} />
+              <AlertCircle size={15} style={{ flexShrink: 0 }} />
               <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }} noValidate>
-            {/* Shop Name & Slug */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }} noValidate>
+            {/* Row 1: Shop Name & Slug */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '12px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, marginBottom: '3px' }}>
                   Shop / Business Name *
                 </label>
                 <input
@@ -473,31 +475,31 @@ export const SignupPage: React.FC = () => {
                   className={fieldErrors.shopName ? 'input-error' : ''}
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
+                    padding: '7.5px 11px',
+                    borderRadius: '7px',
                     border: `1px solid ${fieldErrors.shopName ? '#ef4444' : borderCol}`,
                     backgroundColor: inputBg,
                     color: textMain,
-                    fontSize: '13.5px',
+                    fontSize: '13px',
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
                 />
                 {fieldErrors.shopName && (
-                  <div style={{ color: '#ef4444', fontSize: '11.5px', marginTop: '4px', fontWeight: 500 }}>
+                  <div style={{ color: '#ef4444', fontSize: '11px', marginTop: '2px', fontWeight: 500 }}>
                     {fieldErrors.shopName}
                   </div>
                 )}
               </div>
 
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 600 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                  <label style={{ fontSize: '11.5px', fontWeight: 600 }}>
                     Shop URL Handle (Slug) *
                   </label>
                   {slugStatus === 'checking' && (
-                    <span style={{ fontSize: '11px', color: '#10a37f', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Loader2 size={11} className="spin-icon" style={{ animation: 'spin 1s linear infinite' }} /> checking
+                    <span style={{ fontSize: '10.5px', color: '#10a37f', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                      <Loader2 size={10} className="spin-icon" style={{ animation: 'spin 1s linear infinite' }} /> checking
                     </span>
                   )}
                 </div>
@@ -511,8 +513,8 @@ export const SignupPage: React.FC = () => {
                     className={fieldErrors.slug || slugStatus === 'taken' ? 'input-error' : ''}
                     style={{
                       width: '100%',
-                      padding: '10px 32px 10px 12px',
-                      borderRadius: '8px',
+                      padding: '7.5px 28px 7.5px 11px',
+                      borderRadius: '7px',
                       border: `1px solid ${fieldErrors.slug || slugStatus === 'taken'
                           ? '#ef4444'
                           : slugStatus === 'available'
@@ -521,80 +523,82 @@ export const SignupPage: React.FC = () => {
                         }`,
                       backgroundColor: inputBg,
                       color: textMain,
-                      fontSize: '13.5px',
+                      fontSize: '13px',
                       fontFamily: 'monospace',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
                   />
-                  <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)' }}>
-                    {slugStatus === 'available' && <CheckCircle2 size={16} color="#10a37f" />}
-                    {slugStatus === 'taken' && <XCircle size={16} color="#ef4444" />}
-                  </div>
-                  {/* Live Dedicated Portal URL preview (GreytHR style) */}
-                  <div
-                    style={{
-                      marginTop: '8px',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      backgroundColor: isLight ? '#f3f4f6' : '#1a1a1a',
-                      border: `1px solid ${borderCol}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '8px',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
-                      <Globe size={13} color="#10a37f" style={{ flexShrink: 0 }} />
-                      <span style={{ fontSize: '11px', color: textMuted, flexShrink: 0 }}>Dedicated Portal URL:</span>
-                      <span
-                        style={{
-                          fontFamily: 'monospace',
-                          fontSize: '11.5px',
-                          color: formData.slug ? (slugStatus === 'taken' ? '#ef4444' : '#10a37f') : textMuted,
-                          fontWeight: 600,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        /shop/{formData.slug || 'your-shop-name'}
-                      </span>
-                    </div>
-                    {formData.slug && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                          const fullUrl = `${origin}/shop/${formData.slug}`;
-                          navigator.clipboard.writeText(fullUrl);
-                          setCopiedUrl(true);
-                          setTimeout(() => setCopiedUrl(false), 2000);
-                        }}
-                        style={{
-                          fontSize: '10.5px',
-                          padding: '3px 8px',
-                          borderRadius: '4px',
-                          border: `1px solid ${borderCol}`,
-                          background: isLight ? '#fff' : '#262626',
-                          color: textMain,
-                          cursor: 'pointer',
-                          flexShrink: 0,
-                          fontWeight: 500,
-                        }}
-                      >
-                        {copiedUrl ? '✓ Copied' : 'Copy'}
-                      </button>
-                    )}
+                  <div style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)' }}>
+                    {slugStatus === 'available' && <CheckCircle2 size={15} color="#10a37f" />}
+                    {slugStatus === 'taken' && <XCircle size={15} color="#ef4444" />}
                   </div>
                 </div>
+
+                {/* Live Dedicated Portal URL preview (GreytHR style) */}
+                <div
+                  style={{
+                    marginTop: '4px',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    backgroundColor: isLight ? '#f3f4f6' : '#1a1a1a',
+                    border: `1px solid ${borderCol}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '6px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', overflow: 'hidden' }}>
+                    <Globe size={12} color="#10a37f" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '10.5px', color: textMuted, flexShrink: 0 }}>Portal:</span>
+                    <span
+                      style={{
+                        fontFamily: 'monospace',
+                        fontSize: '11px',
+                        color: formData.slug ? (slugStatus === 'taken' ? '#ef4444' : '#10a37f') : textMuted,
+                        fontWeight: 600,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      /shop/{formData.slug || 'your-shop-name'}
+                    </span>
+                  </div>
+                  {formData.slug && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                        const fullUrl = `${origin}/shop/${formData.slug}`;
+                        navigator.clipboard.writeText(fullUrl);
+                        setCopiedUrl(true);
+                        setTimeout(() => setCopiedUrl(false), 2000);
+                      }}
+                      style={{
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        border: `1px solid ${borderCol}`,
+                        background: isLight ? '#fff' : '#262626',
+                        color: textMain,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        fontWeight: 500,
+                      }}
+                    >
+                      {copiedUrl ? '✓ Copied' : 'Copy'}
+                    </button>
+                  )}
+                </div>
+
                 {slugMessage && (
                   <div
                     style={{
                       color: slugStatus === 'available' ? '#10a37f' : '#ef4444',
-                      fontSize: '11.5px',
-                      marginTop: '4px',
+                      fontSize: '11px',
+                      marginTop: '2px',
                       fontWeight: 500,
                     }}
                   >
@@ -604,10 +608,10 @@ export const SignupPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Owner Full Name & Phone */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            {/* Row 2: Owner Full Name & Phone */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '12px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, marginBottom: '3px' }}>
                   Owner Full Name *
                 </label>
                 <input
@@ -620,10 +624,7 @@ export const SignupPage: React.FC = () => {
                     setFormData((prev) => ({
                       ...prev,
                       ownerName: val,
-                      // If username was never touched or is admin, suggest first name or keep admin
-                      username: prev.username === 'admin' || !prev.username
-                        ? 'admin'
-                        : prev.username,
+                      username: prev.username === 'admin' || !prev.username ? 'admin' : prev.username,
                     }));
                     if (fieldErrors.ownerName) {
                       setFieldErrors((prev) => {
@@ -636,31 +637,31 @@ export const SignupPage: React.FC = () => {
                   className={fieldErrors.ownerName ? 'input-error' : ''}
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
+                    padding: '7.5px 11px',
+                    borderRadius: '7px',
                     border: `1px solid ${fieldErrors.ownerName ? '#ef4444' : borderCol}`,
                     backgroundColor: inputBg,
                     color: textMain,
-                    fontSize: '13.5px',
+                    fontSize: '13px',
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
                 />
                 {fieldErrors.ownerName && (
-                  <div style={{ color: '#ef4444', fontSize: '11.5px', marginTop: '4px', fontWeight: 500 }}>
+                  <div style={{ color: '#ef4444', fontSize: '11px', marginTop: '2px', fontWeight: 500 }}>
                     {fieldErrors.ownerName}
                   </div>
                 )}
               </div>
 
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 600 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                  <label style={{ fontSize: '11.5px', fontWeight: 600 }}>
                     Mobile Number (WhatsApp) *
                   </label>
                   {phoneStatus === 'checking' && (
-                    <span style={{ fontSize: '11px', color: '#10a37f', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> checking
+                    <span style={{ fontSize: '10.5px', color: '#10a37f', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                      <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} /> checking
                     </span>
                   )}
                 </div>
@@ -674,8 +675,8 @@ export const SignupPage: React.FC = () => {
                     className={fieldErrors.phone || phoneStatus === 'taken' ? 'input-error' : ''}
                     style={{
                       width: '100%',
-                      padding: '10px 32px 10px 12px',
-                      borderRadius: '8px',
+                      padding: '7.5px 28px 7.5px 11px',
+                      borderRadius: '7px',
                       border: `1px solid ${fieldErrors.phone || phoneStatus === 'taken'
                           ? '#ef4444'
                           : phoneStatus === 'available'
@@ -684,22 +685,22 @@ export const SignupPage: React.FC = () => {
                         }`,
                       backgroundColor: inputBg,
                       color: textMain,
-                      fontSize: '13.5px',
+                      fontSize: '13px',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
                   />
-                  <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)' }}>
-                    {phoneStatus === 'available' && <CheckCircle2 size={16} color="#10a37f" />}
-                    {phoneStatus === 'taken' && <XCircle size={16} color="#ef4444" />}
+                  <div style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)' }}>
+                    {phoneStatus === 'available' && <CheckCircle2 size={15} color="#10a37f" />}
+                    {phoneStatus === 'taken' && <XCircle size={15} color="#ef4444" />}
                   </div>
                 </div>
                 {phoneMessage && (
                   <div
                     style={{
                       color: phoneStatus === 'available' ? '#10a37f' : '#ef4444',
-                      fontSize: '11.5px',
-                      marginTop: '4px',
+                      fontSize: '11px',
+                      marginTop: '2px',
                       fontWeight: 500,
                     }}
                   >
@@ -709,17 +710,17 @@ export const SignupPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Create Admin Username & Password (GreytHR / SaaS standard) */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            {/* Row 3: Create Admin Username & Password */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '12px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, marginBottom: '3px' }}>
                   Create Admin Username *
                 </label>
                 <div style={{ position: 'relative' }}>
                   <input
                     id="signup_username"
                     type="text"
-                    placeholder="e.g. admin, computeeech"
+                    placeholder="e.g. admin or yourname"
                     value={formData.username}
                     onChange={(e) => {
                       const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
@@ -735,32 +736,28 @@ export const SignupPage: React.FC = () => {
                     className={fieldErrors.username ? 'input-error' : ''}
                     style={{
                       width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
+                      padding: '7.5px 11px',
+                      borderRadius: '7px',
                       border: `1px solid ${fieldErrors.username ? '#ef4444' : borderCol}`,
                       backgroundColor: inputBg,
                       color: textMain,
-                      fontSize: '13.5px',
+                      fontSize: '13px',
                       fontFamily: 'monospace',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
                   />
                 </div>
-                {fieldErrors.username ? (
-                  <div style={{ color: '#ef4444', fontSize: '11.5px', marginTop: '4px', fontWeight: 500 }}>
+                {fieldErrors.username && (
+                  <div style={{ color: '#ef4444', fontSize: '11px', marginTop: '2px', fontWeight: 500 }}>
                     {fieldErrors.username}
-                  </div>
-                ) : (
-                  <div style={{ color: textMuted, fontSize: '11px', marginTop: '4px' }}>
-                    Username for signing into this shop workspace.
                   </div>
                 )}
               </div>
 
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 600 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                  <label style={{ fontSize: '11.5px', fontWeight: 600 }}>
                     Create Admin Password *
                   </label>
                   <button
@@ -771,14 +768,14 @@ export const SignupPage: React.FC = () => {
                       border: 'none',
                       padding: 0,
                       cursor: 'pointer',
-                      fontSize: '11px',
+                      fontSize: '10.5px',
                       color: textMuted,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
+                      gap: '3px',
                     }}
                   >
-                    {showPassword ? <EyeOff size={12} /> : <Eye size={12} />}
+                    {showPassword ? <EyeOff size={11} /> : <Eye size={11} />}
                     <span>{showPassword ? 'Hide' : 'Show'}</span>
                   </button>
                 </div>
@@ -800,34 +797,34 @@ export const SignupPage: React.FC = () => {
                   className={fieldErrors.password ? 'input-error' : ''}
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
+                    padding: '7.5px 11px',
+                    borderRadius: '7px',
                     border: `1px solid ${fieldErrors.password ? '#ef4444' : borderCol}`,
                     backgroundColor: inputBg,
                     color: textMain,
-                    fontSize: '13.5px',
+                    fontSize: '13px',
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
                 />
                 {fieldErrors.password && (
-                  <div style={{ color: '#ef4444', fontSize: '11.5px', marginTop: '4px', fontWeight: 500 }}>
+                  <div style={{ color: '#ef4444', fontSize: '11px', marginTop: '2px', fontWeight: 500 }}>
                     {fieldErrors.password}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Email Address & City */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            {/* Row 4: Email Address & City */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '12px' }}>
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 600 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                  <label style={{ fontSize: '11.5px', fontWeight: 600 }}>
                     Email Address (Optional)
                   </label>
                   {emailStatus === 'checking' && (
-                    <span style={{ fontSize: '11px', color: '#10a37f', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> checking
+                    <span style={{ fontSize: '10.5px', color: '#10a37f', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                      <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} /> checking
                     </span>
                   )}
                 </div>
@@ -841,8 +838,8 @@ export const SignupPage: React.FC = () => {
                     className={fieldErrors.email || emailStatus === 'taken' ? 'input-error' : ''}
                     style={{
                       width: '100%',
-                      padding: '10px 32px 10px 12px',
-                      borderRadius: '8px',
+                      padding: '7.5px 28px 7.5px 11px',
+                      borderRadius: '7px',
                       border: `1px solid ${fieldErrors.email || emailStatus === 'taken'
                           ? '#ef4444'
                           : emailStatus === 'available'
@@ -851,22 +848,22 @@ export const SignupPage: React.FC = () => {
                         }`,
                       backgroundColor: inputBg,
                       color: textMain,
-                      fontSize: '13.5px',
+                      fontSize: '13px',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
                   />
-                  <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)' }}>
-                    {emailStatus === 'available' && <CheckCircle2 size={16} color="#10a37f" />}
-                    {emailStatus === 'taken' && <XCircle size={16} color="#ef4444" />}
+                  <div style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)' }}>
+                    {emailStatus === 'available' && <CheckCircle2 size={15} color="#10a37f" />}
+                    {emailStatus === 'taken' && <XCircle size={15} color="#ef4444" />}
                   </div>
                 </div>
                 {emailMessage && (
                   <div
                     style={{
                       color: emailStatus === 'available' ? '#10a37f' : '#ef4444',
-                      fontSize: '11.5px',
-                      marginTop: '4px',
+                      fontSize: '11px',
+                      marginTop: '2px',
                       fontWeight: 500,
                     }}
                   >
@@ -876,7 +873,7 @@ export const SignupPage: React.FC = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, marginBottom: '3px' }}>
                   City *
                 </label>
                 <input
@@ -897,28 +894,28 @@ export const SignupPage: React.FC = () => {
                   className={fieldErrors.city ? 'input-error' : ''}
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
+                    padding: '7.5px 11px',
+                    borderRadius: '7px',
                     border: `1px solid ${fieldErrors.city ? '#ef4444' : borderCol}`,
                     backgroundColor: inputBg,
                     color: textMain,
-                    fontSize: '13.5px',
+                    fontSize: '13px',
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
                 />
                 {fieldErrors.city && (
-                  <div style={{ color: '#ef4444', fontSize: '11.5px', marginTop: '4px', fontWeight: 500 }}>
+                  <div style={{ color: '#ef4444', fontSize: '11px', marginTop: '2px', fontWeight: 500 }}>
                     {fieldErrors.city}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* State & Pincode */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            {/* Row 5: State & Pincode */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '12px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, marginBottom: '3px' }}>
                   State *
                 </label>
                 <input
@@ -939,25 +936,25 @@ export const SignupPage: React.FC = () => {
                   className={fieldErrors.state ? 'input-error' : ''}
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
+                    padding: '7.5px 11px',
+                    borderRadius: '7px',
                     border: `1px solid ${fieldErrors.state ? '#ef4444' : borderCol}`,
                     backgroundColor: inputBg,
                     color: textMain,
-                    fontSize: '13.5px',
+                    fontSize: '13px',
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
                 />
                 {fieldErrors.state && (
-                  <div style={{ color: '#ef4444', fontSize: '11.5px', marginTop: '4px', fontWeight: 500 }}>
+                  <div style={{ color: '#ef4444', fontSize: '11px', marginTop: '2px', fontWeight: 500 }}>
                     {fieldErrors.state}
                   </div>
                 )}
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, marginBottom: '3px' }}>
                   PIN Code (Optional)
                 </label>
                 <input
@@ -970,12 +967,12 @@ export const SignupPage: React.FC = () => {
                   }}
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
+                    padding: '7.5px 11px',
+                    borderRadius: '7px',
                     border: `1px solid ${borderCol}`,
                     backgroundColor: inputBg,
                     color: textMain,
-                    fontSize: '13.5px',
+                    fontSize: '13px',
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
@@ -988,16 +985,16 @@ export const SignupPage: React.FC = () => {
               type="submit"
               disabled={isSubmitting || slugStatus === 'taken' || emailStatus === 'taken' || phoneStatus === 'taken'}
               style={{
-                marginTop: '10px',
-                padding: '13px',
+                marginTop: '6px',
+                padding: '10.5px 16px',
                 backgroundColor: isSubmitting || slugStatus === 'taken' || emailStatus === 'taken' || phoneStatus === 'taken'
                   ? (isLight ? '#9ca3af' : '#4b5563')
                   : (isLight ? '#0d0d0d' : '#ececec'),
                 color: isLight ? '#ffffff' : '#0d0d0d',
                 border: 'none',
-                borderRadius: '12px',
+                borderRadius: '10px',
                 fontWeight: 600,
-                fontSize: '14.5px',
+                fontSize: '13.5px',
                 cursor: isSubmitting || slugStatus === 'taken' || emailStatus === 'taken' || phoneStatus === 'taken'
                   ? 'not-allowed'
                   : 'pointer',
@@ -1011,19 +1008,19 @@ export const SignupPage: React.FC = () => {
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
                   Provisioning Cloud Laboratory...
                 </>
               ) : (
                 <>
-                  Create Account & Start 14-Day Free Trial <ArrowRight size={16} />
+                  Create Account &amp; Start 14-Day Free Trial <ArrowRight size={15} />
                 </>
               )}
             </button>
           </form>
 
           {/* Login prompt */}
-          <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '13px', color: textMuted }}>
+          <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '12px', color: textMuted }}>
             Already have an account?{' '}
             <Link to="/login" style={{ color: '#10a37f', fontWeight: 600, textDecoration: 'none' }}>
               Sign In to Your Shop

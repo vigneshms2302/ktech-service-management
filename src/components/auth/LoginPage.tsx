@@ -285,10 +285,10 @@ export const LoginPage: React.FC = () => {
       {/* ───────────────────────────────────────────────────────────── */}
       {/* RIGHT COLUMN: FOCUSED, HIGH-CONVERSION SIGN-IN CONSOLE         */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className={`lg:w-5/12 xl:w-5/12 p-6 sm:p-10 lg:p-12 flex flex-col justify-between ${isLight ? 'bg-white' : 'bg-[#111622]'} relative`}>
+      <div className={`lg:w-5/12 xl:w-5/12 p-4 sm:p-6 lg:p-8 xl:p-10 flex flex-col justify-between ${isLight ? 'bg-white' : 'bg-[#111622]'} relative`}>
         
         {/* Top Controls Row */}
-        <div className="flex items-center justify-between gap-4 mb-8">
+        <div className="flex items-center justify-between gap-4 mb-4 sm:mb-6">
           <Link
             to="/public"
             className={`text-xs font-medium flex items-center gap-1.5 no-underline transition-colors ${
@@ -338,8 +338,8 @@ export const LoginPage: React.FC = () => {
         <div className="w-full max-w-md mx-auto my-auto">
           
           {/* Card Header */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-1.5">
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 {isSuperAdmin ? 'Platform Super-Admin' : 'Shop Staff Authentication'}
               </span>
@@ -349,10 +349,10 @@ export const LoginPage: React.FC = () => {
                 </span>
               )}
             </div>
-            <h2 className={`text-2xl sm:text-3xl font-bold tracking-tight ${isLight ? 'text-gray-900' : 'text-white'}`}>
+            <h2 className={`text-xl sm:text-2xl font-bold tracking-tight ${isLight ? 'text-gray-900' : 'text-white'}`}>
               {isSuperAdmin ? 'Super-Admin Console' : 'Sign in to your repair shop'}
             </h2>
-            <p className={`text-xs sm:text-sm mt-1.5 ${isLight ? 'text-gray-500' : 'text-slate-400'}`}>
+            <p className={`text-xs mt-1 ${isLight ? 'text-gray-500' : 'text-slate-400'}`}>
               {isSuperAdmin
                 ? 'Master vendor control center for shop provisioning & subscriptions.'
                 : 'Enter your Shop ID and credentials to access your repair ledger and diagnostics.'}
@@ -361,7 +361,7 @@ export const LoginPage: React.FC = () => {
 
           {/* New Shop Registration Prompt Banner */}
           {!isSuperAdmin && (
-            <div className={`mb-6 p-4 rounded-xl border transition-all ${
+            <div className={`mb-4 p-3.5 rounded-xl border transition-all ${
               isLight
                 ? 'bg-emerald-50/70 border-emerald-200/80 text-gray-800'
                 : 'bg-emerald-950/20 border-emerald-500/30 text-slate-200'
