@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Lock,
   User,
@@ -22,6 +22,7 @@ import {
   Check,
   RefreshCw,
   X,
+  Store,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { useToast } from '../../context/ToastContext.tsx';
@@ -37,8 +38,20 @@ export const LoginPage: React.FC = () => {
 
   const isLight = theme === 'light';
 
-  const [shopSlug, setShopSlugState] = useState<string>(() => getShopSlug() || 'ktech');
+  const { shopSlug: routeShopSlug } = useParams<{ shopSlug?: string }>();
   const searchParams = new URLSearchParams(window.location.search);
+  const queryShopSlug = searchParams.get('shop') || searchParams.get('slug');
+  const dedicatedShopSlug = (routeShopSlug || queryShopSlug || '').trim().toLowerCase();
+
+  const [shopSlug, setShopSlugState] = useState<string>(() => dedicatedShopSlug || getShopSlug() || '');
+
+  useEffect(() => {
+    if (dedicatedShopSlug) {
+      setShopSlugState(dedicatedShopSlug);
+      setShopSlug(dedicatedShopSlug);
+    }
+  }, [dedicatedShopSlug]);
+
   const isAdminParam = searchParams.get('admin') === '1';
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(isAdminParam);
   const [username, setUsername] = useState<string>(isAdminParam ? 'superadmin' : '');
@@ -385,6 +398,41 @@ export const LoginPage: React.FC = () => {
           {/* Clean Unified Form: ShopID + Username + Password */}
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             
+            {/* Dedicated Shop Portal Banner (GreytHR style) */}
+            {!isSuperAdmin && dedicatedShopSlug && (
+              <div
+                className={`p-3 rounded-xl border flex items-center justify-between mb-1 ${
+                  isLight
+                    ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+                    : 'bg-emerald-950/30 border-emerald-800/80 text-emerald-200'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <Store size={16} />
+                  </div>
+                  <div className="overflow-hidden">
+                    <div className="text-xs font-bold truncate">
+                      {dedicatedShopSlug} Workspace
+                    </div>
+                    <div className="text-[11px] opacity-75 truncate">
+                      Dedicated Shop Login Portal
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShopSlugState('');
+                    navigate('/login', { replace: true });
+                  }}
+                  className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300 hover:underline shrink-0 ml-2 cursor-pointer"
+                >
+                  Change Shop
+                </button>
+              </div>
+            )}
+
             {/* Shop Identifier Input */}
             {!isSuperAdmin && (
               <div>
@@ -408,7 +456,7 @@ export const LoginPage: React.FC = () => {
                     autoCapitalize="none"
                     value={shopSlug}
                     onChange={(e) => setShopSlugState(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-                    placeholder="e.g. ktech"
+                    placeholder="e.g. computechstore or my-repair-lab"
                     className={`w-full pl-9 pr-3.5 py-2.5 rounded-xl border text-sm font-mono transition-all outline-none ${
                       isLight
                         ? 'bg-white border-gray-200 text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15'
@@ -416,9 +464,14 @@ export const LoginPage: React.FC = () => {
                     }`}
                   />
                 </div>
-                <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
-                  The unique ID chosen when you registered your shop (e.g. <span className="font-mono text-emerald-500">ktech</span>).
-                </p>
+                <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400 mt-1">
+                  <span>Your registered shop handle.</span>
+                  {shopSlug.trim() && (
+                    <span className="font-mono text-emerald-600 dark:text-emerald-400 text-[10.5px]">
+                      /shop/{shopSlug.trim()}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
 

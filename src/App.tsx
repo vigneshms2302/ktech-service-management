@@ -97,6 +97,35 @@ export const App: React.FC = () => {
           )
         }
       />
+      {/* Dedicated Company / Shop Portal Route (GreytHR / Slack style: /shop/:shopSlug) */}
+      <Route
+        path="/shop/:shopSlug"
+        element={
+          currentUser ? (
+            currentUser.roleId === 'ROLE_SUPER_ADMIN' ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <Navigate to="/app" replace />
+            )
+          ) : (
+            <LoginPage />
+          )
+        }
+      />
+      <Route
+        path="/login/:shopSlug"
+        element={
+          currentUser ? (
+            currentUser.roleId === 'ROLE_SUPER_ADMIN' ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <Navigate to="/app" replace />
+            )
+          ) : (
+            <LoginPage />
+          )
+        }
+      />
       <Route
         path="/signup"
         element={

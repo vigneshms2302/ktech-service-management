@@ -7,6 +7,9 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Globe,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext.tsx';
 import { saasApi, setShopSlug } from '../../api/client.ts';
@@ -33,6 +36,10 @@ export const SignupPage: React.FC = () => {
     pincode: '',
   });
 
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,27 +58,29 @@ export const SignupPage: React.FC = () => {
   const emailTimerRef = useRef<any>(null);
   const phoneTimerRef = useRef<any>(null);
 
-  // Auto-generate clean slug from shop name
+  // Generates clean URL slug while maintaining user typing flow with hyphens & spaces
+  const slugifyWhileTyping = (text: string): string => {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+/, '');
+  };
+
   const handleShopNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    const generatedSlug = val
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
+    const generatedSlug = slugifyWhileTyping(val);
+    const nextSlug = isSlugManuallyEdited ? formData.slug : generatedSlug;
 
-    setFormData((prev) => {
-      const shouldUpdateSlug = prev.slug === '' || prev.slug === prev.shopName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-      const nextSlug = shouldUpdateSlug ? generatedSlug : prev.slug;
-      if (shouldUpdateSlug && generatedSlug.length >= 3) {
-        triggerSlugCheck(generatedSlug);
-      }
-      return {
-        ...prev,
-        shopName: val,
-        slug: nextSlug,
-      };
-    });
+    setFormData((prev) => ({
+      ...prev,
+      shopName: val,
+      slug: nextSlug,
+    }));
+
+    if (!isSlugManuallyEdited && generatedSlug.replace(/-+$/, '').length >= 3) {
+      triggerSlugCheck(generatedSlug.replace(/-+$/, ''));
+    }
 
     if (fieldErrors.shopName) {
       setFieldErrors((prev) => {
@@ -84,7 +93,7 @@ export const SignupPage: React.FC = () => {
 
   const triggerSlugCheck = (slugVal: string) => {
     if (slugTimerRef.current) clearTimeout(slugTimerRef.current);
-    const clean = slugVal.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    const clean = slugVal.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').replace(/-+$/, '');
     if (clean.length < 3) {
       setSlugStatus(clean.length > 0 ? 'invalid' : 'idle');
       setSlugMessage(clean.length > 0 ? 'URL handle must be at least 3 characters.' : '');
@@ -120,6 +129,7 @@ export const SignupPage: React.FC = () => {
 
   const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    setIsSlugManuallyEdited(val.length > 0);
     setFormData((prev) => ({ ...prev, slug: val }));
     triggerSlugCheck(val);
   };
@@ -222,7 +232,7 @@ export const SignupPage: React.FC = () => {
   }, []);
 
   const scrollToFirstError = (errors: Record<string, string>) => {
-    const fieldOrder = ['shopName', 'slug', 'ownerName', 'phone', 'email', 'password', 'city', 'state'];
+    const fieldOrder = ['shopName', 'slug', 'ownerName', 'phone', 'username', 'password', 'email', 'city', 'state'];
     for (const key of fieldOrder) {
       if (errors[key]) {
         const el = document.getElementById(`signup_${key}`);
@@ -243,7 +253,7 @@ export const SignupPage: React.FC = () => {
       errors.shopName = 'Shop / Business Name must be at least 2 characters.';
     }
 
-    const cleanSlug = formData.slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    const cleanSlug = formData.slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').replace(/^-+|-+$/g, '');
     if (!cleanSlug || cleanSlug.length < 3) {
       errors.slug = 'Shop URL Handle must be at least 3 characters.';
     } else if (slugStatus === 'taken') {
@@ -259,6 +269,13 @@ export const SignupPage: React.FC = () => {
       errors.phone = 'Valid 10-digit mobile number is required.';
     } else if (phoneStatus === 'taken') {
       errors.phone = 'This mobile number is already registered to an existing shop.';
+    }
+
+    const cleanUsername = (formData.username || '').trim().toLowerCase();
+    if (!cleanUsername || cleanUsername.length < 3) {
+      errors.username = 'Admin username must be at least 3 characters.';
+    } else if (!/^[a-z0-9_-]+$/.test(cleanUsername)) {
+      errors.username = 'Username can only contain letters, numbers, hyphens, and underscores.';
     }
 
     if (formData.email.trim()) {
@@ -514,6 +531,63 @@ export const SignupPage: React.FC = () => {
                     {slugStatus === 'available' && <CheckCircle2 size={16} color="#10a37f" />}
                     {slugStatus === 'taken' && <XCircle size={16} color="#ef4444" />}
                   </div>
+                  {/* Live Dedicated Portal URL preview (GreytHR style) */}
+                  <div
+                    style={{
+                      marginTop: '8px',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      backgroundColor: isLight ? '#f3f4f6' : '#1a1a1a',
+                      border: `1px solid ${borderCol}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                      <Globe size={13} color="#10a37f" style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: '11px', color: textMuted, flexShrink: 0 }}>Dedicated Portal URL:</span>
+                      <span
+                        style={{
+                          fontFamily: 'monospace',
+                          fontSize: '11.5px',
+                          color: formData.slug ? (slugStatus === 'taken' ? '#ef4444' : '#10a37f') : textMuted,
+                          fontWeight: 600,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        /shop/{formData.slug || 'your-shop-name'}
+                      </span>
+                    </div>
+                    {formData.slug && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                          const fullUrl = `${origin}/shop/${formData.slug}`;
+                          navigator.clipboard.writeText(fullUrl);
+                          setCopiedUrl(true);
+                          setTimeout(() => setCopiedUrl(false), 2000);
+                        }}
+                        style={{
+                          fontSize: '10.5px',
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          border: `1px solid ${borderCol}`,
+                          background: isLight ? '#fff' : '#262626',
+                          color: textMain,
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {copiedUrl ? '✓ Copied' : 'Copy'}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {slugMessage && (
                   <div
@@ -542,7 +616,15 @@ export const SignupPage: React.FC = () => {
                   placeholder="e.g. Ramesh Kumar"
                   value={formData.ownerName}
                   onChange={(e) => {
-                    setFormData({ ...formData, ownerName: e.target.value });
+                    const val = e.target.value;
+                    setFormData((prev) => ({
+                      ...prev,
+                      ownerName: val,
+                      // If username was never touched or is admin, suggest first name or keep admin
+                      username: prev.username === 'admin' || !prev.username
+                        ? 'admin'
+                        : prev.username,
+                    }));
                     if (fieldErrors.ownerName) {
                       setFieldErrors((prev) => {
                         const next = { ...prev };
@@ -627,7 +709,116 @@ export const SignupPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Email & Password */}
+            {/* Create Admin Username & Password (GreytHR / SaaS standard) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                  Create Admin Username *
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    id="signup_username"
+                    type="text"
+                    placeholder="e.g. admin, computeeech"
+                    value={formData.username}
+                    onChange={(e) => {
+                      const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                      setFormData({ ...formData, username: val });
+                      if (fieldErrors.username) {
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.username;
+                          return next;
+                        });
+                      }
+                    }}
+                    className={fieldErrors.username ? 'input-error' : ''}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: `1px solid ${fieldErrors.username ? '#ef4444' : borderCol}`,
+                      backgroundColor: inputBg,
+                      color: textMain,
+                      fontSize: '13.5px',
+                      fontFamily: 'monospace',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+                {fieldErrors.username ? (
+                  <div style={{ color: '#ef4444', fontSize: '11.5px', marginTop: '4px', fontWeight: 500 }}>
+                    {fieldErrors.username}
+                  </div>
+                ) : (
+                  <div style={{ color: textMuted, fontSize: '11px', marginTop: '4px' }}>
+                    Username for signing into this shop workspace.
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '12.5px', fontWeight: 600 }}>
+                    Create Admin Password *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      color: textMuted,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={12} /> : <Eye size={12} />}
+                    <span>{showPassword ? 'Hide' : 'Show'}</span>
+                  </button>
+                </div>
+                <input
+                  id="signup_password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Min 6 characters"
+                  value={formData.password}
+                  onChange={(e) => {
+                    setFormData({ ...formData, password: e.target.value });
+                    if (fieldErrors.password) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.password;
+                        return next;
+                      });
+                    }
+                  }}
+                  className={fieldErrors.password ? 'input-error' : ''}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: `1px solid ${fieldErrors.password ? '#ef4444' : borderCol}`,
+                    backgroundColor: inputBg,
+                    color: textMain,
+                    fontSize: '13.5px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                {fieldErrors.password && (
+                  <div style={{ color: '#ef4444', fontSize: '11.5px', marginTop: '4px', fontWeight: 500 }}>
+                    {fieldErrors.password}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Email Address & City */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
@@ -644,7 +835,7 @@ export const SignupPage: React.FC = () => {
                   <input
                     id="signup_email"
                     type="email"
-                    placeholder="ramesh@gmail.com"
+                    placeholder="e.g. computech@gmail.com"
                     value={formData.email}
                     onChange={handleEmailChange}
                     className={fieldErrors.email || emailStatus === 'taken' ? 'input-error' : ''}
@@ -686,51 +877,12 @@ export const SignupPage: React.FC = () => {
 
               <div>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
-                  Create Admin Password *
+                  City *
                 </label>
-                <input
-                  id="signup_password"
-                  type="password"
-                  placeholder="Min 6 characters"
-                  value={formData.password}
-                  onChange={(e) => {
-                    setFormData({ ...formData, password: e.target.value });
-                    if (fieldErrors.password) {
-                      setFieldErrors((prev) => {
-                        const next = { ...prev };
-                        delete next.password;
-                        return next;
-                      });
-                    }
-                  }}
-                  className={fieldErrors.password ? 'input-error' : ''}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: `1px solid ${fieldErrors.password ? '#ef4444' : borderCol}`,
-                    backgroundColor: inputBg,
-                    color: textMain,
-                    fontSize: '13.5px',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-                {fieldErrors.password && (
-                  <div style={{ color: '#ef4444', fontSize: '11.5px', marginTop: '4px', fontWeight: 500 }}>
-                    {fieldErrors.password}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* City & State */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>City *</label>
                 <input
                   id="signup_city"
                   type="text"
+                  placeholder="e.g. Nagercoil, Coimbatore"
                   value={formData.city}
                   onChange={(e) => {
                     setFormData({ ...formData, city: e.target.value });
@@ -761,12 +913,18 @@ export const SignupPage: React.FC = () => {
                   </div>
                 )}
               </div>
+            </div>
 
+            {/* State & Pincode */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>State *</label>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                  State *
+                </label>
                 <input
                   id="signup_state"
                   type="text"
+                  placeholder="e.g. Tamil Nadu"
                   value={formData.state}
                   onChange={(e) => {
                     setFormData({ ...formData, state: e.target.value });
@@ -796,6 +954,32 @@ export const SignupPage: React.FC = () => {
                     {fieldErrors.state}
                   </div>
                 )}
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                  PIN Code (Optional)
+                </label>
+                <input
+                  id="signup_pincode"
+                  type="text"
+                  placeholder="e.g. 641001"
+                  value={formData.pincode}
+                  onChange={(e) => {
+                    setFormData({ ...formData, pincode: e.target.value });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: `1px solid ${borderCol}`,
+                    backgroundColor: inputBg,
+                    color: textMain,
+                    fontSize: '13.5px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
               </div>
             </div>
 
