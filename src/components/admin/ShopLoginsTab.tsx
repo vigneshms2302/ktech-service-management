@@ -14,11 +14,11 @@ import {
   UserX,
   Download,
   MessageCircle,
-  X,
   Building2,
 } from 'lucide-react';
 import { saasApi, setAuthToken, setShopSlug, getAuthToken } from '../../api/client.ts';
 import { useToast } from '../../context/ToastContext.tsx';
+import { AdminDialog } from './AdminDialog.tsx';
 import {
   ShopItem,
   ShopUserAccount,
@@ -799,40 +799,12 @@ export const ShopLoginsTab: React.FC<ShopLoginsTabProps> = ({
       </div>
 
       {/* Add User Login Modal */}
-      {isAddModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.72)',
-            zIndex: 80,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-          }}
-        >
-          <div
-            style={{
-              width: '100%',
-              maxWidth: '480px',
-              backgroundColor: '#1b1b1b',
-              border: '1px solid rgba(255,255,255,0.14)',
-              borderRadius: '16px',
-              padding: '22px',
-              color: '#ececec',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>Create New Shop Login</h3>
-              <button
-                type="button"
-                onClick={() => setIsAddModalOpen(false)}
-                style={{ background: 'none', border: 'none', color: '#8e8ea0', cursor: 'pointer' }}
-              >
-                <X size={18} />
-              </button>
-            </div>
+      <AdminDialog
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        title="Create New Shop Login"
+        maxWidth={480}
+      >
 
             <form onSubmit={handleCreateUser} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
@@ -1008,49 +980,26 @@ export const ShopLoginsTab: React.FC<ShopLoginsTabProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </AdminDialog>
 
       {/* Reset Password & PIN Modal */}
-      {resetTarget && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.72)',
-            zIndex: 80,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-          }}
-        >
-          <div
-            style={{
-              width: '100%',
-              maxWidth: '420px',
-              backgroundColor: '#1b1b1b',
-              border: '1px solid rgba(255,255,255,0.14)',
-              borderRadius: '16px',
-              padding: '22px',
-              color: '#ececec',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>
-                Reset Credentials • @{resetTarget.username}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setResetTarget(null)}
-                style={{ background: 'none', border: 'none', color: '#8e8ea0', cursor: 'pointer' }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <p style={{ fontSize: '12.5px', color: '#9ca3af', marginBottom: '14px' }}>
-              Shop: <strong>{resetTarget.shopName}</strong> (/shop/{resetTarget.shopSlug}). Leave new password blank to auto-generate a strong temporary password stored safely in your recoverable vault.
+      <AdminDialog
+        open={Boolean(resetTarget)}
+        onClose={() => setResetTarget(null)}
+        title={resetTarget ? `Reset Credentials • @${resetTarget.username}` : 'Reset Credentials'}
+        subtitle={
+          resetTarget ? (
+            <>
+              Shop: <strong>{resetTarget.shopName}</strong> (/shop/{resetTarget.shopSlug})
+            </>
+          ) : undefined
+        }
+        maxWidth={420}
+      >
+        {resetTarget && (
+          <>
+            <p style={{ fontSize: '12.5px', color: '#9ca3af', marginTop: 0, marginBottom: '14px' }}>
+              Leave new password blank to auto-generate a strong temporary password stored safely in your recoverable vault.
             </p>
             <form onSubmit={handleResetSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
@@ -1123,9 +1072,9 @@ export const ShopLoginsTab: React.FC<ShopLoginsTabProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </AdminDialog>
     </div>
   );
 };

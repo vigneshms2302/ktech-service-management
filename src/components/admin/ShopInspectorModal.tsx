@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  X,
   Building2,
   ExternalLink,
   Clock,
@@ -24,6 +23,7 @@ import {
 } from 'lucide-react';
 import { saasApi, getAuthToken, setAuthToken, setShopSlug } from '../../api/client.ts';
 import { useToast } from '../../context/ToastContext.tsx';
+import { AdminDialog } from './AdminDialog.tsx';
 import {
   ShopDossier,
   ShopUserAccount,
@@ -139,8 +139,6 @@ export const ShopInspectorModal: React.FC<ShopInspectorModalProps> = ({
     setShowAddUser(false);
     loadDossier();
   }, [loadDossier]);
-
-  if (!shopId) return null;
 
   const daysRemaining = dossier ? computeDaysRemaining(dossier.subscriptionEndsAt) : 0;
 
@@ -384,230 +382,198 @@ export const ShopInspectorModal: React.FC<ShopInspectorModalProps> = ({
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0,0,0,0.78)',
-        zIndex: 80,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '1040px',
-          maxHeight: '92vh',
-          overflowY: 'auto',
-          backgroundColor: '#191919',
-          border: '1px solid rgba(255,255,255,0.14)',
-          borderRadius: '18px',
-          padding: '24px',
-          color: '#ececec',
-        }}
-      >
-        {/* Top Header & Quick Actions */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '14px', flexWrap: 'wrap', marginBottom: '16px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <Building2 size={20} color="#10a37f" />
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>
-                {dossier ? dossier.name : 'Loading Shop Dossier...'}
-              </h2>
-              {dossier && (
-                <>
-                  <span
+    <AdminDialog
+      open={Boolean(shopId)}
+      onClose={onClose}
+      maxWidth={1040}
+      title={
+        <>
+          <Building2 size={20} color="#10a37f" />
+          <span>{dossier ? dossier.name : 'Loading Shop Dossier...'}</span>
+          {dossier && (
+            <>
+              <span
+                style={{
+                  padding: '2px 9px',
+                  borderRadius: '9999px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  backgroundColor:
+                    dossier.status === 'ACTIVE'
+                      ? 'rgba(16,163,127,0.18)'
+                      : dossier.status === 'FROZEN'
+                      ? 'rgba(239,68,68,0.18)'
+                      : 'rgba(245,158,11,0.18)',
+                  color:
+                    dossier.status === 'ACTIVE' ? '#34d399' : dossier.status === 'FROZEN' ? '#f87171' : '#fbbf24',
+                }}
+              >
+                {dossier.status}
+              </span>
+              <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 500 }}>
+                /shop/{dossier.slug} • {daysRemaining > 0 ? `${daysRemaining}d left` : 'Expired'}
+              </span>
+            </>
+          )}
+        </>
+      }
+      subtitle={
+        dossier
+          ? `Owner: ${dossier.ownerName} (${dossier.phone}) • Plan: ${dossier.subscriptionPlan} (${dossier.subscriptionStatus})`
+          : undefined
+      }
+      headerExtra={
+        dossier ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* Quick Actions */}
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => handleSupportLogin()}
+                disabled={dossier.status !== 'ACTIVE'}
+                title={
+                  dossier.status === 'ACTIVE'
+                    ? 'Open this shop live workspace as Support Admin'
+                    : 'Activate shop before launching Support Mode'
+                }
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 12px',
+                  borderRadius: '9px',
+                  backgroundColor: '#2563eb',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: dossier.status === 'ACTIVE' ? 'pointer' : 'not-allowed',
+                  opacity: dossier.status === 'ACTIVE' ? 1 : 0.45,
+                }}
+              >
+                <ExternalLink size={13} /> Open Shop Workspace
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExtendDays(14)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '7px 11px',
+                  borderRadius: '9px',
+                  backgroundColor: 'rgba(16,163,127,0.14)',
+                  border: '1px solid rgba(16,163,127,0.35)',
+                  color: '#34d399',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <Clock size={12} /> +14d
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExtendDays(30)}
+                style={{
+                  padding: '7px 11px',
+                  borderRadius: '9px',
+                  backgroundColor: 'rgba(16,163,127,0.14)',
+                  border: '1px solid rgba(16,163,127,0.35)',
+                  color: '#34d399',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                +30d
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleFreeze}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '7px 11px',
+                  borderRadius: '9px',
+                  backgroundColor: dossier.status === 'FROZEN' ? 'rgba(16,163,127,0.16)' : 'rgba(239,68,68,0.16)',
+                  border: `1px solid ${dossier.status === 'FROZEN' ? 'rgba(16,163,127,0.35)' : 'rgba(239,68,68,0.35)'}`,
+                  color: dossier.status === 'FROZEN' ? '#34d399' : '#f87171',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {dossier.status === 'FROZEN' ? <Unlock size={12} /> : <Lock size={12} />}
+                {dossier.status === 'FROZEN' ? 'Activate' : 'Freeze'}
+              </button>
+              <a
+                href={buildWhatsAppUrl(
+                  dossier.phone,
+                  `Hello ${dossier.ownerName}, reaching out from K-Connect Support regarding ${dossier.name}.`
+                )}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '7px 11px',
+                  borderRadius: '9px',
+                  backgroundColor: 'rgba(37,211,102,0.14)',
+                  border: '1px solid rgba(37,211,102,0.3)',
+                  color: '#4ade80',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                }}
+              >
+                <MessageCircle size={13} /> WhatsApp
+              </a>
+            </div>
+
+            {/* Sub-Tabs */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {(
+                [
+                  { id: 'OVERVIEW', label: 'Overview & Edit Profile', icon: Building2 },
+                  { id: 'LOGINS', label: `Logins (${dossier.users.length})`, icon: KeyRound },
+                  { id: 'CUSTOMERS', label: `Customers (${dossier.totalCustomersCount ?? dossier.recentCustomers.length})`, icon: Users },
+                  { id: 'JOBS', label: `Repair Jobs (${dossier.totalJobsCount})`, icon: Wrench },
+                  { id: 'BILLING', label: `Subscription & Claims (${dossier.paymentClaims.length})`, icon: CreditCard },
+                ] as const
+              ).map((tab) => {
+                const Icon = tab.icon;
+                const isActive = subTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setSubTab(tab.id)}
                     style={{
-                      padding: '2px 9px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '7px 14px',
                       borderRadius: '9999px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      backgroundColor:
-                        dossier.status === 'ACTIVE'
-                          ? 'rgba(16,163,127,0.18)'
-                          : dossier.status === 'FROZEN'
-                          ? 'rgba(239,68,68,0.18)'
-                          : 'rgba(245,158,11,0.18)',
-                      color:
-                        dossier.status === 'ACTIVE' ? '#34d399' : dossier.status === 'FROZEN' ? '#f87171' : '#fbbf24',
+                      border: 'none',
+                      backgroundColor: isActive ? '#10a37f' : '#262626',
+                      color: isActive ? '#fff' : '#d1d5db',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
                     }}
                   >
-                    {dossier.status}
-                  </span>
-                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>
-                    /shop/{dossier.slug} • {daysRemaining > 0 ? `${daysRemaining}d left` : 'Expired'}
-                  </span>
-                </>
-              )}
+                    <Icon size={14} /> {tab.label}
+                  </button>
+                );
+              })}
             </div>
-            {dossier && (
-              <div style={{ fontSize: '12.5px', color: '#9ca3af', marginTop: '4px' }}>
-                Owner: {dossier.ownerName} ({dossier.phone}) • Plan: {dossier.subscriptionPlan} ({dossier.subscriptionStatus})
-              </div>
-            )}
           </div>
-
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            {dossier && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => handleSupportLogin()}
-                  disabled={dossier.status !== 'ACTIVE'}
-                  title={
-                    dossier.status === 'ACTIVE'
-                      ? 'Open this shop live workspace as Support Admin'
-                      : 'Activate shop before launching Support Mode'
-                  }
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '7px 12px',
-                    borderRadius: '9px',
-                    backgroundColor: '#2563eb',
-                    border: 'none',
-                    color: '#fff',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: dossier.status === 'ACTIVE' ? 'pointer' : 'not-allowed',
-                    opacity: dossier.status === 'ACTIVE' ? 1 : 0.45,
-                  }}
-                >
-                  <ExternalLink size={13} /> Open Shop Workspace
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleExtendDays(14)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    padding: '7px 11px',
-                    borderRadius: '9px',
-                    backgroundColor: 'rgba(16,163,127,0.14)',
-                    border: '1px solid rgba(16,163,127,0.35)',
-                    color: '#34d399',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <Clock size={12} /> +14d
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleExtendDays(30)}
-                  style={{
-                    padding: '7px 11px',
-                    borderRadius: '9px',
-                    backgroundColor: 'rgba(16,163,127,0.14)',
-                    border: '1px solid rgba(16,163,127,0.35)',
-                    color: '#34d399',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  +30d
-                </button>
-                <button
-                  type="button"
-                  onClick={handleToggleFreeze}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    padding: '7px 11px',
-                    borderRadius: '9px',
-                    backgroundColor: dossier.status === 'FROZEN' ? 'rgba(16,163,127,0.16)' : 'rgba(239,68,68,0.16)',
-                    border: `1px solid ${dossier.status === 'FROZEN' ? 'rgba(16,163,127,0.35)' : 'rgba(239,68,68,0.35)'}`,
-                    color: dossier.status === 'FROZEN' ? '#34d399' : '#f87171',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {dossier.status === 'FROZEN' ? <Unlock size={12} /> : <Lock size={12} />}
-                  {dossier.status === 'FROZEN' ? 'Activate' : 'Freeze'}
-                </button>
-                <a
-                  href={buildWhatsAppUrl(
-                    dossier.phone,
-                    `Hello ${dossier.ownerName}, reaching out from K-Connect Support regarding ${dossier.name}.`
-                  )}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    padding: '7px 11px',
-                    borderRadius: '9px',
-                    backgroundColor: 'rgba(37,211,102,0.14)',
-                    border: '1px solid rgba(37,211,102,0.3)',
-                    color: '#4ade80',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                  }}
-                >
-                  <MessageCircle size={13} /> WhatsApp
-                </a>
-              </>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              style={{ background: 'none', border: 'none', color: '#8e8ea0', cursor: 'pointer', padding: '4px' }}
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </div>
-
-        {/* Sub-Tabs */}
-        {dossier && (
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px', marginBottom: '18px' }}>
-            {(
-              [
-                { id: 'OVERVIEW', label: 'Overview & Edit Profile', icon: Building2 },
-                { id: 'LOGINS', label: `Logins (${dossier.users.length})`, icon: KeyRound },
-                { id: 'CUSTOMERS', label: `Customers (${dossier.totalCustomersCount ?? dossier.recentCustomers.length})`, icon: Users },
-                { id: 'JOBS', label: `Repair Jobs (${dossier.totalJobsCount})`, icon: Wrench },
-                { id: 'BILLING', label: `Subscription & Claims (${dossier.paymentClaims.length})`, icon: CreditCard },
-              ] as const
-            ).map((tab) => {
-              const Icon = tab.icon;
-              const isActive = subTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setSubTab(tab.id)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '7px 14px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    backgroundColor: isActive ? '#10a37f' : '#262626',
-                    color: isActive ? '#fff' : '#d1d5db',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <Icon size={14} /> {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        ) : undefined
+      }
+    >
 
         {isLoading && !dossier ? (
           <div style={{ padding: '48px', textAlign: 'center', color: '#8e8ea0' }}>
@@ -1337,8 +1303,7 @@ export const ShopInspectorModal: React.FC<ShopInspectorModalProps> = ({
             )}
           </>
         ) : null}
-      </div>
-    </div>
+    </AdminDialog>
   );
 };
 

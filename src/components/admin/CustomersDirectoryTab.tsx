@@ -10,13 +10,13 @@ import {
   Laptop,
   Wrench,
   FileText,
-  X,
   Building2,
   MessageCircle,
   Lock,
 } from 'lucide-react';
 import { saasApi } from '../../api/client.ts';
 import { useToast } from '../../context/ToastContext.tsx';
+import { AdminDialog } from './AdminDialog.tsx';
 import {
   ShopItem,
   GlobalCustomerItem,
@@ -74,140 +74,110 @@ export const CustomerDossierModal: React.FC<CustomerDossierModalProps> = ({
     };
   }, [customerId, showError]);
 
-  if (!customerId) return null;
-
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0,0,0,0.78)',
-        zIndex: 90,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '920px',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          backgroundColor: '#191919',
-          border: '1px solid rgba(255,255,255,0.14)',
-          borderRadius: '18px',
-          padding: '24px',
-          color: '#ececec',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '18px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h3 style={{ margin: 0, fontSize: '19px', fontWeight: 700 }}>
-                {dossier?.customer.fullName || 'Loading Customer Dossier...'}
-              </h3>
-              {dossier && (
-                <>
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      padding: '2px 8px',
-                      borderRadius: '6px',
-                      backgroundColor: 'rgba(16,163,127,0.16)',
-                      color: '#34d399',
-                    }}
-                  >
-                    {dossier.customer.customerCode}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      padding: '2px 8px',
-                      borderRadius: '6px',
-                      backgroundColor: 'rgba(255,255,255,0.08)',
-                      color: '#d1d5db',
-                    }}
-                  >
-                    {dossier.customer.customerType}
-                  </span>
-                </>
-              )}
-            </div>
-            {dossier && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', fontSize: '12.5px', color: '#9ca3af', marginTop: '6px' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                  <Phone size={13} /> {dossier.customer.primaryPhone}
-                  {dossier.customer.secondaryPhone ? ` / ${dossier.customer.secondaryPhone}` : ''}
-                </span>
-                {dossier.customer.email && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                    <Mail size={13} /> {dossier.customer.email}
-                  </span>
-                )}
-                {dossier.customer.gstin && <span>GSTIN: {dossier.customer.gstin}</span>}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onInspectShop?.(dossier.customer.shopId);
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    color: '#34d399',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontWeight: 600,
-                  }}
-                >
-                  <Building2 size={13} /> {dossier.customer.shopName}
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {dossier && (
-              <a
-                href={buildWhatsAppUrl(
-                  dossier.customer.primaryPhone,
-                  `Hello ${dossier.customer.fullName}, reaching out regarding your service record with ${dossier.customer.shopName} on K-Connect.`
-                )}
-                target="_blank"
-                rel="noreferrer"
+    <AdminDialog
+      open={Boolean(customerId)}
+      onClose={onClose}
+      maxWidth={920}
+      title={
+        <>
+          <span>{dossier?.customer.fullName || 'Loading Customer Dossier...'}</span>
+          {dossier && (
+            <>
+              <span
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  padding: '7px 12px',
-                  borderRadius: '8px',
-                  backgroundColor: 'rgba(37, 211, 102, 0.14)',
-                  border: '1px solid rgba(37, 211, 102, 0.35)',
-                  color: '#4ade80',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  textDecoration: 'none',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(16,163,127,0.16)',
+                  color: '#34d399',
                 }}
               >
-                <MessageCircle size={13} /> WhatsApp
-              </a>
+                {dossier.customer.customerCode}
+              </span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  color: '#d1d5db',
+                }}
+              >
+                {dossier.customer.customerType}
+              </span>
+            </>
+          )}
+        </>
+      }
+      subtitle={
+        dossier ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', fontSize: '12.5px', color: '#9ca3af' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              <Phone size={13} /> {dossier.customer.primaryPhone}
+              {dossier.customer.secondaryPhone ? ` / ${dossier.customer.secondaryPhone}` : ''}
+            </span>
+            {dossier.customer.email && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <Mail size={13} /> {dossier.customer.email}
+              </span>
             )}
+            {dossier.customer.gstin && <span>GSTIN: {dossier.customer.gstin}</span>}
             <button
               type="button"
-              onClick={onClose}
-              style={{ background: 'none', border: 'none', color: '#8e8ea0', cursor: 'pointer', padding: '4px' }}
+              onClick={() => {
+                onClose();
+                onInspectShop?.(dossier.customer.shopId);
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                color: '#34d399',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontWeight: 600,
+              }}
             >
-              <X size={20} />
+              <Building2 size={13} /> {dossier.customer.shopName}
             </button>
           </div>
-        </div>
+        ) : undefined
+      }
+      headerExtra={
+        dossier ? (
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <a
+              href={buildWhatsAppUrl(
+                dossier.customer.primaryPhone,
+                `Hello ${dossier.customer.fullName}, reaching out regarding your service record with ${dossier.customer.shopName} on K-Connect.`
+              )}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '7px 12px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(37, 211, 102, 0.14)',
+                border: '1px solid rgba(37, 211, 102, 0.35)',
+                color: '#4ade80',
+                fontSize: '12px',
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              <MessageCircle size={13} /> WhatsApp
+            </a>
+          </div>
+        ) : undefined
+      }
+    >
 
         {isLoading ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#8e8ea0' }}>
@@ -404,8 +374,7 @@ export const CustomerDossierModal: React.FC<CustomerDossierModalProps> = ({
             </div>
           </div>
         ) : null}
-      </div>
-    </div>
+    </AdminDialog>
   );
 };
 

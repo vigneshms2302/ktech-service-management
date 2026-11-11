@@ -850,3 +850,35 @@ select.input-error {
     opacity: 1;
   }
 }
+
+/* ==========================================================================
+   Native Modal Dialogs (Top-Layer, Light-Dismiss & Scroll-Contained)
+   ========================================================================== */
+dialog.admin-native-dialog {
+  margin: auto;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  background-color: #191919;
+  color: #ececec;
+  max-width: calc(100vw - 24px);
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.72);
+}
+
+dialog.admin-native-dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog.admin-native-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+dialog.admin-native-dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(2px);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
