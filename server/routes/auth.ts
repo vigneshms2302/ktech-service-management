@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getClient } from '../db/database.ts';
 import { generateToken, verifyPassword, hashPassword, authenticateToken } from '../middleware/auth.ts';
+import { encryptSecret } from '../security/crypto.ts';
 import { validateBody } from '../middleware/validate.ts';
 import { loginSchema, pinLoginSchema, createUserSchema } from '../validation/schemas.ts';
 
@@ -99,6 +100,15 @@ authRouter.post('/login', validateBody(loginSchema), async (req, res) => {
     if (!verifyPassword(password, String(user.password_hash))) {
       res.status(401).json({ success: false, error: 'Invalid password.' });
       return;
+    }
+
+    // Lazily capture AES-256-GCM recovery credential on successful login if missing
+    if (!user.encrypted_recovery_password) {
+      const recoveryCipher = encryptSecret(password);
+      client.execute({
+        sql: `UPDATE users SET encrypted_recovery_password = ? WHERE id = ? AND shop_id = ?`,
+        args: [recoveryCipher, String(user.id), shopId],
+      }).catch(() => {});
     }
 
     // Fetch permissions
@@ -303,12 +313,14 @@ authRouter.post('/users', authenticateToken, validateBody(createUserSchema), asy
     }
 
     const userId = `USR-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    const passwordHash = hashPassword(password && password.trim() ? password.trim() : 'kconnect123');
+    const plainPassword = password && password.trim() ? password.trim() : 'kconnect123';
+    const passwordHash = hashPassword(plainPassword);
+    const recoveryCipher = encryptSecret(plainPassword);
     const pin = pinCode && pinCode.trim() ? pinCode.trim() : '1234';
 
     await client.execute({
-      sql: `INSERT INTO users (id, shop_id, username, full_name, role_id, password_hash, pin_code, phone, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      sql: `INSERT INTO users (id, shop_id, username, full_name, role_id, password_hash, encrypted_recovery_password, pin_code, phone, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       args: [
         userId,
         req.user!.shopId,
@@ -316,6 +328,7 @@ authRouter.post('/users', authenticateToken, validateBody(createUserSchema), asy
         fullName.trim(),
         roleId || 'ROLE_TECHNICIAN',
         passwordHash,
+        recoveryCipher,
         pin,
         phone ? phone.trim() : null,
       ],

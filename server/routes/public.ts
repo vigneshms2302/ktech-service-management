@@ -3,6 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { getClient } from '../db/database.ts';
 import { hashPassword, generateToken } from '../middleware/auth.ts';
+import { encryptSecret } from '../security/crypto.ts';
 import { validateBody } from '../middleware/validate.ts';
 import { z } from 'zod';
 
@@ -172,14 +173,15 @@ publicRouter.post('/register', validateBody(publicRegistrationSchema), async (re
     const ownerUserId = `usr_${cleanSlug}_owner`;
     const cleanUsername = username ? username.trim().toLowerCase() : 'admin';
     const passwordHash = hashPassword(password);
+    const encryptedRecovery = encryptSecret(password);
     const pin = '1234'; // Default initial quick PIN for shop POS
 
     await client.execute({
       sql: `
-        INSERT INTO users (id, shop_id, username, password_hash, pin_code, full_name, role_id, phone, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, 'ROLE_OWNER', ?, 1)
+        INSERT INTO users (id, shop_id, username, password_hash, encrypted_recovery_password, pin_code, full_name, role_id, phone, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'ROLE_OWNER', ?, 1)
       `,
-      args: [ownerUserId, shopId, cleanUsername, passwordHash, pin, ownerName.trim(), phone.trim()],
+      args: [ownerUserId, shopId, cleanUsername, passwordHash, encryptedRecovery, pin, ownerName.trim(), phone.trim()],
     });
 
     // 4. Fetch permissions for token

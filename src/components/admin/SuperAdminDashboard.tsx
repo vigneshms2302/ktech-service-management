@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   ShieldCheck,
   Building2,
-  Wrench,
   Plus,
   Search,
   LogOut,
@@ -26,35 +25,19 @@ import {
   Edit3,
   X,
   AlertTriangle,
+  Users,
+  BarChart3,
+  Download,
+  Eye,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { useToast } from '../../context/ToastContext.tsx';
 import { saasApi } from '../../api/client.ts';
-
-interface ShopItem {
-  id: string;
-  name: string;
-  slug: string;
-  ownerName: string;
-  ownerUsername?: string;
-  phone: string;
-  email?: string;
-  gstin?: string;
-  city: string;
-  state: string;
-  status: 'ACTIVE' | 'FROZEN' | 'EXPIRED';
-  subscriptionStatus: string;
-  trialEndsAt?: string;
-  currentPeriodEndsAt?: string;
-  isComplimentary?: boolean;
-  maxSeats: number;
-  activeUsersCount: number;
-  totalJobsCount: number;
-  totalCustomersCount?: number;
-  subscriptionPlan: string;
-  subscriptionEndsAt: string;
-  createdAt: string;
-}
+import { ShopItem, PlatformAnalyticsData, downloadCsv, formatDateSafe } from './adminTypes.ts';
+import { ShopLoginsTab } from './ShopLoginsTab.tsx';
+import { CustomersDirectoryTab, CustomerDossierModal } from './CustomersDirectoryTab.tsx';
+import { AnalyticsTab } from './AnalyticsTab.tsx';
+import { ShopInspectorModal } from './ShopInspectorModal.tsx';
 
 interface ShopUserAccount {
   id: string;
@@ -141,7 +124,7 @@ interface HealthTelemetry {
   environment: string;
 }
 
-type AdminTab = 'SHOPS' | 'PAYMENTS' | 'SETTINGS' | 'PLANS' | 'AUDIT_LOGS';
+type AdminTab = 'SHOPS' | 'LOGINS' | 'CUSTOMERS' | 'ANALYTICS' | 'PAYMENTS' | 'SETTINGS' | 'PLANS' | 'AUDIT_LOGS';
 
 const EDITABLE_SETTING_KEYS = [
   'upi_id',
@@ -172,12 +155,30 @@ export const SuperAdminDashboard: React.FC = () => {
     approvedPaymentClaims: 0,
     totalVerifiedRevenueInr: 0,
     totalJobs: 0,
+    activeJobs: 0,
     totalUsers: 0,
+    activeUsers: 0,
     totalCustomers: 0,
+    totalDevices: 0,
+    totalShopGmvInr: 0,
+    totalShopCollectedInr: 0,
     unreadNotifications: 0,
     databaseProvider: '',
     generatedAt: '',
   });
+
+  // Control Center Deep-Inspectors & Live Analytics
+  const [analytics, setAnalytics] = useState<PlatformAnalyticsData | null>(null);
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+  const [inspectedShopId, setInspectedShopId] = useState<string | null>(null);
+  const [inspectedCustomerId, setInspectedCustomerId] = useState<string | null>(null);
+
+  // Super-Admin Own Credentials Change Form
+  const [currentAdminPassword, setCurrentAdminPassword] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [confirmAdminPassword, setConfirmAdminPassword] = useState('');
+  const [adminFullName, setAdminFullName] = useState(currentUser?.fullName || '');
+  const [isUpdatingAdminPassword, setIsUpdatingAdminPassword] = useState(false);
 
   // Shops State
   const [shops, setShops] = useState<ShopItem[]>([]);
@@ -343,10 +344,27 @@ export const SuperAdminDashboard: React.FC = () => {
     }
   }, []);
 
+  const loadAnalytics = useCallback(async () => {
+    setIsLoadingAnalytics(true);
+    try {
+      const res = await saasApi.admin.getAnalytics();
+      if (res.success && res.data) {
+        setAnalytics(res.data);
+      } else {
+        showError(res.error || 'Could not load live platform analytics.');
+      }
+    } catch (err: unknown) {
+      showError((err as Error).message || 'Failed to load live analytics.');
+    } finally {
+      setIsLoadingAnalytics(false);
+    }
+  }, [showError]);
+
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
     try {
       await loadData();
+      if (activeTab === 'ANALYTICS') await loadAnalytics();
       if (activeTab === 'PAYMENTS') await loadPayments();
       if (activeTab === 'SETTINGS') await loadSettings();
       if (activeTab === 'AUDIT_LOGS') await loadAuditLogs();
@@ -363,11 +381,12 @@ export const SuperAdminDashboard: React.FC = () => {
   }, [loadData, loadSettings]);
 
   useEffect(() => {
+    if (activeTab === 'ANALYTICS') loadAnalytics();
     if (activeTab === 'PAYMENTS') loadPayments();
     if (activeTab === 'SETTINGS') loadSettings();
     if (activeTab === 'AUDIT_LOGS') loadAuditLogs();
     if (activeTab === 'PLANS') loadPlans();
-  }, [activeTab, loadPayments, loadSettings, loadAuditLogs, loadPlans]);
+  }, [activeTab, loadAnalytics, loadPayments, loadSettings, loadAuditLogs, loadPlans]);
 
   const handleSlugify = (name: string) => {
     setNewShopName(name);
@@ -434,7 +453,7 @@ export const SuperAdminDashboard: React.FC = () => {
     }
   };
 
-  const handleExtendSubscription = async (shop: ShopItem, days: number) => {
+  const handleExtendSubscription = async (shop: { id: string; name: string }, days: number) => {
     try {
       const res = await saasApi.admin.extendTrial(shop.id, {
         additionalDays: days,
@@ -669,6 +688,42 @@ export const SuperAdminDashboard: React.FC = () => {
     }
   };
 
+  const handleChangeAdminPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentAdminPassword) {
+      showError('Please enter your current Super-Admin password.');
+      return;
+    }
+    if (newAdminPassword.trim().length < 6) {
+      showError('New Super-Admin password must be at least 6 characters.');
+      return;
+    }
+    if (newAdminPassword !== confirmAdminPassword) {
+      showError('New password and confirmation do not match.');
+      return;
+    }
+    setIsUpdatingAdminPassword(true);
+    try {
+      const res = await saasApi.admin.updateAdminPassword({
+        currentPassword: currentAdminPassword,
+        newPassword: newAdminPassword.trim(),
+        fullName: adminFullName.trim() || undefined,
+      });
+      if (res.success) {
+        showSuccess('Super-Admin credentials updated safely.');
+        setCurrentAdminPassword('');
+        setNewAdminPassword('');
+        setConfirmAdminPassword('');
+      } else {
+        showError(res.error || 'Could not update Super-Admin password.');
+      }
+    } catch (err: unknown) {
+      showError((err as Error).message || 'Failed to update Super-Admin password.');
+    } finally {
+      setIsUpdatingAdminPassword(false);
+    }
+  };
+
   const filteredShops = shops.filter((s) => {
     const q = shopSearch.trim().toLowerCase();
     const matchesSearch =
@@ -697,12 +752,6 @@ export const SuperAdminDashboard: React.FC = () => {
       (claim.customerNotes || '').toLowerCase().includes(q)
     );
   });
-
-  const formatDateSafe = (iso?: string | null) => {
-    if (!iso) return '—';
-    const ts = new Date(iso).getTime();
-    return Number.isNaN(ts) ? '—' : new Date(ts).toLocaleDateString();
-  };
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#171717', color: '#ececec', padding: '24px 32px' }}>
@@ -984,42 +1033,47 @@ export const SuperAdminDashboard: React.FC = () => {
         </div>
 
         <div
+          onClick={() => setActiveTab('ANALYTICS')}
           style={{
             backgroundColor: '#262626',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            border: activeTab === 'ANALYTICS' ? '1px solid #10a37f' : '1px solid rgba(255, 255, 255, 0.1)',
             borderRadius: '16px',
             padding: '18px 20px',
+            cursor: 'pointer',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#b4b4b4', fontSize: '12px' }}>
-            <span>Verified Annual Collections</span>
+            <span>Collections &amp; Workshop GMV</span>
             <IndianRupee size={18} color="#10a37f" />
           </div>
           <div style={{ fontSize: '26px', fontWeight: 800, marginTop: '8px', color: '#10a37f' }}>
             ₹{metrics.totalVerifiedRevenueInr.toLocaleString('en-IN')}
           </div>
           <div style={{ fontSize: '11.5px', color: '#8e8ea0', marginTop: '4px' }}>
-            {metrics.approvedPaymentClaims} verified • {metrics.activeSubscriptions} paid subscriptions
+            {metrics.approvedPaymentClaims} paid • GMV ₹{metrics.totalShopGmvInr.toLocaleString('en-IN')}
           </div>
         </div>
 
         <div
+          onClick={() => setActiveTab('CUSTOMERS')}
           style={{
             backgroundColor: '#262626',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            border: activeTab === 'CUSTOMERS' ? '1px solid #10a37f' : '1px solid rgba(255, 255, 255, 0.1)',
             borderRadius: '16px',
             padding: '18px 20px',
+            cursor: 'pointer',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#b4b4b4', fontSize: '12px' }}>
-            <span>Platform Activity</span>
-            <Wrench size={18} color="#c084fc" />
+            <span>End Customers &amp; Logins</span>
+            <Users size={18} color="#c084fc" />
           </div>
           <div style={{ fontSize: '26px', fontWeight: 800, marginTop: '8px', color: '#ececec' }}>
-            {metrics.totalJobs} <span style={{ fontSize: '13.5px', color: '#8e8ea0', fontWeight: 500 }}>jobs</span>
+            {metrics.totalCustomers}{' '}
+            <span style={{ fontSize: '13.5px', color: '#8e8ea0', fontWeight: 500 }}>customers</span>
           </div>
           <div style={{ fontSize: '11.5px', color: '#8e8ea0', marginTop: '4px' }}>
-            {metrics.totalCustomers} customers • {metrics.totalUsers} staff & owner accounts
+            {metrics.activeUsers}/{metrics.totalUsers} logins • {metrics.activeJobs}/{metrics.totalJobs} active jobs
           </div>
         </div>
       </div>
@@ -1041,7 +1095,7 @@ export const SuperAdminDashboard: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '8px 18px',
+            padding: '8px 16px',
             borderRadius: '9999px',
             border: 'none',
             backgroundColor: activeTab === 'SHOPS' ? '#10a37f' : 'transparent',
@@ -1051,7 +1105,64 @@ export const SuperAdminDashboard: React.FC = () => {
             cursor: 'pointer',
           }}
         >
-          <Building2 size={16} /> Tenant Shops ({shops.length})
+          <Building2 size={15} /> Tenant Shops ({shops.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('LOGINS')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            borderRadius: '9999px',
+            border: 'none',
+            backgroundColor: activeTab === 'LOGINS' ? '#10a37f' : 'transparent',
+            color: activeTab === 'LOGINS' ? '#fff' : '#b4b4b4',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          <KeyRound size={15} /> Shop Logins &amp; Passwords ({metrics.totalUsers})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('CUSTOMERS')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            borderRadius: '9999px',
+            border: 'none',
+            backgroundColor: activeTab === 'CUSTOMERS' ? '#10a37f' : 'transparent',
+            color: activeTab === 'CUSTOMERS' ? '#fff' : '#b4b4b4',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          <Users size={15} /> Customers ({metrics.totalCustomers})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('ANALYTICS')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            borderRadius: '9999px',
+            border: 'none',
+            backgroundColor: activeTab === 'ANALYTICS' ? '#10a37f' : 'transparent',
+            color: activeTab === 'ANALYTICS' ? '#fff' : '#b4b4b4',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          <BarChart3 size={15} /> Analytics &amp; Insights
         </button>
 
         <button
@@ -1182,27 +1293,67 @@ export const SuperAdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                backgroundColor: '#171717',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                borderRadius: '8px',
-                padding: '6px 12px',
-                maxWidth: '320px',
-                width: '100%',
-              }}
-            >
-              <Search size={15} color="#8e8ea0" />
-              <input
-                type="text"
-                placeholder="Search shop, username, owner, phone..."
-                value={shopSearch}
-                onChange={(e) => setShopSearch(e.target.value)}
-                style={{ background: 'none', border: 'none', outline: 'none', color: '#fff', fontSize: '12px', width: '100%' }}
-              />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  backgroundColor: '#171717',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  maxWidth: '300px',
+                  width: '100%',
+                }}
+              >
+                <Search size={15} color="#8e8ea0" />
+                <input
+                  type="text"
+                  placeholder="Search shop, username, owner, phone..."
+                  value={shopSearch}
+                  onChange={(e) => setShopSearch(e.target.value)}
+                  style={{ background: 'none', border: 'none', outline: 'none', color: '#fff', fontSize: '12px', width: '100%' }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  downloadCsv(
+                    `kconnect-shops-${new Date().toISOString().slice(0, 10)}.csv`,
+                    ['Shop Name', 'Slug', 'Owner', 'Username', 'Phone', 'City', 'Plan', 'Status', 'Seats', 'Customers', 'Jobs', 'Ends At'],
+                    filteredShops.map((s) => [
+                      s.name,
+                      s.slug,
+                      s.ownerName,
+                      s.ownerUsername || 'admin',
+                      s.phone,
+                      s.city,
+                      s.subscriptionPlan,
+                      s.status,
+                      `${s.activeUsersCount}/${s.maxSeats}`,
+                      s.totalCustomersCount ?? 0,
+                      s.totalJobsCount,
+                      formatDateSafe(s.subscriptionEndsAt),
+                    ])
+                  )
+                }
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 12px',
+                  backgroundColor: '#262626',
+                  color: '#ececec',
+                  border: '1px solid rgba(255, 255, 255, 0.14)',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <Download size={13} /> Export CSV
+              </button>
             </div>
           </div>
 
@@ -1242,7 +1393,22 @@ export const SuperAdminDashboard: React.FC = () => {
                         }}
                       >
                         <td style={{ padding: '14px 18px' }}>
-                          <div style={{ fontWeight: 700, color: '#f8fafc' }}>{shop.name}</div>
+                          <button
+                            type="button"
+                            onClick={() => setInspectedShopId(shop.id)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              fontWeight: 700,
+                              color: '#f8fafc',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              fontSize: '13.5px',
+                            }}
+                          >
+                            {shop.name}
+                          </button>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px' }}>
                             <a
                               href={`/shop/${shop.slug}`}
@@ -1352,6 +1518,27 @@ export const SuperAdminDashboard: React.FC = () => {
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
                             <button
                               type="button"
+                              onClick={() => setInspectedShopId(shop.id)}
+                              title="Open Full 360° Shop Dossier, Logins, Customers & Actions"
+                              style={{
+                                padding: '5px 10px',
+                                backgroundColor: 'rgba(16, 163, 127, 0.14)',
+                                color: '#34d399',
+                                border: '1px solid rgba(16, 163, 127, 0.35)',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                cursor: 'pointer',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
+                            >
+                              <Eye size={12} /> Inspect
+                            </button>
+
+                            <button
+                              type="button"
                               onClick={() => openCredentialsModal(shop)}
                               title="View Accounts & Reset Forgotten Password"
                               style={{
@@ -1441,6 +1628,35 @@ export const SuperAdminDashboard: React.FC = () => {
         </div>
       )}
 
+      {/* TAB 1B: GLOBAL SHOP LOGINS & PASSWORDS VAULT */}
+      {activeTab === 'LOGINS' && (
+        <ShopLoginsTab
+          shops={shops}
+          onInspectShop={(shopId) => setInspectedShopId(shopId)}
+          onRefreshParent={loadData}
+        />
+      )}
+
+      {/* TAB 1C: GLOBAL SHOP CUSTOMERS & 360° DOSSIERS */}
+      {activeTab === 'CUSTOMERS' && (
+        <CustomersDirectoryTab
+          shops={shops}
+          onInspectShop={(shopId) => setInspectedShopId(shopId)}
+          onSelectCustomer={(customerId) => setInspectedCustomerId(customerId)}
+        />
+      )}
+
+      {/* TAB 1D: FULL LIVE PLATFORM ANALYTICS */}
+      {activeTab === 'ANALYTICS' && (
+        <AnalyticsTab
+          analytics={analytics}
+          isLoading={isLoadingAnalytics}
+          onRefresh={loadAnalytics}
+          onInspectShop={(shopId) => setInspectedShopId(shopId)}
+          onQuickExtendDays={handleExtendSubscription}
+        />
+      )}
+
       {/* TAB 2: MANUAL GPAY VERIFICATION QUEUE */}
       {activeTab === 'PAYMENTS' && (
         <div style={{ backgroundColor: '#212121', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', overflow: 'hidden' }}>
@@ -1506,6 +1722,42 @@ export const SuperAdminDashboard: React.FC = () => {
                   </button>
                 ))}
               </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  downloadCsv(
+                    `kconnect-payment-claims-${new Date().toISOString().slice(0, 10)}.csv`,
+                    ['Claim ID', 'Shop Name', 'Owner', 'Phone', 'Plan', 'Amount (INR)', 'UPI UTR', 'Status', 'Submitted At'],
+                    filteredPayments.map((p) => [
+                      p.id,
+                      p.shopName,
+                      p.ownerName,
+                      p.shopPhone,
+                      p.planName,
+                      p.amountInr,
+                      p.upiTransactionId,
+                      p.status,
+                      formatDateSafe(p.createdAt),
+                    ])
+                  )
+                }
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  borderRadius: '8px',
+                  backgroundColor: '#262626',
+                  border: '1px solid rgba(255, 255, 255, 0.14)',
+                  color: '#ececec',
+                  cursor: 'pointer',
+                }}
+              >
+                <Download size={13} /> Export CSV
+              </button>
             </div>
           </div>
 
@@ -1806,6 +2058,94 @@ export const SuperAdminDashboard: React.FC = () => {
               </div>
             </form>
           )}
+
+          {/* Super-Admin Account Security Section */}
+          <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <KeyRound size={17} color="#10a37f" />
+              <h3 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: '#fff' }}>
+                Super-Admin Password &amp; Profile Security
+              </h3>
+            </div>
+            <p style={{ fontSize: '12.5px', color: '#8e8ea0', margin: '0 0 16px' }}>
+              Signed in as <strong>@{currentUser?.username || 'superadmin'}</strong>. Change your platform owner password directly here.
+            </p>
+
+            <form onSubmit={handleChangeAdminPassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: '#b4b4b4', display: 'block', marginBottom: '5px' }}>
+                    Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={adminFullName}
+                    onChange={(e) => setAdminFullName(e.target.value)}
+                    placeholder="K-Connect Vendor Owner"
+                    style={{ width: '100%', padding: '10px 14px', backgroundColor: '#171717', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', color: '#ececec', fontSize: '13px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: '#b4b4b4', display: 'block', marginBottom: '5px' }}>
+                    Current Password *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={currentAdminPassword}
+                    onChange={(e) => setCurrentAdminPassword(e.target.value)}
+                    placeholder="Enter current password"
+                    style={{ width: '100%', padding: '10px 14px', backgroundColor: '#171717', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', color: '#ececec', fontSize: '13px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: '#b4b4b4', display: 'block', marginBottom: '5px' }}>
+                    New Password (min 6 chars) *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={newAdminPassword}
+                    onChange={(e) => setNewAdminPassword(e.target.value)}
+                    placeholder="New strong password"
+                    style={{ width: '100%', padding: '10px 14px', backgroundColor: '#171717', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', color: '#ececec', fontSize: '13px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: '#b4b4b4', display: 'block', marginBottom: '5px' }}>
+                    Confirm New Password *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={confirmAdminPassword}
+                    onChange={(e) => setConfirmAdminPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                    style={{ width: '100%', padding: '10px 14px', backgroundColor: '#171717', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '10px', color: '#ececec', fontSize: '13px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="submit"
+                  disabled={isUpdatingAdminPassword}
+                  style={{
+                    padding: '9px 20px',
+                    backgroundColor: '#262626',
+                    color: '#34d399',
+                    border: '1px solid rgba(16, 163, 127, 0.4)',
+                    borderRadius: '9999px',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {isUpdatingAdminPassword ? 'Updating...' : 'Update Super-Admin Password'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -2591,6 +2931,22 @@ export const SuperAdminDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ShopInspectorModal
+        shopId={inspectedShopId}
+        onClose={() => setInspectedShopId(null)}
+        onShopUpdated={() => {
+          loadData();
+          if (activeTab === 'ANALYTICS') loadAnalytics();
+        }}
+        onSelectCustomer={(customerId) => setInspectedCustomerId(customerId)}
+      />
+
+      <CustomerDossierModal
+        customerId={inspectedCustomerId}
+        onClose={() => setInspectedCustomerId(null)}
+        onInspectShop={(shopId) => setInspectedShopId(shopId)}
+      />
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>

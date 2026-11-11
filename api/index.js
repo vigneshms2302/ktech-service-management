@@ -70848,6 +70848,7 @@ async function initializeMultiTenantSchema() {
       shop_id TEXT NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
       username TEXT NOT NULL,
       password_hash TEXT NOT NULL,
+      encrypted_recovery_password TEXT,
       pin_code TEXT,
       full_name TEXT NOT NULL,
       role_id TEXT NOT NULL REFERENCES roles(id),
@@ -71395,6 +71396,15 @@ async function initializeMultiTenantSchema() {
       await client.execute(statement);
     } catch (err) {
       console.warn("[Database DDL Warning]", err.message);
+    }
+  }
+  const safeMigrations = [
+    `ALTER TABLE users ADD COLUMN encrypted_recovery_password TEXT;`
+  ];
+  for (const migrationSql of safeMigrations) {
+    try {
+      await client.execute(migrationSql);
+    } catch {
     }
   }
 }
@@ -73257,6 +73267,75 @@ function requireSuperAdmin(req, res, next) {
   next();
 }
 
+// server/security/crypto.ts
+var import_node_crypto2 = __toESM(require("node:crypto"));
+var import_node_os = __toESM(require("node:os"));
+var ALGORITHM = "aes-256-gcm";
+var IV_LENGTH = 12;
+var SALT_LENGTH = 16;
+var KEY_LENGTH = 32;
+function getDynamicEntropy() {
+  if (process.env.ENCRYPTION_KEY && process.env.ENCRYPTION_KEY.length >= 16) {
+    return process.env.ENCRYPTION_KEY;
+  }
+  if (process.env.PASSCODE_ENCRYPTION_KEY && process.env.PASSCODE_ENCRYPTION_KEY.length >= 16) {
+    return process.env.PASSCODE_ENCRYPTION_KEY;
+  }
+  if (process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 16) {
+    return process.env.JWT_SECRET;
+  }
+  if (process.env.KTECH_APP_SECRET && process.env.KTECH_APP_SECRET.length >= 16) {
+    return process.env.KTECH_APP_SECRET;
+  }
+  if (process.env.NODE_ENV === "production") {
+    console.warn(
+      "[Security Warning] No persistent ENCRYPTION_KEY or JWT_SECRET found in production environment! Using fallback encryption seed. Please set ENCRYPTION_KEY in Vercel settings."
+    );
+    return "ktech-saas-cloud-fallback-master-entropy-key-2026";
+  }
+  try {
+    return `${import_node_os.default.hostname()}|ktech-saas-cloud-encryption-seed-2026`;
+  } catch {
+    return "ktech-saas-cloud-fallback-master-entropy-key-2026";
+  }
+}
+function deriveKey(salt) {
+  return import_node_crypto2.default.scryptSync(getDynamicEntropy(), salt, KEY_LENGTH);
+}
+function encryptSecret(plaintext) {
+  if (!plaintext)
+    return "";
+  const salt = import_node_crypto2.default.randomBytes(SALT_LENGTH);
+  const iv = import_node_crypto2.default.randomBytes(IV_LENGTH);
+  const key = deriveKey(salt);
+  const cipher = import_node_crypto2.default.createCipheriv(ALGORITHM, key, iv);
+  let encrypted = cipher.update(plaintext, "utf8", "hex");
+  encrypted += cipher.final("hex");
+  const authTag = cipher.getAuthTag().toString("hex");
+  return `${salt.toString("hex")}:${iv.toString("hex")}:${authTag}:${encrypted}`;
+}
+function decryptSecret(encryptedPayload) {
+  if (!encryptedPayload)
+    return "";
+  try {
+    const parts = encryptedPayload.split(":");
+    if (parts.length !== 4)
+      return "";
+    const [saltHex, ivHex, authTagHex, ciphertextHex] = parts;
+    const salt = Buffer.from(saltHex, "hex");
+    const iv = Buffer.from(ivHex, "hex");
+    const authTag = Buffer.from(authTagHex, "hex");
+    const key = deriveKey(salt);
+    const decipher = import_node_crypto2.default.createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(ciphertextHex, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    return decrypted;
+  } catch {
+    return "";
+  }
+}
+
 // server/db/seed.ts
 async function seedInitialPlatform() {
   const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
@@ -73321,16 +73400,22 @@ async function seedInitialPlatform() {
     args: [oneYearFromNow]
   });
   const ownerPasswordHash = hashPassword("admin123");
+  const ownerRecoveryEnc = encryptSecret("admin123");
   await client.execute({
-    sql: `INSERT OR IGNORE INTO users (id, shop_id, username, password_hash, pin_code, full_name, role_id, phone, is_active)
-          VALUES ('usr_ktech_owner', 'shop_ktech', 'admin', ?, '1234', 'K-Tech Shop Administrator', 'ROLE_OWNER', '9842200000', 1);`,
-    args: [ownerPasswordHash]
+    sql: `INSERT INTO users (id, shop_id, username, password_hash, encrypted_recovery_password, pin_code, full_name, role_id, phone, is_active)
+          VALUES ('usr_ktech_owner', 'shop_ktech', 'admin', ?, ?, '1234', 'K-Tech Shop Administrator', 'ROLE_OWNER', '9842200000', 1)
+          ON CONFLICT(id) DO UPDATE SET
+            encrypted_recovery_password = COALESCE(users.encrypted_recovery_password, excluded.encrypted_recovery_password);`,
+    args: [ownerPasswordHash, ownerRecoveryEnc]
   });
   const techPasswordHash = hashPassword("tech123");
+  const techRecoveryEnc = encryptSecret("tech123");
   await client.execute({
-    sql: `INSERT OR IGNORE INTO users (id, shop_id, username, password_hash, pin_code, full_name, role_id, phone, is_active)
-          VALUES ('usr_ktech_tech1', 'shop_ktech', 'tech1', ?, '2222', 'Suresh Kumar (Chip-Level Tech)', 'ROLE_TECHNICIAN', '9842211111', 1);`,
-    args: [techPasswordHash]
+    sql: `INSERT INTO users (id, shop_id, username, password_hash, encrypted_recovery_password, pin_code, full_name, role_id, phone, is_active)
+          VALUES ('usr_ktech_tech1', 'shop_ktech', 'tech1', ?, ?, '2222', 'Suresh Kumar (Chip-Level Tech)', 'ROLE_TECHNICIAN', '9842211111', 1)
+          ON CONFLICT(id) DO UPDATE SET
+            encrypted_recovery_password = COALESCE(users.encrypted_recovery_password, excluded.encrypted_recovery_password);`,
+    args: [techPasswordHash, techRecoveryEnc]
   });
   const featuresJson = JSON.stringify([
     "Complete 13-Stage Hardware Repair Workflow",
@@ -93334,6 +93419,14 @@ authRouter.post("/login", validateBody(loginSchema), async (req, res) => {
       res.status(401).json({ success: false, error: "Invalid password." });
       return;
     }
+    if (!user.encrypted_recovery_password) {
+      const recoveryCipher = encryptSecret(password);
+      client.execute({
+        sql: `UPDATE users SET encrypted_recovery_password = ? WHERE id = ? AND shop_id = ?`,
+        args: [recoveryCipher, String(user.id), shopId]
+      }).catch(() => {
+      });
+    }
     const permRes = await client.execute({
       sql: `SELECT p.code FROM role_permissions rp JOIN permissions p ON rp.permission_id = p.id WHERE rp.role_id = ?`,
       args: [user.role_id]
@@ -93513,11 +93606,13 @@ authRouter.post("/users", authenticateToken, validateBody(createUserSchema), asy
       });
     }
     const userId = `USR-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    const passwordHash = hashPassword(password && password.trim() ? password.trim() : "kconnect123");
+    const plainPassword = password && password.trim() ? password.trim() : "kconnect123";
+    const passwordHash = hashPassword(plainPassword);
+    const recoveryCipher = encryptSecret(plainPassword);
     const pin = pinCode && pinCode.trim() ? pinCode.trim() : "1234";
     await client.execute({
-      sql: `INSERT INTO users (id, shop_id, username, full_name, role_id, password_hash, pin_code, phone, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      sql: `INSERT INTO users (id, shop_id, username, full_name, role_id, password_hash, encrypted_recovery_password, pin_code, phone, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       args: [
         userId,
         req.user.shopId,
@@ -93525,6 +93620,7 @@ authRouter.post("/users", authenticateToken, validateBody(createUserSchema), asy
         fullName.trim(),
         roleId || "ROLE_TECHNICIAN",
         passwordHash,
+        recoveryCipher,
         pin,
         phone ? phone.trim() : null
       ]
@@ -93539,7 +93635,7 @@ authRouter.post("/logout", authenticateToken, (_req, res) => {
 });
 
 // server/routes/admin.ts
-var import_node_crypto2 = __toESM(require("node:crypto"));
+var import_node_crypto3 = __toESM(require("node:crypto"));
 var import_express2 = __toESM(require_express2());
 var adminRouter = (0, import_express2.Router)();
 adminRouter.use(authenticateToken, requireSuperAdmin);
@@ -93556,6 +93652,14 @@ function resolveEffectiveShopStatus(rawStatus, subscriptionEndsAt) {
   if (status === "EXPIRED" || isTimestampPastDue(subscriptionEndsAt))
     return "EXPIRED";
   return "ACTIVE";
+}
+function getDatabaseProviderLabel() {
+  const dbUrl = process.env.DATABASE_URL || "";
+  if (dbUrl.startsWith("libsql:") || dbUrl.includes(".turso.io"))
+    return "TURSO_LIBSQL_CLOUD";
+  if (dbUrl)
+    return "REMOTE_DATABASE";
+  return "LOCAL_SQLITE";
 }
 async function recordAdminAudit(adminId, action, targetType, targetId, details, ipAddress) {
   const client = getClient();
@@ -93581,8 +93685,12 @@ adminRouter.get("/metrics", async (_req, res) => {
     const [
       shopsRes,
       jobsRes,
+      activeJobsRes,
       usersRes,
+      activeUsersRes,
       customersRes,
+      devicesRes,
+      invoicesAggRes,
       subRes,
       pendingClaimsRes,
       approvedClaimsRes,
@@ -93591,12 +93699,16 @@ adminRouter.get("/metrics", async (_req, res) => {
     ] = await Promise.all([
       client.execute(`SELECT id, status, subscription_ends_at FROM shops`),
       client.execute(`SELECT COUNT(*) as count FROM service_jobs`),
+      client.execute(`SELECT COUNT(*) as count FROM service_jobs WHERE current_status NOT IN ('DELIVERED', 'CANCELLED')`),
       client.execute(`SELECT COUNT(*) as count FROM users`),
+      client.execute(`SELECT COUNT(*) as count FROM users WHERE is_active = 1`),
       client.execute(`SELECT COUNT(*) as count FROM customers`),
+      client.execute(`SELECT COUNT(*) as count FROM devices`),
+      client.execute(`SELECT COALESCE(SUM(total_amount), 0) as gmv, COALESCE(SUM(amount_paid), 0) as collected FROM invoices WHERE is_void = 0`),
       client.execute(`SELECT shop_id, status, trial_ends_at, current_period_ends_at FROM saas_subscriptions`),
       client.execute(`SELECT COUNT(*) as count FROM saas_payment_claims WHERE status = 'PENDING'`),
       client.execute(`SELECT COUNT(*) as count FROM saas_payment_claims WHERE status = 'APPROVED'`),
-      client.execute(`SELECT SUM(amount_inr) as total FROM saas_payment_claims WHERE status = 'APPROVED'`),
+      client.execute(`SELECT COALESCE(SUM(amount_inr), 0) as total FROM saas_payment_claims WHERE status = 'APPROVED'`),
       client.execute(`SELECT COUNT(*) as count FROM saas_notifications WHERE recipient_type = 'VENDOR_ADMIN' AND is_read = 0`)
     ]);
     let activeShops = 0;
@@ -93627,9 +93739,7 @@ adminRouter.get("/metrics", async (_req, res) => {
         activeSubscriptions++;
       }
     }
-    const dbUrl = process.env.DATABASE_URL || "";
-    const isTurso = dbUrl.startsWith("libsql:") || dbUrl.includes(".turso.io");
-    const databaseProvider = isTurso ? "TURSO_LIBSQL_CLOUD" : dbUrl ? "REMOTE_DATABASE" : "LOCAL_SQLITE";
+    const invAgg = invoicesAggRes.rows[0];
     const totalVerifiedRevenue = Number(revRes.rows[0]?.total || 0);
     res.json({
       success: true,
@@ -93644,10 +93754,15 @@ adminRouter.get("/metrics", async (_req, res) => {
         approvedPaymentClaims: Number(approvedClaimsRes.rows[0].count),
         totalVerifiedRevenueInr: totalVerifiedRevenue,
         totalJobs: Number(jobsRes.rows[0].count),
+        activeJobs: Number(activeJobsRes.rows[0].count),
         totalUsers: Number(usersRes.rows[0].count),
+        activeUsers: Number(activeUsersRes.rows[0].count),
         totalCustomers: Number(customersRes.rows[0].count),
+        totalDevices: Number(devicesRes.rows[0].count),
+        totalShopGmvInr: Number(invAgg?.gmv || 0),
+        totalShopCollectedInr: Number(invAgg?.collected || 0),
         unreadNotifications: Number(unreadAlertsRes.rows[0].count),
-        databaseProvider,
+        databaseProvider: getDatabaseProviderLabel(),
         generatedAt: (/* @__PURE__ */ new Date()).toISOString()
       }
     });
@@ -93668,8 +93783,12 @@ adminRouter.get("/shops", async (req, res) => {
         sub.is_complimentary,
         (SELECT u.username FROM users u WHERE u.shop_id = s.id AND u.role_id = 'ROLE_OWNER' ORDER BY u.created_at ASC LIMIT 1) as owner_username,
         (SELECT COUNT(*) FROM users u WHERE u.shop_id = s.id AND u.is_active = 1) as active_users_count,
+        (SELECT COUNT(*) FROM users u WHERE u.shop_id = s.id) as total_users_count,
         (SELECT COUNT(*) FROM service_jobs j WHERE j.shop_id = s.id) as total_jobs_count,
-        (SELECT COUNT(*) FROM customers c WHERE c.shop_id = s.id) as total_customers_count
+        (SELECT COUNT(*) FROM customers c WHERE c.shop_id = s.id) as total_customers_count,
+        (SELECT COUNT(*) FROM devices d WHERE d.shop_id = s.id) as total_devices_count,
+        (SELECT COALESCE(SUM(inv.total_amount), 0) FROM invoices inv WHERE inv.shop_id = s.id AND inv.is_void = 0) as workshop_gmv_inr,
+        (SELECT MAX(j.created_at) FROM service_jobs j WHERE j.shop_id = s.id) as last_activity_at
       FROM shops s 
       LEFT JOIN saas_subscriptions sub ON s.id = sub.shop_id
       WHERE 1=1
@@ -93698,8 +93817,10 @@ adminRouter.get("/shops", async (req, res) => {
         phone: row.phone,
         email: row.email,
         gstin: row.gstin,
+        address: row.address,
         city: row.city,
         state: row.state,
+        pincode: row.pincode,
         status: effectiveStatus,
         subscriptionStatus: effectiveSubStatus,
         trialEndsAt: row.trial_ends_at,
@@ -93707,8 +93828,12 @@ adminRouter.get("/shops", async (req, res) => {
         isComplimentary: Boolean(row.is_complimentary),
         maxSeats: Number(row.max_seats),
         activeUsersCount: Number(row.active_users_count),
+        totalUsersCount: Number(row.total_users_count),
         totalJobsCount: Number(row.total_jobs_count),
         totalCustomersCount: Number(row.total_customers_count),
+        totalDevicesCount: Number(row.total_devices_count),
+        workshopGmvInr: Number(row.workshop_gmv_inr || 0),
+        lastActivityAt: row.last_activity_at || row.updated_at || row.created_at,
         subscriptionPlan: row.subscription_plan,
         subscriptionEndsAt: row.subscription_ends_at,
         createdAt: row.created_at
@@ -93734,11 +93859,22 @@ adminRouter.get("/shops/:id", async (req, res) => {
         sub.current_period_starts_at,
         sub.current_period_ends_at,
         sub.is_complimentary,
+        sub.complimentary_reason,
+        (SELECT u.username FROM users u WHERE u.shop_id = s.id AND u.role_id = 'ROLE_OWNER' ORDER BY u.created_at ASC LIMIT 1) as owner_username,
         (SELECT COUNT(*) FROM users u WHERE u.shop_id = s.id AND u.is_active = 1) as active_users_count,
-        (SELECT COUNT(*) FROM service_jobs j WHERE j.shop_id = s.id) as total_jobs_count
+        (SELECT COUNT(*) FROM users u WHERE u.shop_id = s.id) as total_users_count,
+        (SELECT COUNT(*) FROM customers c WHERE c.shop_id = s.id) as total_customers_count,
+        (SELECT COUNT(*) FROM devices d WHERE d.shop_id = s.id) as total_devices_count,
+        (SELECT COUNT(*) FROM service_jobs j WHERE j.shop_id = s.id) as total_jobs_count,
+        (SELECT COUNT(*) FROM service_jobs j WHERE j.shop_id = s.id AND j.current_status NOT IN ('DELIVERED', 'CANCELLED')) as open_jobs_count,
+        (SELECT COUNT(*) FROM service_jobs j WHERE j.shop_id = s.id AND j.current_status = 'DELIVERED') as delivered_jobs_count,
+        (SELECT COUNT(*) FROM invoices inv WHERE inv.shop_id = s.id AND inv.is_void = 0) as total_invoices_count,
+        (SELECT COALESCE(SUM(inv.total_amount), 0) FROM invoices inv WHERE inv.shop_id = s.id AND inv.is_void = 0) as workshop_gmv_inr,
+        (SELECT COALESCE(SUM(inv.amount_paid), 0) FROM invoices inv WHERE inv.shop_id = s.id AND inv.is_void = 0) as collected_inr
       FROM shops s 
       LEFT JOIN saas_subscriptions sub ON s.id = sub.shop_id
       WHERE s.id = ? OR s.slug = ?
+      LIMIT 1
     `;
     const result = await client.execute({ sql: query, args: [id, id] });
     if (result.rows.length === 0) {
@@ -93746,6 +93882,65 @@ adminRouter.get("/shops/:id", async (req, res) => {
       return;
     }
     const row = result.rows[0];
+    const shopId = String(row.id);
+    const effectiveStatus = resolveEffectiveShopStatus(row.status, row.subscription_ends_at);
+    let effectiveSubStatus = String(row.subscription_status || "ACTIVE");
+    if (effectiveStatus === "FROZEN")
+      effectiveSubStatus = "SUSPENDED";
+    else if (effectiveStatus === "EXPIRED")
+      effectiveSubStatus = "EXPIRED";
+    const [usersRes, customersRes, jobsRes, claimsRes] = await Promise.all([
+      client.execute({
+        sql: `
+          SELECT u.id, u.username, u.full_name, u.role_id, r.name as role_name, u.phone, u.pin_code,
+                 u.is_active, u.encrypted_recovery_password, u.created_at, u.updated_at
+          FROM users u
+          JOIN roles r ON u.role_id = r.id
+          WHERE u.shop_id = ?
+          ORDER BY CASE WHEN u.role_id = 'ROLE_OWNER' THEN 0 ELSE 1 END, u.created_at ASC
+        `,
+        args: [shopId]
+      }),
+      client.execute({
+        sql: `
+          SELECT c.id, c.customer_code, c.full_name, c.primary_phone, c.secondary_phone, c.email, c.gstin, c.customer_type, c.created_at,
+                 (SELECT COUNT(*) FROM devices d WHERE d.customer_id = c.id) as devices_count,
+                 (SELECT COUNT(*) FROM service_jobs j WHERE j.customer_id = c.id) as jobs_count,
+                 (SELECT COALESCE(SUM(inv.total_amount), 0) FROM invoices inv WHERE inv.customer_id = c.id AND inv.is_void = 0) as total_invoiced_inr,
+                 (SELECT COALESCE(SUM(inv.amount_paid), 0) FROM invoices inv WHERE inv.customer_id = c.id AND inv.is_void = 0) as total_paid_inr
+          FROM customers c
+          WHERE c.shop_id = ?
+          ORDER BY c.created_at DESC
+          LIMIT 50
+        `,
+        args: [shopId]
+      }),
+      client.execute({
+        sql: `
+          SELECT j.id, j.job_number, j.service_category, j.current_status, j.priority, j.reported_issue,
+                 j.estimated_cost, j.advance_deposit, j.created_at,
+                 c.full_name as customer_name, c.primary_phone as customer_phone,
+                 d.brand as device_brand, d.model_name as device_model, d.equipment_type
+          FROM service_jobs j
+          JOIN customers c ON j.customer_id = c.id
+          JOIN devices d ON j.device_id = d.id
+          WHERE j.shop_id = ?
+          ORDER BY j.created_at DESC
+          LIMIT 40
+        `,
+        args: [shopId]
+      }),
+      client.execute({
+        sql: `
+          SELECT id, amount_inr, upi_transaction_id, status, customer_notes, rejection_reason, created_at, reviewed_at
+          FROM saas_payment_claims
+          WHERE shop_id = ?
+          ORDER BY created_at DESC
+          LIMIT 20
+        `,
+        args: [shopId]
+      })
+    ]);
     res.json({
       success: true,
       data: {
@@ -93753,6 +93948,7 @@ adminRouter.get("/shops/:id", async (req, res) => {
         name: row.name,
         slug: row.slug,
         ownerName: row.owner_name,
+        ownerUsername: row.owner_username || "admin",
         phone: row.phone,
         email: row.email,
         gstin: row.gstin,
@@ -93762,21 +93958,174 @@ adminRouter.get("/shops/:id", async (req, res) => {
         pincode: row.pincode,
         upiId: row.upi_id,
         logoUrl: row.logo_url,
-        status: row.status,
-        subscriptionStatus: row.subscription_status || "ACTIVE",
+        status: effectiveStatus,
+        subscriptionStatus: effectiveSubStatus,
         subscriptionPlan: row.subscription_plan,
         subscriptionEndsAt: row.subscription_ends_at,
         trialEndsAt: row.trial_ends_at,
         currentPeriodStartsAt: row.current_period_starts_at,
         currentPeriodEndsAt: row.current_period_ends_at,
         isComplimentary: Boolean(row.is_complimentary),
+        complimentaryReason: row.complimentary_reason,
         maxSeats: Number(row.max_seats),
         activeUsersCount: Number(row.active_users_count),
+        totalUsersCount: Number(row.total_users_count),
+        totalCustomersCount: Number(row.total_customers_count),
+        totalDevicesCount: Number(row.total_devices_count),
         totalJobsCount: Number(row.total_jobs_count),
+        openJobsCount: Number(row.open_jobs_count),
+        deliveredJobsCount: Number(row.delivered_jobs_count),
+        totalInvoicesCount: Number(row.total_invoices_count),
+        workshopGmvInr: Number(row.workshop_gmv_inr || 0),
+        collectedInr: Number(row.collected_inr || 0),
         createdAt: row.created_at,
-        updatedAt: row.updated_at
+        updatedAt: row.updated_at,
+        users: usersRes.rows.map((u) => {
+          const r = u;
+          return {
+            id: r.id,
+            shopId,
+            shopName: row.name,
+            shopSlug: row.slug,
+            username: r.username,
+            fullName: r.full_name,
+            roleId: r.role_id,
+            roleName: r.role_name,
+            phone: r.phone,
+            pinCode: r.pin_code,
+            isActive: Boolean(r.is_active),
+            hasRecoverablePassword: Boolean(r.encrypted_recovery_password),
+            createdAt: r.created_at,
+            updatedAt: r.updated_at
+          };
+        }),
+        recentCustomers: customersRes.rows.map((c) => {
+          const r = c;
+          return {
+            id: r.id,
+            customerCode: r.customer_code,
+            fullName: r.full_name,
+            primaryPhone: r.primary_phone,
+            secondaryPhone: r.secondary_phone,
+            email: r.email,
+            gstin: r.gstin,
+            customerType: r.customer_type,
+            devicesCount: Number(r.devices_count || 0),
+            jobsCount: Number(r.jobs_count || 0),
+            totalInvoicedInr: Number(r.total_invoiced_inr || 0),
+            totalPaidInr: Number(r.total_paid_inr || 0),
+            createdAt: r.created_at
+          };
+        }),
+        recentJobs: jobsRes.rows.map((j) => {
+          const r = j;
+          return {
+            id: r.id,
+            jobNumber: r.job_number,
+            serviceCategory: r.service_category,
+            currentStatus: r.current_status,
+            priority: r.priority,
+            reportedIssue: r.reported_issue,
+            estimatedCost: Number(r.estimated_cost || 0),
+            advanceDeposit: Number(r.advance_deposit || 0),
+            customerName: r.customer_name,
+            customerPhone: r.customer_phone,
+            deviceLabel: `${r.device_brand} ${r.device_model} (${r.equipment_type})`,
+            createdAt: r.created_at
+          };
+        }),
+        paymentClaims: claimsRes.rows.map((cl) => {
+          const r = cl;
+          return {
+            id: r.id,
+            amountInr: Number(r.amount_inr || 0),
+            upiTransactionId: r.upi_transaction_id,
+            status: r.status,
+            customerNotes: r.customer_notes,
+            rejectionReason: r.rejection_reason,
+            createdAt: r.created_at,
+            reviewedAt: r.reviewed_at
+          };
+        })
       }
     });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.put("/shops/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      ownerName,
+      phone,
+      email: email3,
+      gstin,
+      address,
+      city,
+      state,
+      pincode,
+      maxSeats,
+      subscriptionPlan
+    } = req.body;
+    const client = getClient();
+    const shopRes = await client.execute({
+      sql: `SELECT id FROM shops WHERE id = ? OR slug = ? LIMIT 1`,
+      args: [id, id]
+    });
+    if (shopRes.rows.length === 0) {
+      res.status(404).json({ success: false, error: "Shop not found." });
+      return;
+    }
+    const shopId = String(shopRes.rows[0].id);
+    const updates = [];
+    const args = [];
+    const setStr = (col, val, transform2) => {
+      if (val !== void 0) {
+        updates.push(`${col} = ?`);
+        const trimmed = val === null ? "" : String(val).trim();
+        args.push(trimmed ? transform2 ? transform2(trimmed) : trimmed : null);
+      }
+    };
+    setStr("name", name);
+    setStr("owner_name", ownerName);
+    setStr("phone", phone);
+    setStr("email", email3);
+    setStr("gstin", gstin, (s) => s.toUpperCase());
+    setStr("address", address);
+    setStr("city", city);
+    setStr("state", state);
+    setStr("pincode", pincode);
+    setStr("subscription_plan", subscriptionPlan);
+    if (maxSeats !== void 0) {
+      const parsedSeats = Number(maxSeats);
+      if (!Number.isFinite(parsedSeats) || parsedSeats < 1 || parsedSeats > 500) {
+        res.status(400).json({ success: false, error: "Max seats must be between 1 and 500." });
+        return;
+      }
+      updates.push("max_seats = ?");
+      args.push(parsedSeats);
+    }
+    if (updates.length === 0) {
+      res.status(400).json({ success: false, error: "No shop fields supplied to update." });
+      return;
+    }
+    updates.push("updated_at = CURRENT_TIMESTAMP");
+    args.push(shopId);
+    await client.execute({
+      sql: `UPDATE shops SET ${updates.join(", ")} WHERE id = ?`,
+      args
+    });
+    await recordAdminAudit(
+      req.user.userId,
+      "SHOP_PROFILE_UPDATED",
+      "SHOP",
+      shopId,
+      { updatedFields: Object.keys(req.body || {}) },
+      req.ip
+    );
+    res.json({ success: true, message: "Shop profile & licence limits updated successfully." });
   } catch (error62) {
     res.status(500).json({ success: false, error: error62.message });
   }
@@ -93796,7 +94145,8 @@ adminRouter.get("/shops/:id/users", async (req, res) => {
     const shop = shopRes.rows[0];
     const usersRes = await client.execute({
       sql: `
-        SELECT u.id, u.username, u.full_name, u.role_id, r.name as role_name, u.phone, u.pin_code, u.is_active, u.created_at
+        SELECT u.id, u.username, u.full_name, u.role_id, r.name as role_name, u.phone, u.pin_code,
+               u.is_active, u.encrypted_recovery_password, u.created_at, u.updated_at
         FROM users u
         JOIN roles r ON u.role_id = r.id
         WHERE u.shop_id = ?
@@ -93814,6 +94164,9 @@ adminRouter.get("/shops/:id/users", async (req, res) => {
           const row = u;
           return {
             id: row.id,
+            shopId: shop.id,
+            shopName: shop.name,
+            shopSlug: shop.slug,
             username: row.username,
             fullName: row.full_name,
             roleId: row.role_id,
@@ -93821,7 +94174,9 @@ adminRouter.get("/shops/:id/users", async (req, res) => {
             phone: row.phone,
             pinCode: row.pin_code,
             isActive: Boolean(row.is_active),
-            createdAt: row.created_at
+            hasRecoverablePassword: Boolean(row.encrypted_recovery_password),
+            createdAt: row.created_at,
+            updatedAt: row.updated_at
           };
         })
       }
@@ -93832,7 +94187,7 @@ adminRouter.get("/shops/:id/users", async (req, res) => {
 });
 function generateReadableTempPassword(length = 10) {
   const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  const bytes = import_node_crypto2.default.randomBytes(length);
+  const bytes = import_node_crypto3.default.randomBytes(length);
   let out = "";
   for (let i = 0; i < length; i++) {
     out += charset[bytes[i] % charset.length];
@@ -93868,11 +94223,12 @@ adminRouter.post("/shops/:id/reset-credentials", async (req, res) => {
     const targetUser = userRes.rows[0];
     const trimmedPass = typeof newPassword === "string" ? newPassword.trim() : "";
     if (trimmedPass && trimmedPass.length < 6) {
-      res.status(400).json({ success: false, error: "Temporary password must be at least 6 characters long." });
+      res.status(400).json({ success: false, error: "Password must be at least 6 characters long." });
       return;
     }
     const plainTempPassword = trimmedPass || generateReadableTempPassword(10);
     const passwordHash = hashPassword(plainTempPassword);
+    const recoveryCipher = encryptSecret(plainTempPassword);
     const trimmedPin = typeof newPin === "string" ? newPin.trim() : "";
     if (trimmedPin && !/^\d{4,6}$/.test(trimmedPin)) {
       res.status(400).json({ success: false, error: "Quick PIN must be 4 to 6 numeric digits." });
@@ -93880,8 +94236,8 @@ adminRouter.post("/shops/:id/reset-credentials", async (req, res) => {
     }
     const nextPin = trimmedPin || String(targetUser.pin_code || "1234");
     await client.execute({
-      sql: `UPDATE users SET password_hash = ?, pin_code = ?, is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND shop_id = ?`,
-      args: [passwordHash, nextPin, String(targetUser.id), shopId]
+      sql: `UPDATE users SET password_hash = ?, encrypted_recovery_password = ?, pin_code = ?, is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND shop_id = ?`,
+      args: [passwordHash, recoveryCipher, nextPin, String(targetUser.id), shopId]
     });
     await recordAdminAudit(
       req.user.userId,
@@ -93893,7 +94249,7 @@ adminRouter.post("/shops/:id/reset-credentials", async (req, res) => {
     );
     res.json({
       success: true,
-      message: `Temporary credentials generated for @${targetUser.username}.`,
+      message: `New credentials saved & ready for @${targetUser.username}.`,
       data: {
         shopId,
         shopName: shop.name,
@@ -94055,16 +94411,19 @@ adminRouter.post("/shops", validateBody(provisionShopSchema), async (req, res) =
       args: [`sub_${cleanSlug}`, shopId, endsAt]
     });
     const ownerUserId = `usr_${cleanSlug}_owner`;
-    const passwordHash = hashPassword(ownerPassword && ownerPassword.trim() ? ownerPassword.trim() : "shop123");
+    const plainPassword = ownerPassword && ownerPassword.trim() ? ownerPassword.trim() : "shop123";
+    const passwordHash = hashPassword(plainPassword);
+    const recoveryCipher = encryptSecret(plainPassword);
     const pin = ownerPin && ownerPin.trim() ? ownerPin.trim() : "1234";
     await client.execute({
-      sql: `INSERT INTO users (id, shop_id, username, password_hash, pin_code, full_name, role_id, phone, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, 'ROLE_OWNER', ?, 1)`,
+      sql: `INSERT INTO users (id, shop_id, username, password_hash, encrypted_recovery_password, pin_code, full_name, role_id, phone, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'ROLE_OWNER', ?, 1)`,
       args: [
         ownerUserId,
         shopId,
         ownerUsername ? ownerUsername.trim().toLowerCase() : "admin",
         passwordHash,
+        recoveryCipher,
         pin,
         ownerName.trim(),
         phone.trim()
@@ -94197,7 +94556,7 @@ adminRouter.post("/shops/:id/extend-trial", async (req, res) => {
           INSERT INTO saas_subscriptions (id, shop_id, plan_id, status, trial_starts_at, trial_ends_at, current_period_ends_at)
           VALUES (?, ?, ?, 'TRIALING', CURRENT_TIMESTAMP, ?, ?)
         `,
-        args: [`sub_${import_node_crypto2.default.randomUUID()}`, resolvedShopId, resolvedPlanId, newEnd, newEnd]
+        args: [`sub_${import_node_crypto3.default.randomUUID()}`, resolvedShopId, resolvedPlanId, newEnd, newEnd]
       });
     }
     await client.execute({
@@ -94713,6 +95072,993 @@ adminRouter.put("/notifications/:id/read", async (req, res) => {
       return;
     }
     res.json({ success: true, message: "Notification marked as read." });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+async function findShopByIdOrSlug(idOrSlug) {
+  const client = getClient();
+  const res = await client.execute({
+    sql: `SELECT id, name, slug, status, subscription_ends_at FROM shops WHERE id = ? OR slug = ? LIMIT 1`,
+    args: [idOrSlug, idOrSlug]
+  });
+  return res.rows.length > 0 ? res.rows[0] : null;
+}
+function mapShopUserRow(row) {
+  return {
+    id: String(row.id),
+    shopId: String(row.shop_id),
+    shopName: String(row.shop_name || ""),
+    shopSlug: String(row.shop_slug || ""),
+    shopStatus: resolveEffectiveShopStatus(row.shop_status, row.shop_subscription_ends_at),
+    username: String(row.username),
+    fullName: String(row.full_name),
+    roleId: String(row.role_id),
+    roleName: String(row.role_name || row.role_id),
+    phone: row.phone ? String(row.phone) : null,
+    pinCode: row.pin_code ? String(row.pin_code) : null,
+    isActive: Boolean(row.is_active),
+    hasRecoverablePassword: Boolean(row.encrypted_recovery_password),
+    createdAt: String(row.created_at),
+    updatedAt: row.updated_at ? String(row.updated_at) : void 0
+  };
+}
+adminRouter.get("/logins", async (req, res) => {
+  try {
+    const search = typeof req.query.search === "string" ? req.query.search.trim().toLowerCase() : "";
+    const shopId = typeof req.query.shopId === "string" ? req.query.shopId.trim() : "";
+    const roleId = typeof req.query.roleId === "string" ? req.query.roleId.trim() : "";
+    const status = typeof req.query.status === "string" ? req.query.status.trim().toUpperCase() : "";
+    const client = getClient();
+    const conditions = [];
+    const args = [];
+    if (shopId && shopId !== "ALL") {
+      conditions.push("(u.shop_id = ? OR s.slug = ?)");
+      args.push(shopId, shopId);
+    }
+    if (roleId && roleId !== "ALL") {
+      conditions.push("u.role_id = ?");
+      args.push(roleId);
+    }
+    if (status === "ACTIVE") {
+      conditions.push("u.is_active = 1");
+    } else if (status === "DISABLED" || status === "INACTIVE") {
+      conditions.push("u.is_active = 0");
+    }
+    if (search) {
+      const pattern = `%${search}%`;
+      conditions.push(
+        `(LOWER(u.username) LIKE ? OR LOWER(u.full_name) LIKE ? OR COALESCE(u.phone, '') LIKE ? OR LOWER(s.name) LIKE ? OR LOWER(s.slug) LIKE ?)`
+      );
+      args.push(pattern, pattern, pattern, pattern, pattern);
+    }
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const rowsRes = await client.execute({
+      sql: `
+        SELECT
+          u.id, u.shop_id, u.username, u.full_name, u.role_id, u.phone, u.pin_code,
+          u.is_active, u.encrypted_recovery_password, u.created_at, u.updated_at,
+          s.name AS shop_name, s.slug AS shop_slug, s.status AS shop_status,
+          s.subscription_ends_at AS shop_subscription_ends_at,
+          r.name AS role_name
+        FROM users u
+        INNER JOIN shops s ON u.shop_id = s.id
+        LEFT JOIN roles r ON u.role_id = r.id
+        ${whereClause}
+        ORDER BY
+          CASE WHEN u.role_id = 'ROLE_OWNER' THEN 0 ELSE 1 END ASC,
+          s.name ASC,
+          u.created_at DESC
+      `,
+      args
+    });
+    res.json({
+      success: true,
+      data: rowsRes.rows.map((r) => mapShopUserRow(r))
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.post("/shops/:id/users", async (req, res) => {
+  try {
+    const shop = await findShopByIdOrSlug(req.params.id);
+    if (!shop) {
+      res.status(404).json({ success: false, error: "Shop not found." });
+      return;
+    }
+    const shopId = String(shop.id);
+    const rawUsername = typeof req.body?.username === "string" ? req.body.username.trim().toLowerCase() : "";
+    const fullName = typeof req.body?.fullName === "string" ? req.body.fullName.trim() : "";
+    const roleId = typeof req.body?.roleId === "string" && req.body.roleId.trim() ? req.body.roleId.trim() : "ROLE_TECHNICIAN";
+    const phone = typeof req.body?.phone === "string" ? req.body.phone.trim() : "";
+    const password = typeof req.body?.password === "string" ? req.body.password.trim() : "";
+    const rawPin = typeof req.body?.pinCode === "string" ? req.body.pinCode.trim() : "";
+    if (!/^[a-z0-9._-]{2,40}$/.test(rawUsername)) {
+      res.status(400).json({
+        success: false,
+        error: "Username must be 2\u201340 lowercase characters using letters, numbers, dots, underscores, or hyphens."
+      });
+      return;
+    }
+    if (fullName.length < 2) {
+      res.status(400).json({ success: false, error: "Full name is required (minimum 2 characters)." });
+      return;
+    }
+    if (password.length < 4) {
+      res.status(400).json({ success: false, error: "Password must be at least 4 characters." });
+      return;
+    }
+    if (rawPin && !/^\d{4,6}$/.test(rawPin)) {
+      res.status(400).json({ success: false, error: "Quick PIN must be 4 to 6 numeric digits." });
+      return;
+    }
+    const client = getClient();
+    const roleRes = await client.execute({
+      sql: `SELECT id, name FROM roles WHERE id = ? LIMIT 1`,
+      args: [roleId]
+    });
+    if (roleRes.rows.length === 0) {
+      res.status(400).json({ success: false, error: `Invalid roleId: ${roleId}.` });
+      return;
+    }
+    const roleName = String(roleRes.rows[0].name || roleId);
+    const dupRes = await client.execute({
+      sql: `SELECT id FROM users WHERE shop_id = ? AND LOWER(username) = LOWER(?) LIMIT 1`,
+      args: [shopId, rawUsername]
+    });
+    if (dupRes.rows.length > 0) {
+      res.status(409).json({ success: false, error: `Username "@${rawUsername}" already exists in this shop.` });
+      return;
+    }
+    const newUserId = `usr_${Date.now()}_${import_node_crypto3.default.randomBytes(3).toString("hex")}`;
+    const passwordHash = hashPassword(password);
+    const recoveryCipher = encryptSecret(password);
+    const pinToStore = rawPin || null;
+    await client.execute({
+      sql: `
+        INSERT INTO users (id, shop_id, username, password_hash, encrypted_recovery_password, pin_code, full_name, role_id, phone, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      `,
+      args: [newUserId, shopId, rawUsername, passwordHash, recoveryCipher, pinToStore, fullName, roleId, phone || null]
+    });
+    await recordAdminAudit(
+      req.user.userId,
+      "SHOP_USER_CREATED",
+      "USER",
+      newUserId,
+      { shopId, shopSlug: shop.slug, username: rawUsername, roleId },
+      req.ip
+    );
+    const createdRes = await client.execute({
+      sql: `
+        SELECT
+          u.id, u.shop_id, u.username, u.full_name, u.role_id, u.phone, u.pin_code,
+          u.is_active, u.encrypted_recovery_password, u.created_at, u.updated_at,
+          ? AS shop_name, ? AS shop_slug, ? AS shop_status, ? AS shop_subscription_ends_at,
+          ? AS role_name
+        FROM users u
+        WHERE u.id = ?
+        LIMIT 1
+      `,
+      args: [
+        String(shop.name),
+        String(shop.slug),
+        String(shop.status),
+        shop.subscription_ends_at ? String(shop.subscription_ends_at) : null,
+        roleName,
+        newUserId
+      ]
+    });
+    res.status(201).json({
+      success: true,
+      message: `Created login @${rawUsername} (${roleName}) for ${shop.name}.`,
+      data: mapShopUserRow(createdRes.rows[0])
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.post("/users/:userId/reveal-password", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const client = getClient();
+    const userRes = await client.execute({
+      sql: `
+        SELECT u.id, u.shop_id, u.username, u.full_name, u.phone, u.pin_code, u.encrypted_recovery_password,
+               s.name AS shop_name, s.slug AS shop_slug
+        FROM users u
+        INNER JOIN shops s ON u.shop_id = s.id
+        WHERE u.id = ?
+        LIMIT 1
+      `,
+      args: [userId]
+    });
+    if (userRes.rows.length === 0) {
+      res.status(404).json({ success: false, error: "Shop user account not found." });
+      return;
+    }
+    const row = userRes.rows[0];
+    const cipher = row.encrypted_recovery_password ? String(row.encrypted_recovery_password) : "";
+    if (!cipher) {
+      res.status(400).json({
+        success: false,
+        code: "LEGACY_HASH_NO_RECOVERY",
+        error: "This account uses a legacy one-way password hash created before recoverable vault activation. Click Reset Password to issue a new password."
+      });
+      return;
+    }
+    const decryptedPassword = decryptSecret(cipher);
+    if (!decryptedPassword) {
+      res.status(400).json({
+        success: false,
+        code: "LEGACY_HASH_NO_RECOVERY",
+        error: "Stored password cipher could not be decrypted. Click Reset Password to issue a new password."
+      });
+      return;
+    }
+    await recordAdminAudit(
+      req.user.userId,
+      "CREDENTIAL_PASSWORD_VIEWED",
+      "USER",
+      String(row.id),
+      { shopId: row.shop_id, shopSlug: row.shop_slug, username: row.username },
+      req.ip
+    );
+    res.json({
+      success: true,
+      data: {
+        userId: String(row.id),
+        shopId: String(row.shop_id),
+        shopName: String(row.shop_name),
+        shopSlug: String(row.shop_slug),
+        username: String(row.username),
+        fullName: String(row.full_name),
+        phone: row.phone ? String(row.phone) : null,
+        password: decryptedPassword,
+        pinCode: row.pin_code ? String(row.pin_code) : null
+      }
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.put("/users/:userId/status", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const isActive = req.body?.isActive;
+    if (typeof isActive !== "boolean") {
+      res.status(400).json({ success: false, error: "Boolean isActive field is required." });
+      return;
+    }
+    const client = getClient();
+    const existingRes = await client.execute({
+      sql: `SELECT id, shop_id, username, role_id FROM users WHERE id = ? LIMIT 1`,
+      args: [userId]
+    });
+    if (existingRes.rows.length === 0) {
+      res.status(404).json({ success: false, error: "User account not found." });
+      return;
+    }
+    const existing = existingRes.rows[0];
+    await client.execute({
+      sql: `UPDATE users SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      args: [isActive ? 1 : 0, userId]
+    });
+    await recordAdminAudit(
+      req.user.userId,
+      "SHOP_USER_STATUS_UPDATED",
+      "USER",
+      userId,
+      { shopId: existing.shop_id, username: existing.username, isActive },
+      req.ip
+    );
+    res.json({
+      success: true,
+      message: `User @${existing.username} is now ${isActive ? "ACTIVE" : "DISABLED"}.`,
+      data: { userId, isActive }
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.post("/shops/:id/impersonate", async (req, res) => {
+  try {
+    const shop = await findShopByIdOrSlug(req.params.id);
+    if (!shop) {
+      res.status(404).json({ success: false, error: "Shop not found." });
+      return;
+    }
+    const shopId = String(shop.id);
+    const effectiveStatus = resolveEffectiveShopStatus(shop.status, shop.subscription_ends_at);
+    if (effectiveStatus !== "ACTIVE") {
+      res.status(400).json({
+        success: false,
+        error: `Shop is currently ${effectiveStatus}. Activate or extend the shop first before opening Support Workspace.`
+      });
+      return;
+    }
+    const client = getClient();
+    const requestedUserId = typeof req.body?.userId === "string" ? req.body.userId.trim() : "";
+    const userRes = requestedUserId ? await client.execute({
+      sql: `
+            SELECT u.*, r.name AS role_name
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            WHERE u.id = ? AND u.shop_id = ?
+            LIMIT 1
+          `,
+      args: [requestedUserId, shopId]
+    }) : await client.execute({
+      sql: `
+            SELECT u.*, r.name AS role_name
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            WHERE u.shop_id = ?
+            ORDER BY u.is_active DESC, CASE WHEN u.role_id = 'ROLE_OWNER' THEN 0 ELSE 1 END ASC, u.created_at ASC
+            LIMIT 1
+          `,
+      args: [shopId]
+    });
+    if (userRes.rows.length === 0) {
+      res.status(404).json({ success: false, error: "No user account found in this shop for support login." });
+      return;
+    }
+    const targetUser = userRes.rows[0];
+    if (!Boolean(targetUser.is_active)) {
+      res.status(400).json({
+        success: false,
+        error: `User @${targetUser.username} is disabled. Activate the account first to launch support mode.`
+      });
+      return;
+    }
+    const permRes = await client.execute({
+      sql: `
+        SELECT p.code
+        FROM role_permissions rp
+        JOIN permissions p ON rp.permission_id = p.id
+        WHERE rp.role_id = ?
+      `,
+      args: [String(targetUser.role_id)]
+    });
+    const permissions2 = permRes.rows.map((r) => String(r.code));
+    const token = generateToken(
+      {
+        userId: String(targetUser.id),
+        shopId,
+        username: String(targetUser.username),
+        fullName: String(targetUser.full_name),
+        roleId: String(targetUser.role_id),
+        permissions: permissions2,
+        isSuperAdmin: false
+      },
+      "2h"
+    );
+    await recordAdminAudit(
+      req.user.userId,
+      "SUPERADMIN_SUPPORT_IMPERSONATION",
+      "SHOP",
+      shopId,
+      {
+        shopSlug: shop.slug,
+        targetUserId: targetUser.id,
+        targetUsername: targetUser.username,
+        targetRoleId: targetUser.role_id
+      },
+      req.ip
+    );
+    res.json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: String(targetUser.id),
+          shopId,
+          shopSlug: String(shop.slug),
+          shopName: String(shop.name),
+          username: String(targetUser.username),
+          fullName: String(targetUser.full_name),
+          roleId: String(targetUser.role_id),
+          roleName: String(targetUser.role_name || targetUser.role_id),
+          isSuperAdmin: false,
+          permissions: permissions2
+        },
+        shop: {
+          id: shopId,
+          name: String(shop.name),
+          slug: String(shop.slug)
+        }
+      }
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.get("/customers", async (req, res) => {
+  try {
+    const search = typeof req.query.search === "string" ? req.query.search.trim().toLowerCase() : "";
+    const shopId = typeof req.query.shopId === "string" ? req.query.shopId.trim() : "";
+    const customerType = typeof req.query.customerType === "string" ? req.query.customerType.trim().toUpperCase() : "";
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 100));
+    const client = getClient();
+    const conditions = [];
+    const args = [];
+    if (shopId && shopId !== "ALL") {
+      conditions.push("(c.shop_id = ? OR s.slug = ?)");
+      args.push(shopId, shopId);
+    }
+    if (customerType && customerType !== "ALL") {
+      conditions.push("UPPER(c.customer_type) = ?");
+      args.push(customerType);
+    }
+    const defaultAddressJoin = `
+      LEFT JOIN customer_addresses ca ON ca.id = (
+        SELECT ca2.id FROM customer_addresses ca2
+        WHERE ca2.customer_id = c.id
+        ORDER BY ca2.is_default DESC, ca2.id ASC
+        LIMIT 1
+      )
+    `;
+    if (search) {
+      const pattern = `%${search}%`;
+      conditions.push(`(
+        LOWER(c.full_name) LIKE ?
+        OR COALESCE(c.primary_phone, '') LIKE ?
+        OR COALESCE(c.secondary_phone, '') LIKE ?
+        OR LOWER(c.customer_code) LIKE ?
+        OR LOWER(COALESCE(c.email, '')) LIKE ?
+        OR LOWER(COALESCE(ca.city, '')) LIKE ?
+        OR LOWER(s.name) LIKE ?
+      )`);
+      args.push(pattern, pattern, pattern, pattern, pattern, pattern, pattern);
+    }
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const [countRes, rowsRes] = await Promise.all([
+      client.execute({
+        sql: `
+          SELECT COUNT(*) AS total
+          FROM customers c
+          INNER JOIN shops s ON c.shop_id = s.id
+          ${defaultAddressJoin}
+          ${whereClause}
+        `,
+        args
+      }),
+      client.execute({
+        sql: `
+          SELECT
+            c.id, c.shop_id, c.customer_code, c.full_name, c.primary_phone, c.secondary_phone,
+            c.email, c.gstin, c.customer_type, c.notes, c.created_at,
+            s.name AS shop_name, s.slug AS shop_slug, s.status AS shop_status, s.subscription_ends_at AS shop_subscription_ends_at,
+            ca.address_line1, ca.city, ca.state, ca.pincode,
+            COALESCE(dev_agg.devices_count, 0) AS devices_count,
+            COALESCE(job_agg.jobs_count, 0) AS jobs_count,
+            job_agg.last_visit_at AS last_visit_at,
+            COALESCE(inv_agg.total_invoiced_inr, 0) AS total_invoiced_inr,
+            COALESCE(inv_agg.total_paid_inr, 0) AS total_paid_inr
+          FROM customers c
+          INNER JOIN shops s ON c.shop_id = s.id
+          ${defaultAddressJoin}
+          LEFT JOIN (SELECT customer_id, COUNT(*) AS devices_count FROM devices GROUP BY customer_id) dev_agg ON dev_agg.customer_id = c.id
+          LEFT JOIN (SELECT customer_id, COUNT(*) AS jobs_count, MAX(created_at) AS last_visit_at FROM service_jobs GROUP BY customer_id) job_agg ON job_agg.customer_id = c.id
+          LEFT JOIN (
+            SELECT customer_id, COALESCE(SUM(total_amount), 0) AS total_invoiced_inr, COALESCE(SUM(amount_paid), 0) AS total_paid_inr
+            FROM invoices
+            WHERE is_void = 0
+            GROUP BY customer_id
+          ) inv_agg ON inv_agg.customer_id = c.id
+          ${whereClause}
+          ORDER BY COALESCE(job_agg.last_visit_at, c.created_at) DESC, c.created_at DESC
+          LIMIT ?
+        `,
+        args: [...args, limit]
+      })
+    ]);
+    res.json({
+      success: true,
+      totalCount: Number(countRes.rows[0]?.total || 0),
+      data: rowsRes.rows.map((r) => {
+        const row = r;
+        return {
+          id: String(row.id),
+          shopId: String(row.shop_id),
+          shopName: String(row.shop_name),
+          shopSlug: String(row.shop_slug),
+          shopStatus: resolveEffectiveShopStatus(row.shop_status, row.shop_subscription_ends_at),
+          customerCode: String(row.customer_code),
+          fullName: String(row.full_name),
+          primaryPhone: String(row.primary_phone),
+          secondaryPhone: row.secondary_phone ? String(row.secondary_phone) : null,
+          email: row.email ? String(row.email) : null,
+          gstin: row.gstin ? String(row.gstin) : null,
+          customerType: String(row.customer_type),
+          notes: row.notes ? String(row.notes) : null,
+          addressLine1: row.address_line1 ? String(row.address_line1) : null,
+          city: row.city ? String(row.city) : null,
+          state: row.state ? String(row.state) : null,
+          pincode: row.pincode ? String(row.pincode) : null,
+          devicesCount: Number(row.devices_count || 0),
+          jobsCount: Number(row.jobs_count || 0),
+          totalInvoicedInr: Number(row.total_invoiced_inr || 0),
+          totalPaidInr: Number(row.total_paid_inr || 0),
+          lastVisitAt: row.last_visit_at ? String(row.last_visit_at) : null,
+          createdAt: String(row.created_at)
+        };
+      })
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.get("/customers/:id", async (req, res) => {
+  try {
+    const customerId = req.params.id;
+    const client = getClient();
+    const custRes = await client.execute({
+      sql: `
+        SELECT c.*, s.name AS shop_name, s.slug AS shop_slug, s.phone AS shop_phone
+        FROM customers c
+        INNER JOIN shops s ON c.shop_id = s.id
+        WHERE c.id = ?
+        LIMIT 1
+      `,
+      args: [customerId]
+    });
+    if (custRes.rows.length === 0) {
+      res.status(404).json({ success: false, error: "Customer not found." });
+      return;
+    }
+    const c = custRes.rows[0];
+    const [addressesRes, devicesRes, jobsRes, invoicesRes] = await Promise.all([
+      client.execute({
+        sql: `
+          SELECT id, address_line1, address_line2, landmark, city, state, pincode, is_default
+          FROM customer_addresses
+          WHERE customer_id = ?
+          ORDER BY is_default DESC, id ASC
+        `,
+        args: [customerId]
+      }),
+      client.execute({
+        sql: `
+          SELECT d.id, d.equipment_type, d.brand, d.model_name, d.serial_number, d.color_finish,
+                 d.specs_summary, d.encrypted_security_passcode, d.created_at,
+                 (SELECT COUNT(*) FROM service_jobs j WHERE j.device_id = d.id) AS jobs_count
+          FROM devices d
+          WHERE d.customer_id = ?
+          ORDER BY d.created_at DESC
+        `,
+        args: [customerId]
+      }),
+      client.execute({
+        sql: `
+          SELECT j.id, j.job_number, j.service_category, j.current_status, j.priority,
+                 j.reported_issue, j.estimated_cost, j.advance_deposit, j.created_at,
+                 d.brand AS device_brand, d.model_name AS device_model, d.equipment_type
+          FROM service_jobs j
+          INNER JOIN devices d ON j.device_id = d.id
+          WHERE j.customer_id = ?
+          ORDER BY j.created_at DESC
+        `,
+        args: [customerId]
+      }),
+      client.execute({
+        sql: `
+          SELECT id, invoice_number, invoice_type, total_amount, amount_paid, balance_due, payment_status, created_at
+          FROM invoices
+          WHERE customer_id = ? AND is_void = 0
+          ORDER BY created_at DESC
+        `,
+        args: [customerId]
+      })
+    ]);
+    let totalInvoicedInr = 0;
+    let totalPaidInr = 0;
+    let balanceDueInr = 0;
+    const invoices2 = invoicesRes.rows.map((invRow) => {
+      const inv = invRow;
+      const totalAmount = Number(inv.total_amount || 0);
+      const amountPaid = Number(inv.amount_paid || 0);
+      const balanceDue = Number(inv.balance_due || 0);
+      totalInvoicedInr += totalAmount;
+      totalPaidInr += amountPaid;
+      balanceDueInr += balanceDue;
+      return {
+        id: String(inv.id),
+        invoiceNumber: String(inv.invoice_number),
+        invoiceType: String(inv.invoice_type),
+        totalAmount,
+        amountPaid,
+        balanceDue,
+        paymentStatus: String(inv.payment_status),
+        createdAt: String(inv.created_at)
+      };
+    });
+    res.json({
+      success: true,
+      data: {
+        customer: {
+          id: String(c.id),
+          shopId: String(c.shop_id),
+          shopName: String(c.shop_name),
+          shopSlug: String(c.shop_slug),
+          shopPhone: c.shop_phone ? String(c.shop_phone) : null,
+          customerCode: String(c.customer_code),
+          fullName: String(c.full_name),
+          primaryPhone: String(c.primary_phone),
+          secondaryPhone: c.secondary_phone ? String(c.secondary_phone) : null,
+          email: c.email ? String(c.email) : null,
+          gstin: c.gstin ? String(c.gstin) : null,
+          customerType: String(c.customer_type),
+          notes: c.notes ? String(c.notes) : null,
+          createdAt: String(c.created_at)
+        },
+        addresses: addressesRes.rows.map((addrRow) => {
+          const a = addrRow;
+          return {
+            id: String(a.id),
+            addressLine1: String(a.address_line1),
+            addressLine2: a.address_line2 ? String(a.address_line2) : null,
+            landmark: a.landmark ? String(a.landmark) : null,
+            city: String(a.city),
+            state: String(a.state),
+            pincode: a.pincode ? String(a.pincode) : null,
+            isDefault: Boolean(a.is_default)
+          };
+        }),
+        devices: devicesRes.rows.map((devRow) => {
+          const d = devRow;
+          return {
+            id: String(d.id),
+            equipmentType: String(d.equipment_type),
+            brand: String(d.brand),
+            modelName: String(d.model_name),
+            serialNumber: d.serial_number ? String(d.serial_number) : null,
+            colorFinish: d.color_finish ? String(d.color_finish) : null,
+            specsSummary: d.specs_summary ? String(d.specs_summary) : null,
+            hasPasscode: Boolean(d.encrypted_security_passcode),
+            jobsCount: Number(d.jobs_count || 0),
+            createdAt: String(d.created_at)
+          };
+        }),
+        jobs: jobsRes.rows.map((jobRow) => {
+          const j = jobRow;
+          return {
+            id: String(j.id),
+            jobNumber: String(j.job_number),
+            serviceCategory: String(j.service_category),
+            currentStatus: String(j.current_status),
+            priority: String(j.priority),
+            reportedIssue: String(j.reported_issue),
+            estimatedCost: Number(j.estimated_cost || 0),
+            advanceDeposit: Number(j.advance_deposit || 0),
+            deviceLabel: `${j.device_brand} ${j.device_model} (${j.equipment_type})`,
+            createdAt: String(j.created_at)
+          };
+        }),
+        invoices: invoices2,
+        financialSummary: {
+          totalInvoicedInr,
+          totalPaidInr,
+          balanceDueInr
+        }
+      }
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.get("/analytics", async (_req, res) => {
+  try {
+    const client = getClient();
+    const [
+      shopsDetailedRes,
+      claimsAggRes,
+      usersAggRes,
+      windowCountsRes,
+      jobsByStatusRes,
+      customersByTypeRes,
+      devicesByCategoryRes,
+      cityStatsRes,
+      snapshotCountsRes
+    ] = await Promise.all([
+      client.execute(`
+        SELECT
+          s.id, s.name, s.slug, s.owner_name, s.phone, s.city, s.status,
+          s.subscription_ends_at, s.max_seats, s.created_at,
+          sub.status AS subscription_status, sub.trial_ends_at, sub.current_period_ends_at,
+          COALESCE(sub.is_complimentary, 0) AS is_complimentary,
+          (SELECT COUNT(*) FROM users u WHERE u.shop_id = s.id AND u.is_active = 1) AS active_users,
+          (SELECT COUNT(*) FROM customers c WHERE c.shop_id = s.id) AS customers_count,
+          (SELECT COUNT(*) FROM devices d WHERE d.shop_id = s.id) AS devices_count,
+          (SELECT COUNT(*) FROM service_jobs j WHERE j.shop_id = s.id) AS jobs_count,
+          (SELECT COUNT(*) FROM invoices inv WHERE inv.shop_id = s.id AND inv.is_void = 0) AS invoices_count,
+          (SELECT COALESCE(SUM(inv.total_amount), 0) FROM invoices inv WHERE inv.shop_id = s.id AND inv.is_void = 0) AS workshop_gmv_inr,
+          (SELECT COALESCE(SUM(inv.amount_paid), 0) FROM invoices inv WHERE inv.shop_id = s.id AND inv.is_void = 0) AS collected_inr,
+          (SELECT COALESCE(SUM(pc.amount_inr), 0) FROM saas_payment_claims pc WHERE pc.shop_id = s.id AND pc.status = 'APPROVED') AS saas_paid_inr,
+          (SELECT MAX(j.created_at) FROM service_jobs j WHERE j.shop_id = s.id) AS last_job_at
+        FROM shops s
+        LEFT JOIN saas_subscriptions sub ON s.id = sub.shop_id
+        ORDER BY jobs_count DESC, customers_count DESC, s.created_at DESC
+      `),
+      client.execute(`
+        SELECT
+          COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN amount_inr ELSE 0 END), 0) AS total_saas_rev,
+          COALESCE(SUM(CASE WHEN status = 'PENDING' THEN amount_inr ELSE 0 END), 0) AS pending_saas_inr,
+          COALESCE(SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END), 0) AS pending_claims,
+          COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END), 0) AS approved_claims
+        FROM saas_payment_claims
+      `),
+      client.execute(`
+        SELECT
+          COUNT(*) AS total_users,
+          COALESCE(SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END), 0) AS active_users
+        FROM users
+      `),
+      client.execute(`
+        SELECT
+          (SELECT COUNT(*) FROM shops WHERE datetime(created_at) >= datetime('now', '-7 days')) AS shops_7d,
+          (SELECT COUNT(*) FROM shops WHERE datetime(created_at) >= datetime('now', '-30 days')) AS shops_30d,
+          (SELECT COUNT(*) FROM customers WHERE datetime(created_at) >= datetime('now', '-7 days')) AS customers_7d,
+          (SELECT COUNT(*) FROM customers WHERE datetime(created_at) >= datetime('now', '-30 days')) AS customers_30d,
+          (SELECT COUNT(*) FROM service_jobs WHERE datetime(created_at) >= datetime('now', '-7 days')) AS jobs_7d,
+          (SELECT COUNT(*) FROM service_jobs WHERE datetime(created_at) >= datetime('now', '-30 days')) AS jobs_30d
+      `),
+      client.execute(`
+        SELECT current_status AS status, COUNT(*) AS count
+        FROM service_jobs
+        GROUP BY current_status
+        ORDER BY count DESC
+      `),
+      client.execute(`
+        SELECT COALESCE(customer_type, 'INDIVIDUAL') AS type, COUNT(*) AS count
+        FROM customers
+        GROUP BY customer_type
+        ORDER BY count DESC
+      `),
+      client.execute(`
+        SELECT COALESCE(equipment_type, 'OTHER') AS category, COUNT(*) AS count
+        FROM devices
+        GROUP BY equipment_type
+        ORDER BY count DESC
+      `),
+      client.execute(`
+        SELECT
+          COALESCE(NULLIF(TRIM(s.city), ''), 'Unspecified') AS city,
+          COUNT(*) AS shops_count,
+          COALESCE(SUM((SELECT COUNT(*) FROM customers c WHERE c.shop_id = s.id)), 0) AS customers_count,
+          COALESCE(SUM((SELECT COUNT(*) FROM service_jobs j WHERE j.shop_id = s.id)), 0) AS jobs_count
+        FROM shops s
+        GROUP BY COALESCE(NULLIF(TRIM(s.city), ''), 'Unspecified')
+        ORDER BY shops_count DESC, jobs_count DESC
+      `),
+      client.execute(`
+        SELECT
+          (SELECT COUNT(*) FROM shops) AS shops_cnt,
+          (SELECT COUNT(*) FROM users) AS users_cnt,
+          (SELECT COUNT(*) FROM customers) AS customers_cnt,
+          (SELECT COUNT(*) FROM devices) AS devices_cnt,
+          (SELECT COUNT(*) FROM service_jobs) AS jobs_cnt,
+          (SELECT COUNT(*) FROM service_jobs WHERE current_status NOT IN ('DELIVERED', 'CANCELLED')) AS active_jobs_cnt,
+          (SELECT COUNT(*) FROM service_jobs WHERE current_status = 'DELIVERED') AS delivered_jobs_cnt,
+          (SELECT COUNT(*) FROM invoices) AS invoices_cnt,
+          (SELECT COUNT(*) FROM saas_payment_claims) AS claims_cnt,
+          (SELECT COUNT(*) FROM saas_notifications) AS notifications_cnt,
+          (SELECT COUNT(*) FROM saas_admin_audit_logs) AS audits_cnt
+      `)
+    ]);
+    let activeShops = 0;
+    let frozenShops = 0;
+    let expiredShops = 0;
+    let trialingShops = 0;
+    let activeSubscriptions = 0;
+    let totalShopGmvInr = 0;
+    let totalShopCollectedInr = 0;
+    let payingShopsCount = 0;
+    const nowMs = Date.now();
+    const shopLeaderboard = shopsDetailedRes.rows.map((r) => {
+      const row = r;
+      const effectiveStatus = resolveEffectiveShopStatus(row.status, row.subscription_ends_at);
+      if (effectiveStatus === "FROZEN")
+        frozenShops++;
+      else if (effectiveStatus === "EXPIRED")
+        expiredShops++;
+      else
+        activeShops++;
+      const rawSubStatus = String(row.subscription_status || "ACTIVE");
+      let effectiveSubStatus = rawSubStatus;
+      if (effectiveStatus === "FROZEN") {
+        effectiveSubStatus = "SUSPENDED";
+      } else if (effectiveStatus === "EXPIRED") {
+        effectiveSubStatus = "EXPIRED";
+      } else if (rawSubStatus === "TRIALING" && !isTimestampPastDue(row.trial_ends_at)) {
+        trialingShops++;
+      } else if (rawSubStatus === "ACTIVE" && !isTimestampPastDue(row.current_period_ends_at)) {
+        activeSubscriptions++;
+      }
+      const endIso = row.subscription_ends_at ? String(row.subscription_ends_at) : "";
+      const endMs = endIso ? new Date(endIso).getTime() : NaN;
+      const daysRemaining = Number.isFinite(endMs) ? Math.ceil((endMs - nowMs) / (24 * 60 * 60 * 1e3)) : 0;
+      const workshopGmvInr = Number(row.workshop_gmv_inr || 0);
+      const collectedInr = Number(row.collected_inr || 0);
+      const saasPaidInr = Number(row.saas_paid_inr || 0);
+      totalShopGmvInr += workshopGmvInr;
+      totalShopCollectedInr += collectedInr;
+      if (saasPaidInr > 0)
+        payingShopsCount++;
+      return {
+        shopId: String(row.id),
+        name: String(row.name),
+        slug: String(row.slug),
+        ownerName: String(row.owner_name),
+        phone: String(row.phone),
+        city: String(row.city || ""),
+        status: effectiveStatus,
+        subscriptionStatus: effectiveSubStatus,
+        isComplimentary: Boolean(row.is_complimentary),
+        subscriptionEndsAt: endIso,
+        daysRemaining,
+        activeUsers: Number(row.active_users || 0),
+        maxSeats: Number(row.max_seats || 5),
+        customersCount: Number(row.customers_count || 0),
+        devicesCount: Number(row.devices_count || 0),
+        jobsCount: Number(row.jobs_count || 0),
+        invoicesCount: Number(row.invoices_count || 0),
+        workshopGmvInr,
+        collectedInr,
+        saasPaidInr,
+        lastActivityAt: String(row.last_job_at || row.created_at)
+      };
+    });
+    const expiringSoon = shopLeaderboard.filter((s) => !s.isComplimentary && s.status !== "FROZEN" && s.daysRemaining <= 14).sort((a, b) => a.daysRemaining - b.daysRemaining).map((s) => ({
+      shopId: s.shopId,
+      name: s.name,
+      slug: s.slug,
+      ownerName: s.ownerName,
+      phone: s.phone,
+      subscriptionStatus: s.subscriptionStatus,
+      subscriptionEndsAt: s.subscriptionEndsAt,
+      daysRemaining: s.daysRemaining
+    }));
+    const claimsAgg = claimsAggRes.rows[0] || {};
+    const usersAgg = usersAggRes.rows[0] || {};
+    const windowAgg = windowCountsRes.rows[0] || {};
+    const snapAgg = snapshotCountsRes.rows[0] || {};
+    const totalShops = shopLeaderboard.length;
+    const totalSaasRevenueInr = Number(claimsAgg.total_saas_rev || 0);
+    const conversionRatePct = totalShops > 0 ? Math.round(activeSubscriptions / totalShops * 1e3) / 10 : 0;
+    const avgRevenuePerPayingShopInr = payingShopsCount > 0 ? Math.round(totalSaasRevenueInr / payingShopsCount) : 0;
+    res.json({
+      success: true,
+      data: {
+        overview: {
+          totalShops,
+          activeShops,
+          trialingShops,
+          activeSubscriptions,
+          frozenShops,
+          expiredShops,
+          totalUsers: Number(usersAgg.total_users || 0),
+          activeUsers: Number(usersAgg.active_users || 0),
+          totalCustomers: Number(snapAgg.customers_cnt || 0),
+          totalDevices: Number(snapAgg.devices_cnt || 0),
+          totalJobs: Number(snapAgg.jobs_cnt || 0),
+          activeJobs: Number(snapAgg.active_jobs_cnt || 0),
+          deliveredJobs: Number(snapAgg.delivered_jobs_cnt || 0),
+          totalSaasRevenueInr,
+          pendingSaasClaimsInr: Number(claimsAgg.pending_saas_inr || 0),
+          pendingPaymentClaims: Number(claimsAgg.pending_claims || 0),
+          approvedPaymentClaims: Number(claimsAgg.approved_claims || 0),
+          totalShopGmvInr,
+          totalShopCollectedInr,
+          conversionRatePct,
+          avgRevenuePerPayingShopInr
+        },
+        signupsByWindow: {
+          shopsLast7d: Number(windowAgg.shops_7d || 0),
+          shopsLast30d: Number(windowAgg.shops_30d || 0),
+          customersLast7d: Number(windowAgg.customers_7d || 0),
+          customersLast30d: Number(windowAgg.customers_30d || 0),
+          jobsLast7d: Number(windowAgg.jobs_7d || 0),
+          jobsLast30d: Number(windowAgg.jobs_30d || 0)
+        },
+        jobsByStatus: jobsByStatusRes.rows.map((r) => {
+          const row = r;
+          return { status: String(row.status), count: Number(row.count || 0) };
+        }),
+        customersByType: customersByTypeRes.rows.map((r) => {
+          const row = r;
+          return { type: String(row.type), count: Number(row.count || 0) };
+        }),
+        devicesByCategory: devicesByCategoryRes.rows.map((r) => {
+          const row = r;
+          return { category: String(row.category), count: Number(row.count || 0) };
+        }),
+        shopsByCity: cityStatsRes.rows.map((r) => {
+          const row = r;
+          return {
+            city: String(row.city),
+            shopsCount: Number(row.shops_count || 0),
+            customersCount: Number(row.customers_count || 0),
+            jobsCount: Number(row.jobs_count || 0)
+          };
+        }),
+        shopLeaderboard,
+        expiringSoon,
+        databaseSnapshot: {
+          databaseProvider: getDatabaseProviderLabel(),
+          generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+          counts: {
+            shops: Number(snapAgg.shops_cnt || 0),
+            users: Number(snapAgg.users_cnt || 0),
+            customers: Number(snapAgg.customers_cnt || 0),
+            devices: Number(snapAgg.devices_cnt || 0),
+            jobs: Number(snapAgg.jobs_cnt || 0),
+            invoices: Number(snapAgg.invoices_cnt || 0),
+            paymentClaims: Number(snapAgg.claims_cnt || 0),
+            notifications: Number(snapAgg.notifications_cnt || 0),
+            auditLogs: Number(snapAgg.audits_cnt || 0)
+          }
+        }
+      }
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.put("/profile/password", async (req, res) => {
+  try {
+    const currentPassword = typeof req.body?.currentPassword === "string" ? req.body.currentPassword : "";
+    const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword.trim() : "";
+    const fullName = typeof req.body?.fullName === "string" ? req.body.fullName.trim() : void 0;
+    const email3 = typeof req.body?.email === "string" ? req.body.email.trim() : void 0;
+    if (!currentPassword) {
+      res.status(400).json({ success: false, error: "Current password is required for verification." });
+      return;
+    }
+    if (newPassword.length < 6) {
+      res.status(400).json({ success: false, error: "New password must be at least 6 characters." });
+      return;
+    }
+    const client = getClient();
+    const adminRes = await client.execute({
+      sql: `SELECT id, username, password_hash, full_name, email FROM vendor_admins WHERE id = ? LIMIT 1`,
+      args: [req.user.userId]
+    });
+    if (adminRes.rows.length === 0) {
+      res.status(404).json({ success: false, error: "Super-Admin account not found." });
+      return;
+    }
+    const adminRow = adminRes.rows[0];
+    const valid = verifyPassword(currentPassword, String(adminRow.password_hash));
+    if (!valid) {
+      res.status(401).json({ success: false, error: "Current password is incorrect." });
+      return;
+    }
+    const nextHash = hashPassword(newPassword);
+    const nextFullName = fullName && fullName.length >= 2 ? fullName : String(adminRow.full_name);
+    const nextEmail = email3 !== void 0 ? email3 || null : adminRow.email ? String(adminRow.email) : null;
+    await client.execute({
+      sql: `UPDATE vendor_admins SET password_hash = ?, full_name = ?, email = ? WHERE id = ?`,
+      args: [nextHash, nextFullName, nextEmail, req.user.userId]
+    });
+    await recordAdminAudit(
+      req.user.userId,
+      "SUPERADMIN_PASSWORD_UPDATED",
+      "VENDOR_ADMIN",
+      req.user.userId,
+      { username: adminRow.username, fullNameUpdated: Boolean(fullName) },
+      req.ip
+    );
+    res.json({
+      success: true,
+      message: "Super-Admin password updated successfully.",
+      data: {
+        username: String(adminRow.username),
+        fullName: nextFullName,
+        email: nextEmail
+      }
+    });
   } catch (error62) {
     res.status(500).json({ success: false, error: error62.message });
   }
@@ -95381,77 +96727,6 @@ jobsRouter.post("/:id/diagnosis", validateBody(jobDiagnosisSchema), async (req, 
 
 // server/routes/customers.ts
 var import_express4 = __toESM(require_express2());
-
-// server/security/crypto.ts
-var import_node_crypto3 = __toESM(require("node:crypto"));
-var import_node_os = __toESM(require("node:os"));
-var ALGORITHM = "aes-256-gcm";
-var IV_LENGTH = 12;
-var SALT_LENGTH = 16;
-var KEY_LENGTH = 32;
-function getDynamicEntropy() {
-  if (process.env.ENCRYPTION_KEY && process.env.ENCRYPTION_KEY.length >= 16) {
-    return process.env.ENCRYPTION_KEY;
-  }
-  if (process.env.PASSCODE_ENCRYPTION_KEY && process.env.PASSCODE_ENCRYPTION_KEY.length >= 16) {
-    return process.env.PASSCODE_ENCRYPTION_KEY;
-  }
-  if (process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 16) {
-    return process.env.JWT_SECRET;
-  }
-  if (process.env.KTECH_APP_SECRET && process.env.KTECH_APP_SECRET.length >= 16) {
-    return process.env.KTECH_APP_SECRET;
-  }
-  if (process.env.NODE_ENV === "production") {
-    console.warn(
-      "[Security Warning] No persistent ENCRYPTION_KEY or JWT_SECRET found in production environment! Using fallback encryption seed. Please set ENCRYPTION_KEY in Vercel settings."
-    );
-    return "ktech-saas-cloud-fallback-master-entropy-key-2026";
-  }
-  try {
-    return `${import_node_os.default.hostname()}|ktech-saas-cloud-encryption-seed-2026`;
-  } catch {
-    return "ktech-saas-cloud-fallback-master-entropy-key-2026";
-  }
-}
-function deriveKey(salt) {
-  return import_node_crypto3.default.scryptSync(getDynamicEntropy(), salt, KEY_LENGTH);
-}
-function encryptSecret(plaintext) {
-  if (!plaintext)
-    return "";
-  const salt = import_node_crypto3.default.randomBytes(SALT_LENGTH);
-  const iv = import_node_crypto3.default.randomBytes(IV_LENGTH);
-  const key = deriveKey(salt);
-  const cipher = import_node_crypto3.default.createCipheriv(ALGORITHM, key, iv);
-  let encrypted = cipher.update(plaintext, "utf8", "hex");
-  encrypted += cipher.final("hex");
-  const authTag = cipher.getAuthTag().toString("hex");
-  return `${salt.toString("hex")}:${iv.toString("hex")}:${authTag}:${encrypted}`;
-}
-function decryptSecret(encryptedPayload) {
-  if (!encryptedPayload)
-    return "";
-  try {
-    const parts = encryptedPayload.split(":");
-    if (parts.length !== 4)
-      return "";
-    const [saltHex, ivHex, authTagHex, ciphertextHex] = parts;
-    const salt = Buffer.from(saltHex, "hex");
-    const iv = Buffer.from(ivHex, "hex");
-    const authTag = Buffer.from(authTagHex, "hex");
-    const key = deriveKey(salt);
-    const decipher = import_node_crypto3.default.createDecipheriv(ALGORITHM, key, iv);
-    decipher.setAuthTag(authTag);
-    let decrypted = decipher.update(ciphertextHex, "hex", "utf8");
-    decrypted += decipher.final("utf8");
-    return decrypted;
-  } catch {
-    return "";
-  }
-}
-
-// server/routes/customers.ts
 var customersRouter = (0, import_express4.Router)();
 customersRouter.use(authenticateToken);
 customersRouter.get("/", async (req, res) => {
@@ -96785,13 +98060,14 @@ publicRouter.post("/register", validateBody(publicRegistrationSchema), async (re
     const ownerUserId = `usr_${cleanSlug}_owner`;
     const cleanUsername = username ? username.trim().toLowerCase() : "admin";
     const passwordHash = hashPassword(password);
+    const encryptedRecovery = encryptSecret(password);
     const pin = "1234";
     await client.execute({
       sql: `
-        INSERT INTO users (id, shop_id, username, password_hash, pin_code, full_name, role_id, phone, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, 'ROLE_OWNER', ?, 1)
+        INSERT INTO users (id, shop_id, username, password_hash, encrypted_recovery_password, pin_code, full_name, role_id, phone, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'ROLE_OWNER', ?, 1)
       `,
-      args: [ownerUserId, shopId, cleanUsername, passwordHash, pin, ownerName.trim(), phone.trim()]
+      args: [ownerUserId, shopId, cleanUsername, passwordHash, encryptedRecovery, pin, ownerName.trim(), phone.trim()]
     });
     const permRes = await client.execute({
       sql: `SELECT p.code FROM role_permissions rp JOIN permissions p ON rp.permission_id = p.id WHERE rp.role_id = 'ROLE_OWNER'`,

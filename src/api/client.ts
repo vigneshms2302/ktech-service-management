@@ -76,7 +76,7 @@ export interface ApiFetchOptions extends RequestInit {
 async function apiFetch<T = any>(
   endpoint: string,
   options: ApiFetchOptions = {}
-): Promise<{ success: boolean; data?: T; error?: string; message?: string; unreadCount?: number }> {
+): Promise<{ success: boolean; data?: T; error?: string; message?: string; unreadCount?: number; totalCount?: number }> {
   try {
     const token = getAuthToken();
     const headers: Record<string, string> = {
@@ -185,6 +185,9 @@ export const saasApi = {
 
     logout: async () => {
       clearAuthToken();
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('kconnect_superadmin_return_token');
+      }
       return { success: true };
     },
 
@@ -780,6 +783,89 @@ export const saasApi = {
     markNotificationRead: async (notificationId: string) => {
       return apiFetch(`/api/admin/notifications/${notificationId}/read`, {
         method: 'PUT',
+      });
+    },
+
+    getShopDetail: async (shopId: string) => {
+      return apiFetch(`/api/admin/shops/${shopId}`);
+    },
+
+    updateShop: async (shopId: string, payload: Record<string, unknown>) => {
+      return apiFetch(`/api/admin/shops/${shopId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    createShopUser: async (
+      shopId: string,
+      payload: {
+        username: string;
+        fullName: string;
+        roleId: string;
+        phone?: string;
+        password: string;
+        pinCode?: string;
+      }
+    ) => {
+      return apiFetch(`/api/admin/shops/${shopId}/users`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    listLogins: async (params?: { search?: string; shopId?: string; roleId?: string; status?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.search) q.append('search', params.search);
+      if (params?.shopId) q.append('shopId', params.shopId);
+      if (params?.roleId) q.append('roleId', params.roleId);
+      if (params?.status) q.append('status', params.status);
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return apiFetch(`/api/admin/logins${query}`);
+    },
+
+    revealUserPassword: async (userId: string) => {
+      return apiFetch(`/api/admin/users/${userId}/reveal-password`, {
+        method: 'POST',
+      });
+    },
+
+    updateUserStatus: async (userId: string, isActive: boolean) => {
+      return apiFetch(`/api/admin/users/${userId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ isActive }),
+      });
+    },
+
+    impersonateShop: async (shopId: string, userId?: string) => {
+      return apiFetch(`/api/admin/shops/${shopId}/impersonate`, {
+        method: 'POST',
+        body: JSON.stringify(userId ? { userId } : {}),
+      });
+    },
+
+    listCustomers: async (params?: { search?: string; shopId?: string; customerType?: string; limit?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.search) q.append('search', params.search);
+      if (params?.shopId) q.append('shopId', params.shopId);
+      if (params?.customerType) q.append('customerType', params.customerType);
+      if (params?.limit) q.append('limit', String(params.limit));
+      const query = q.toString() ? `?${q.toString()}` : '';
+      return apiFetch(`/api/admin/customers${query}`);
+    },
+
+    getCustomerDetail: async (customerId: string) => {
+      return apiFetch(`/api/admin/customers/${customerId}`);
+    },
+
+    getAnalytics: async () => {
+      return apiFetch('/api/admin/analytics');
+    },
+
+    updateAdminPassword: async (payload: { currentPassword: string; newPassword: string; fullName?: string; email?: string }) => {
+      return apiFetch('/api/admin/profile/password', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
       });
     },
   },

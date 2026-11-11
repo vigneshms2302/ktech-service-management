@@ -54,8 +54,20 @@ export const App: React.FC = () => {
     );
   }
 
+  const supportReturnToken =
+    typeof window !== 'undefined' ? localStorage.getItem('kconnect_superadmin_return_token') : null;
+  const showSupportBanner = Boolean(currentUser && currentUser.roleId !== 'ROLE_SUPER_ADMIN' && supportReturnToken);
+
+  const handleReturnToSuperAdmin = () => {
+    if (!supportReturnToken) return;
+    localStorage.setItem('kconnect_saas_token', supportReturnToken);
+    localStorage.removeItem('kconnect_superadmin_return_token');
+    window.location.href = '/admin';
+  };
+
   return (
-    <Routes>
+    <>
+      <Routes>
       {/* Root traffic opens the main SaaS application directly (redirects to /login if unauthenticated) */}
       <Route path="/" element={<Navigate to="/app" replace />} />
 
@@ -195,5 +207,21 @@ export const App: React.FC = () => {
       {/* Catch-all fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    {showSupportBanner && (
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[95] flex items-center gap-3 px-4 py-2 rounded-full bg-amber-500 text-slate-950 shadow-2xl border border-amber-300 text-xs font-bold">
+        <span className="inline-block w-2 h-2 rounded-full bg-slate-950 animate-pulse" />
+        <span>
+          Support Mode: {currentUser?.shopName || currentUser?.shopSlug || 'Shop Workspace'} (@{currentUser?.username})
+        </span>
+        <button
+          type="button"
+          onClick={handleReturnToSuperAdmin}
+          className="px-3 py-1 rounded-full bg-slate-950 text-amber-300 hover:bg-slate-800 transition-colors cursor-pointer"
+        >
+          Return to Super-Admin
+        </button>
+      </div>
+    )}
+    </>
   );
 };

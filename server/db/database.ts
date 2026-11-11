@@ -225,6 +225,7 @@ export async function initializeMultiTenantSchema(): Promise<void> {
       shop_id TEXT NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
       username TEXT NOT NULL,
       password_hash TEXT NOT NULL,
+      encrypted_recovery_password TEXT,
       pin_code TEXT,
       full_name TEXT NOT NULL,
       role_id TEXT NOT NULL REFERENCES roles(id),
@@ -811,6 +812,18 @@ export async function initializeMultiTenantSchema(): Promise<void> {
       await client.execute(statement);
     } catch (err) {
       console.warn('[Database DDL Warning]', (err as Error).message);
+    }
+  }
+
+  // Safe idempotent schema migrations for existing SQLite / Turso Cloud databases
+  const safeMigrations = [
+    `ALTER TABLE users ADD COLUMN encrypted_recovery_password TEXT;`,
+  ];
+  for (const migrationSql of safeMigrations) {
+    try {
+      await client.execute(migrationSql);
+    } catch {
+      // Column already exists
     }
   }
 }

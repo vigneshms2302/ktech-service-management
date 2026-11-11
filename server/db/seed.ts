@@ -1,5 +1,6 @@
 import { getClient } from './database.ts';
 import { hashPassword } from '../middleware/auth.ts';
+import { encryptSecret } from '../security/crypto.ts';
 
 export async function seedInitialPlatform(): Promise<void> {
   const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
@@ -80,18 +81,24 @@ export async function seedInitialPlatform(): Promise<void> {
 
   // 4. Seed Shop Owner Account for K-Tech
   const ownerPasswordHash = hashPassword('admin123');
+  const ownerRecoveryEnc = encryptSecret('admin123');
   await client.execute({
-    sql: `INSERT OR IGNORE INTO users (id, shop_id, username, password_hash, pin_code, full_name, role_id, phone, is_active)
-          VALUES ('usr_ktech_owner', 'shop_ktech', 'admin', ?, '1234', 'K-Tech Shop Administrator', 'ROLE_OWNER', '9842200000', 1);`,
-    args: [ownerPasswordHash],
+    sql: `INSERT INTO users (id, shop_id, username, password_hash, encrypted_recovery_password, pin_code, full_name, role_id, phone, is_active)
+          VALUES ('usr_ktech_owner', 'shop_ktech', 'admin', ?, ?, '1234', 'K-Tech Shop Administrator', 'ROLE_OWNER', '9842200000', 1)
+          ON CONFLICT(id) DO UPDATE SET
+            encrypted_recovery_password = COALESCE(users.encrypted_recovery_password, excluded.encrypted_recovery_password);`,
+    args: [ownerPasswordHash, ownerRecoveryEnc],
   });
 
   // Seed sample technician
   const techPasswordHash = hashPassword('tech123');
+  const techRecoveryEnc = encryptSecret('tech123');
   await client.execute({
-    sql: `INSERT OR IGNORE INTO users (id, shop_id, username, password_hash, pin_code, full_name, role_id, phone, is_active)
-          VALUES ('usr_ktech_tech1', 'shop_ktech', 'tech1', ?, '2222', 'Suresh Kumar (Chip-Level Tech)', 'ROLE_TECHNICIAN', '9842211111', 1);`,
-    args: [techPasswordHash],
+    sql: `INSERT INTO users (id, shop_id, username, password_hash, encrypted_recovery_password, pin_code, full_name, role_id, phone, is_active)
+          VALUES ('usr_ktech_tech1', 'shop_ktech', 'tech1', ?, ?, '2222', 'Suresh Kumar (Chip-Level Tech)', 'ROLE_TECHNICIAN', '9842211111', 1)
+          ON CONFLICT(id) DO UPDATE SET
+            encrypted_recovery_password = COALESCE(users.encrypted_recovery_password, excluded.encrypted_recovery_password);`,
+    args: [techPasswordHash, techRecoveryEnc],
   });
 
   // 5. Seed SaaS Commercial Plan (Default Annual Plan)
