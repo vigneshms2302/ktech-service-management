@@ -74,7 +74,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
       <header className="h-14 bg-white dark:bg-[#212121] border-b border-[#e5e5e5] dark:border-[#2f2f2f] flex items-center justify-between px-4 select-none shrink-0 relative z-20 gap-2 transition-colors duration-200">
-        {/* LEFT: Sidebar toggle + Shop name */}
+        {/* LEFT: Sidebar toggle + Product Brand (K-Connect) + Tenant Shop Name */}
         <div className="flex items-center gap-2 shrink-0">
           {onToggleSidebar && (
             <button
@@ -88,10 +88,29 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-[#0d0d0d] dark:text-[#ececec] tracking-tight max-w-[180px] truncate">
-              {currentUser?.shopName || shopSettings.shopName || 'K-Connect'}
-            </span>
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-[#e5e5e5] dark:border-[#2f2f2f] text-[#676767] dark:text-[#b4b4b4]">
+            <div className="flex items-center gap-1.5">
+              {!isSidebarOpen && (
+                <img
+                  src={typeof window !== 'undefined' && window.location.protocol === 'file:' ? './icon.svg' : '/icon.svg'}
+                  alt="K-Connect"
+                  className="w-6 h-6 rounded-md shrink-0"
+                />
+              )}
+              <span className="text-sm font-bold text-[#0d0d0d] dark:text-white tracking-tight">
+                K-Connect
+              </span>
+            </div>
+
+            {(currentUser?.shopName || shopSettings.shopName) && (
+              <>
+                <span className="text-gray-300 dark:text-gray-600 text-sm font-light hidden sm:inline">/</span>
+                <span className="text-sm font-medium text-[#4b5563] dark:text-[#b4b4b4] tracking-tight max-w-[160px] truncate hidden sm:inline">
+                  {currentUser?.shopName || shopSettings.shopName}
+                </span>
+              </>
+            )}
+
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-[#e5e5e5] dark:border-[#2f2f2f] text-[#676767] dark:text-[#b4b4b4] hidden md:inline-block">
               Lab OS
             </span>
           </div>

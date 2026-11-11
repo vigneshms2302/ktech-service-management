@@ -15,6 +15,7 @@ import {
   Clock,
   Monitor,
   Download,
+  Store,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
@@ -174,23 +175,52 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       <aside className="w-[260px] h-full bg-[#f9f9f9] dark:bg-[#171717] border-r border-[#e5e5e5] dark:border-[#2f2f2f] flex flex-col shrink-0 select-none transition-colors duration-200">
-        {/* Brand Header */}
-        <div className="p-3.5 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-8 h-8 rounded-lg bg-[#0d0d0d] dark:bg-white text-white dark:text-[#0d0d0d] flex items-center justify-center shrink-0">
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                <path d="M12 2L14.39 8.26L21 9.27L16.27 13.88L17.38 20.46L12 17.63L6.62 20.46L7.73 13.88L3 9.27L9.61 8.26L12 2Z" />
-              </svg>
-            </div>
-            <div className="overflow-hidden">
-              <div className="font-semibold text-sm text-[#0d0d0d] dark:text-[#ececec] leading-tight truncate">
-                {shopSettings.shopName || 'K-Connect'}
+        {/* Brand Header: K-Connect Product Brand + Tenant Shop Workspace */}
+        <div className="p-3.5 pb-2 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => onSelectTab('dashboard')}
+            className="flex items-center justify-between gap-2 overflow-hidden text-left bg-transparent border-none p-0 cursor-pointer group"
+          >
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="w-8 h-8 rounded-lg bg-[#0d0d0d] flex items-center justify-center shrink-0 overflow-hidden border border-[#e5e5e5] dark:border-[#2f2f2f] shadow-sm">
+                <img
+                  src={typeof window !== 'undefined' && window.location.protocol === 'file:' ? './icon.svg' : '/icon.svg'}
+                  alt="K-Connect"
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <div className="text-[11px] text-[#676767] dark:text-[#b4b4b4] truncate">
-                Repair Laboratory OS
+              <div className="overflow-hidden">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-sm text-[#0d0d0d] dark:text-[#ececec] leading-tight tracking-tight group-hover:text-[#10a37f] transition-colors">
+                    K-Connect
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 leading-none">
+                    Cloud OS
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#676767] dark:text-[#b4b4b4] truncate">
+                  Repair Laboratory Platform
+                </div>
               </div>
             </div>
-          </div>
+          </button>
+
+          {/* Active Tenant Shop Workspace */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('settings')}
+            title="Shop Profile & Branding Settings"
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#212121] border border-[#e5e5e5] dark:border-[#2f2f2f] hover:border-[#10a37f]/50 transition-colors cursor-pointer text-left"
+          >
+            <span className="w-2 h-2 rounded-full bg-[#10a37f] shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-[11.5px] font-semibold text-[#0d0d0d] dark:text-[#ececec] truncate">
+                {currentUser?.shopName || shopSettings.shopName || 'Shop Workspace'}
+              </div>
+            </div>
+            <Store size={12} className="text-[#676767] dark:text-[#8e8e93] shrink-0" />
+          </button>
         </div>
 
         {/* ChatGPT "New Chat" Style "New Job" Button */}

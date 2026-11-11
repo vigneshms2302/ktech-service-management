@@ -145,11 +145,11 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <span style={{ fontSize: '12px', fontWeight: 700, color: '#10a37f', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Operational Command
+                K-Connect • Operational Command
               </span>
             </div>
             <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.5px', margin: 0 }}>
-              {shopSettings.shopName ? `${shopSettings.shopName} Dashboard` : 'KTech Operations Hub'}
+              {shopSettings.shopName ? `${shopSettings.shopName} Dashboard` : 'K-Connect Operations Hub'}
             </h1>
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
               Multi-workstation cloud sync active • Real-time repair pipelines & financial telemetry
