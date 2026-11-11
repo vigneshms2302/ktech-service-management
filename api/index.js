@@ -22938,14 +22938,14 @@ var require_etag = __commonJS({
   "node_modules/etag/index.js"(exports2, module2) {
     "use strict";
     module2.exports = etag;
-    var crypto4 = require("crypto");
+    var crypto5 = require("crypto");
     var Stats = require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash3 = crypto4.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash3 = crypto5.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash3 + '"';
     }
@@ -45487,13 +45487,13 @@ var require_dist3 = __commonJS({
 // node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "node_modules/cookie-signature/index.js"(exports2) {
-    var crypto4 = require("crypto");
+    var crypto5 = require("crypto");
     exports2.sign = function(val, secret) {
       if ("string" != typeof val)
         throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret)
         throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto4.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto5.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports2.unsign = function(input2, secret) {
       if ("string" != typeof input2)
@@ -45501,7 +45501,7 @@ var require_cookie_signature = __commonJS({
       if (null == secret)
         throw new TypeError("Secret key must be provided.");
       var tentativeValue = input2.slice(0, input2.lastIndexOf(".")), expectedInput = exports2.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input2);
-      return expectedBuffer.length === inputBuffer.length && crypto4.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
+      return expectedBuffer.length === inputBuffer.length && crypto5.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
 });
@@ -59760,14 +59760,14 @@ var require_buffer_equal_constant_time = __commonJS({
 var require_jwa = __commonJS({
   "node_modules/jwa/index.js"(exports2, module2) {
     var Buffer3 = require_safe_buffer().Buffer;
-    var crypto4 = require("crypto");
+    var crypto5 = require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
     var util = require("util");
     var MSG_INVALID_ALGORITHM = '"%s" is not a valid algorithm.\n  Supported algorithms are:\n  "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512" and "none".';
     var MSG_INVALID_SECRET = "secret must be a string or buffer";
     var MSG_INVALID_VERIFIER_KEY = "key must be a string or a buffer";
     var MSG_INVALID_SIGNER_KEY = "key must be a string, a buffer or an object";
-    var supportsKeyObjects = typeof crypto4.createPublicKey === "function";
+    var supportsKeyObjects = typeof crypto5.createPublicKey === "function";
     if (supportsKeyObjects) {
       MSG_INVALID_VERIFIER_KEY += " or a KeyObject";
       MSG_INVALID_SECRET += "or a KeyObject";
@@ -59857,17 +59857,17 @@ var require_jwa = __commonJS({
       return function sign(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
-        var hmac = crypto4.createHmac("sha" + bits, secret);
+        var hmac = crypto5.createHmac("sha" + bits, secret);
         var sig = (hmac.update(thing), hmac.digest("base64"));
         return fromBase64(sig);
       };
     }
     var bufferEqual;
-    var timingSafeEqual = "timingSafeEqual" in crypto4 ? function timingSafeEqual2(a, b) {
+    var timingSafeEqual = "timingSafeEqual" in crypto5 ? function timingSafeEqual2(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
-      return crypto4.timingSafeEqual(a, b);
+      return crypto5.timingSafeEqual(a, b);
     } : function timingSafeEqual2(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
@@ -59884,7 +59884,7 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto4.createSign("RSA-SHA" + bits);
+        var signer = crypto5.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign(privateKey, "base64"));
         return fromBase64(sig);
       };
@@ -59894,7 +59894,7 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto4.createVerify("RSA-SHA" + bits);
+        var verifier = crypto5.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify(publicKey, signature, "base64");
       };
@@ -59903,11 +59903,11 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto4.createSign("RSA-SHA" + bits);
+        var signer = crypto5.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign({
           key: privateKey,
-          padding: crypto4.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto4.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto5.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto5.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig);
       };
@@ -59917,12 +59917,12 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto4.createVerify("RSA-SHA" + bits);
+        var verifier = crypto5.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify({
           key: publicKey,
-          padding: crypto4.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto4.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto5.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto5.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
       };
     }
@@ -70720,7 +70720,8 @@ function getDatabasePath() {
     resolvedDbPath = import_node_path.default.resolve(process.env.KTECH_SAAS_DB_PATH);
   } else {
     const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-    const dataDir = isServerless ? import_node_path.default.join("/tmp", "data") : import_node_path.default.join(process.cwd(), "data");
+    const isTestEnv = process.env.NODE_ENV === "test" || Boolean(process.env.VITEST);
+    const dataDir = isServerless ? import_node_path.default.join("/tmp", "data") : isTestEnv ? import_node_path.default.join(process.cwd(), "data", "test") : import_node_path.default.join(process.cwd(), "data");
     if (!import_node_fs.default.existsSync(dataDir)) {
       try {
         import_node_fs.default.mkdirSync(dataDir, { recursive: true });
@@ -70728,7 +70729,8 @@ function getDatabasePath() {
         console.warn("[Database] Could not create local data directory:", err);
       }
     }
-    resolvedDbPath = import_node_path.default.join(dataDir, "ktech-saas.sqlite");
+    const dbFileName = isTestEnv ? "ktech-saas.test.sqlite" : "ktech-saas.sqlite";
+    resolvedDbPath = import_node_path.default.join(dataDir, dbFileName);
   }
   return resolvedDbPath;
 }
@@ -93537,9 +93539,24 @@ authRouter.post("/logout", authenticateToken, (_req, res) => {
 });
 
 // server/routes/admin.ts
+var import_node_crypto2 = __toESM(require("node:crypto"));
 var import_express2 = __toESM(require_express2());
 var adminRouter = (0, import_express2.Router)();
 adminRouter.use(authenticateToken, requireSuperAdmin);
+function isTimestampPastDue(ts) {
+  if (!ts)
+    return false;
+  const parsed = new Date(String(ts)).getTime();
+  return Number.isFinite(parsed) && parsed < Date.now();
+}
+function resolveEffectiveShopStatus(rawStatus, subscriptionEndsAt) {
+  const status = String(rawStatus || "ACTIVE").toUpperCase();
+  if (status === "FROZEN")
+    return "FROZEN";
+  if (status === "EXPIRED" || isTimestampPastDue(subscriptionEndsAt))
+    return "EXPIRED";
+  return "ACTIVE";
+}
 async function recordAdminAudit(adminId, action, targetType, targetId, details, ipAddress) {
   const client = getClient();
   await client.execute({
@@ -93561,32 +93578,77 @@ async function recordAdminAudit(adminId, action, targetType, targetId, details, 
 adminRouter.get("/metrics", async (_req, res) => {
   try {
     const client = getClient();
-    const shopsRes = await client.execute(`SELECT COUNT(*) as count FROM shops`);
-    const activeShopsRes = await client.execute(`SELECT COUNT(*) as count FROM shops WHERE status = 'ACTIVE'`);
-    const frozenShopsRes = await client.execute(`SELECT COUNT(*) as count FROM shops WHERE status = 'FROZEN'`);
-    const expiredShopsRes = await client.execute(`SELECT COUNT(*) as count FROM shops WHERE status = 'EXPIRED'`);
-    const jobsRes = await client.execute(`SELECT COUNT(*) as count FROM service_jobs`);
-    const usersRes = await client.execute(`SELECT COUNT(*) as count FROM users`);
-    const trialRes = await client.execute(`SELECT COUNT(*) as count FROM saas_subscriptions WHERE status = 'TRIALING'`);
-    const activeSubRes = await client.execute(`SELECT COUNT(*) as count FROM saas_subscriptions WHERE status = 'ACTIVE'`);
-    const pendingClaimsRes = await client.execute(`SELECT COUNT(*) as count FROM saas_payment_claims WHERE status = 'PENDING'`);
-    const approvedClaimsRes = await client.execute(`SELECT COUNT(*) as count FROM saas_payment_claims WHERE status = 'APPROVED'`);
-    const revRes = await client.execute(`SELECT SUM(amount_inr) as total FROM saas_payment_claims WHERE status = 'APPROVED'`);
+    const [
+      shopsRes,
+      jobsRes,
+      usersRes,
+      customersRes,
+      subRes,
+      pendingClaimsRes,
+      approvedClaimsRes,
+      revRes,
+      unreadAlertsRes
+    ] = await Promise.all([
+      client.execute(`SELECT id, status, subscription_ends_at FROM shops`),
+      client.execute(`SELECT COUNT(*) as count FROM service_jobs`),
+      client.execute(`SELECT COUNT(*) as count FROM users`),
+      client.execute(`SELECT COUNT(*) as count FROM customers`),
+      client.execute(`SELECT shop_id, status, trial_ends_at, current_period_ends_at FROM saas_subscriptions`),
+      client.execute(`SELECT COUNT(*) as count FROM saas_payment_claims WHERE status = 'PENDING'`),
+      client.execute(`SELECT COUNT(*) as count FROM saas_payment_claims WHERE status = 'APPROVED'`),
+      client.execute(`SELECT SUM(amount_inr) as total FROM saas_payment_claims WHERE status = 'APPROVED'`),
+      client.execute(`SELECT COUNT(*) as count FROM saas_notifications WHERE recipient_type = 'VENDOR_ADMIN' AND is_read = 0`)
+    ]);
+    let activeShops = 0;
+    let frozenShops = 0;
+    let expiredShops = 0;
+    const effectiveShopStatusById = /* @__PURE__ */ new Map();
+    for (const row of shopsRes.rows) {
+      const r = row;
+      const eff = resolveEffectiveShopStatus(r.status, r.subscription_ends_at);
+      effectiveShopStatusById.set(String(r.id), eff);
+      if (eff === "FROZEN")
+        frozenShops++;
+      else if (eff === "EXPIRED")
+        expiredShops++;
+      else
+        activeShops++;
+    }
+    let trialingShops = 0;
+    let activeSubscriptions = 0;
+    for (const row of subRes.rows) {
+      const r = row;
+      const shopEff = effectiveShopStatusById.get(String(r.shop_id));
+      if (shopEff === "FROZEN" || shopEff === "EXPIRED")
+        continue;
+      if (r.status === "TRIALING" && !isTimestampPastDue(r.trial_ends_at)) {
+        trialingShops++;
+      } else if (r.status === "ACTIVE" && !isTimestampPastDue(r.current_period_ends_at)) {
+        activeSubscriptions++;
+      }
+    }
+    const dbUrl = process.env.DATABASE_URL || "";
+    const isTurso = dbUrl.startsWith("libsql:") || dbUrl.includes(".turso.io");
+    const databaseProvider = isTurso ? "TURSO_LIBSQL_CLOUD" : dbUrl ? "REMOTE_DATABASE" : "LOCAL_SQLITE";
     const totalVerifiedRevenue = Number(revRes.rows[0]?.total || 0);
     res.json({
       success: true,
       data: {
-        totalShops: Number(shopsRes.rows[0].count),
-        activeShops: Number(activeShopsRes.rows[0].count),
-        frozenShops: Number(frozenShopsRes.rows[0].count),
-        expiredShops: Number(expiredShopsRes.rows[0].count),
-        trialingShops: Number(trialRes.rows[0].count),
-        activeSubscriptions: Number(activeSubRes.rows[0].count),
+        totalShops: shopsRes.rows.length,
+        activeShops,
+        frozenShops,
+        expiredShops,
+        trialingShops,
+        activeSubscriptions,
         pendingPaymentClaims: Number(pendingClaimsRes.rows[0].count),
         approvedPaymentClaims: Number(approvedClaimsRes.rows[0].count),
         totalVerifiedRevenueInr: totalVerifiedRevenue,
         totalJobs: Number(jobsRes.rows[0].count),
-        totalUsers: Number(usersRes.rows[0].count)
+        totalUsers: Number(usersRes.rows[0].count),
+        totalCustomers: Number(customersRes.rows[0].count),
+        unreadNotifications: Number(unreadAlertsRes.rows[0].count),
+        databaseProvider,
+        generatedAt: (/* @__PURE__ */ new Date()).toISOString()
       }
     });
   } catch (error62) {
@@ -93604,17 +93666,15 @@ adminRouter.get("/shops", async (req, res) => {
         sub.trial_ends_at,
         sub.current_period_ends_at,
         sub.is_complimentary,
+        (SELECT u.username FROM users u WHERE u.shop_id = s.id AND u.role_id = 'ROLE_OWNER' ORDER BY u.created_at ASC LIMIT 1) as owner_username,
         (SELECT COUNT(*) FROM users u WHERE u.shop_id = s.id AND u.is_active = 1) as active_users_count,
-        (SELECT COUNT(*) FROM service_jobs j WHERE j.shop_id = s.id) as total_jobs_count
+        (SELECT COUNT(*) FROM service_jobs j WHERE j.shop_id = s.id) as total_jobs_count,
+        (SELECT COUNT(*) FROM customers c WHERE c.shop_id = s.id) as total_customers_count
       FROM shops s 
       LEFT JOIN saas_subscriptions sub ON s.id = sub.shop_id
       WHERE 1=1
     `;
     const args = [];
-    if (status && status !== "ALL") {
-      query += ` AND s.status = ?`;
-      args.push(String(status));
-    }
     if (search) {
       const q = `%${String(search).trim()}%`;
       query += ` AND (s.name LIKE ? OR s.slug LIKE ? OR s.owner_name LIKE ? OR s.phone LIKE ? OR s.email LIKE ?)`;
@@ -93622,30 +93682,41 @@ adminRouter.get("/shops", async (req, res) => {
     }
     query += ` ORDER BY s.created_at DESC`;
     const result = await client.execute({ sql: query, args });
-    res.json({
-      success: true,
-      data: result.rows.map((row) => ({
+    const mapped = result.rows.map((row) => {
+      const effectiveStatus = resolveEffectiveShopStatus(row.status, row.subscription_ends_at);
+      let effectiveSubStatus = String(row.subscription_status || "ACTIVE");
+      if (effectiveStatus === "FROZEN")
+        effectiveSubStatus = "SUSPENDED";
+      else if (effectiveStatus === "EXPIRED")
+        effectiveSubStatus = "EXPIRED";
+      return {
         id: row.id,
         name: row.name,
         slug: row.slug,
         ownerName: row.owner_name,
+        ownerUsername: row.owner_username || "admin",
         phone: row.phone,
         email: row.email,
         gstin: row.gstin,
         city: row.city,
         state: row.state,
-        status: row.status,
-        subscriptionStatus: row.subscription_status || "ACTIVE",
+        status: effectiveStatus,
+        subscriptionStatus: effectiveSubStatus,
         trialEndsAt: row.trial_ends_at,
         currentPeriodEndsAt: row.current_period_ends_at,
         isComplimentary: Boolean(row.is_complimentary),
         maxSeats: Number(row.max_seats),
         activeUsersCount: Number(row.active_users_count),
         totalJobsCount: Number(row.total_jobs_count),
+        totalCustomersCount: Number(row.total_customers_count),
         subscriptionPlan: row.subscription_plan,
         subscriptionEndsAt: row.subscription_ends_at,
         createdAt: row.created_at
-      }))
+      };
+    }).filter((item) => !status || status === "ALL" ? true : item.status === String(status).toUpperCase());
+    res.json({
+      success: true,
+      data: mapped
     });
   } catch (error62) {
     res.status(500).json({ success: false, error: error62.message });
@@ -93705,6 +93776,221 @@ adminRouter.get("/shops/:id", async (req, res) => {
         createdAt: row.created_at,
         updatedAt: row.updated_at
       }
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.get("/shops/:id/users", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const client = getClient();
+    const shopRes = await client.execute({
+      sql: `SELECT id, name, slug FROM shops WHERE id = ? OR slug = ? LIMIT 1`,
+      args: [id, id]
+    });
+    if (shopRes.rows.length === 0) {
+      res.status(404).json({ success: false, error: "Shop not found." });
+      return;
+    }
+    const shop = shopRes.rows[0];
+    const usersRes = await client.execute({
+      sql: `
+        SELECT u.id, u.username, u.full_name, u.role_id, r.name as role_name, u.phone, u.pin_code, u.is_active, u.created_at
+        FROM users u
+        JOIN roles r ON u.role_id = r.id
+        WHERE u.shop_id = ?
+        ORDER BY CASE WHEN u.role_id = 'ROLE_OWNER' THEN 0 ELSE 1 END, u.created_at ASC
+      `,
+      args: [String(shop.id)]
+    });
+    res.json({
+      success: true,
+      data: {
+        shopId: shop.id,
+        shopName: shop.name,
+        shopSlug: shop.slug,
+        users: usersRes.rows.map((u) => {
+          const row = u;
+          return {
+            id: row.id,
+            username: row.username,
+            fullName: row.full_name,
+            roleId: row.role_id,
+            roleName: row.role_name,
+            phone: row.phone,
+            pinCode: row.pin_code,
+            isActive: Boolean(row.is_active),
+            createdAt: row.created_at
+          };
+        })
+      }
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+function generateReadableTempPassword(length = 10) {
+  const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  const bytes = import_node_crypto2.default.randomBytes(length);
+  let out = "";
+  for (let i = 0; i < length; i++) {
+    out += charset[bytes[i] % charset.length];
+  }
+  return out;
+}
+adminRouter.post("/shops/:id/reset-credentials", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, newPassword, newPin } = req.body;
+    const client = getClient();
+    const shopRes = await client.execute({
+      sql: `SELECT id, name, slug FROM shops WHERE id = ? OR slug = ? LIMIT 1`,
+      args: [id, id]
+    });
+    if (shopRes.rows.length === 0) {
+      res.status(404).json({ success: false, error: "Shop not found." });
+      return;
+    }
+    const shop = shopRes.rows[0];
+    const shopId = String(shop.id);
+    const userRes = userId ? await client.execute({
+      sql: `SELECT id, username, full_name, phone, pin_code, role_id FROM users WHERE id = ? AND shop_id = ? LIMIT 1`,
+      args: [userId, shopId]
+    }) : await client.execute({
+      sql: `SELECT id, username, full_name, phone, pin_code, role_id FROM users WHERE shop_id = ? ORDER BY CASE WHEN role_id = 'ROLE_OWNER' THEN 0 ELSE 1 END, created_at ASC LIMIT 1`,
+      args: [shopId]
+    });
+    if (userRes.rows.length === 0) {
+      res.status(404).json({ success: false, error: "No matching user found for this shop." });
+      return;
+    }
+    const targetUser = userRes.rows[0];
+    const trimmedPass = typeof newPassword === "string" ? newPassword.trim() : "";
+    if (trimmedPass && trimmedPass.length < 6) {
+      res.status(400).json({ success: false, error: "Temporary password must be at least 6 characters long." });
+      return;
+    }
+    const plainTempPassword = trimmedPass || generateReadableTempPassword(10);
+    const passwordHash = hashPassword(plainTempPassword);
+    const trimmedPin = typeof newPin === "string" ? newPin.trim() : "";
+    if (trimmedPin && !/^\d{4,6}$/.test(trimmedPin)) {
+      res.status(400).json({ success: false, error: "Quick PIN must be 4 to 6 numeric digits." });
+      return;
+    }
+    const nextPin = trimmedPin || String(targetUser.pin_code || "1234");
+    await client.execute({
+      sql: `UPDATE users SET password_hash = ?, pin_code = ?, is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND shop_id = ?`,
+      args: [passwordHash, nextPin, String(targetUser.id), shopId]
+    });
+    await recordAdminAudit(
+      req.user.userId,
+      "SHOP_CREDENTIALS_RESET",
+      "USER",
+      String(targetUser.id),
+      { shopId, shopSlug: shop.slug, username: targetUser.username, pinUpdated: Boolean(trimmedPin) },
+      req.ip
+    );
+    res.json({
+      success: true,
+      message: `Temporary credentials generated for @${targetUser.username}.`,
+      data: {
+        shopId,
+        shopName: shop.name,
+        shopSlug: shop.slug,
+        userId: targetUser.id,
+        username: targetUser.username,
+        fullName: targetUser.full_name,
+        phone: targetUser.phone,
+        temporaryPassword: plainTempPassword,
+        pinCode: nextPin
+      }
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.delete("/shops/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const client = getClient();
+    const shopRes = await client.execute({
+      sql: `SELECT id, name, slug FROM shops WHERE id = ? OR slug = ? LIMIT 1`,
+      args: [id, id]
+    });
+    if (shopRes.rows.length === 0) {
+      res.status(404).json({ success: false, error: "Shop not found." });
+      return;
+    }
+    const shop = shopRes.rows[0];
+    const shopId = String(shop.id);
+    if (shopId === "shop_ktech") {
+      res.status(400).json({ success: false, error: "The flagship demonstration shop (ktech) cannot be deleted." });
+      return;
+    }
+    const orderedTables = [
+      "invoice_items",
+      "payments",
+      "invoices",
+      "quotation_approvals",
+      "quotation_items",
+      "quotations",
+      "job_status_history",
+      "job_parts",
+      "job_services",
+      "job_diagnosis",
+      "job_inspections",
+      "job_notes",
+      "job_repair_activities",
+      "job_checklists",
+      "data_recovery_jobs",
+      "pc_builds",
+      "warranties",
+      "service_jobs",
+      "device_photos",
+      "devices",
+      "customer_addresses",
+      "customers",
+      "inventory_transactions",
+      "salvage_parts",
+      "salvage_devices",
+      "inventory_items",
+      "inventory_categories",
+      "inventory_locations",
+      "suppliers",
+      "products",
+      "audit_logs",
+      "shop_settings",
+      "saas_payment_claims",
+      "saas_subscriptions",
+      "users"
+    ];
+    const statements = [
+      ...orderedTables.map((tbl) => ({
+        sql: `DELETE FROM ${tbl} WHERE shop_id = ?`,
+        args: [shopId]
+      })),
+      {
+        sql: `DELETE FROM saas_notifications WHERE recipient_type = 'SHOP_OWNER' AND recipient_id = ?`,
+        args: [shopId]
+      },
+      {
+        sql: `DELETE FROM shops WHERE id = ?`,
+        args: [shopId]
+      }
+    ];
+    await client.batch(statements, "write");
+    await recordAdminAudit(
+      req.user.userId,
+      "SHOP_DELETED",
+      "SHOP",
+      shopId,
+      { name: shop.name, slug: shop.slug },
+      req.ip
+    );
+    res.json({
+      success: true,
+      message: `Shop "${shop.name}" (${shop.slug}) and all scoped records have been permanently deleted.`
     });
   } catch (error62) {
     res.status(500).json({ success: false, error: error62.message });
@@ -93857,43 +94143,79 @@ adminRouter.post("/shops/:id/extend-trial", async (req, res) => {
   try {
     const { id } = req.params;
     const { additionalDays = 7, reason } = req.body;
-    const client = getClient();
-    const subRes = await client.execute({
-      sql: `SELECT id, trial_ends_at, status FROM saas_subscriptions WHERE shop_id = ?`,
-      args: [id]
-    });
-    if (subRes.rows.length === 0) {
-      res.status(404).json({ success: false, error: "Subscription not found for this shop." });
+    const days = Number(additionalDays);
+    if (!Number.isFinite(days) || days <= 0 || days > 3650) {
+      res.status(400).json({ success: false, error: "additionalDays must be a valid positive number of days." });
       return;
     }
-    const sub = subRes.rows[0];
-    const currentEnd = sub.trial_ends_at ? new Date(String(sub.trial_ends_at)) : /* @__PURE__ */ new Date();
-    const base = currentEnd > /* @__PURE__ */ new Date() ? currentEnd : /* @__PURE__ */ new Date();
-    const newEnd = new Date(base.getTime() + Number(additionalDays) * 24 * 60 * 60 * 1e3).toISOString();
-    await client.execute({
-      sql: `
-        UPDATE saas_subscriptions
-        SET trial_ends_at = ?, current_period_ends_at = ?, status = 'TRIALING', updated_at = CURRENT_TIMESTAMP
-        WHERE shop_id = ?
-      `,
-      args: [newEnd, newEnd, id]
+    const client = getClient();
+    const shopRes = await client.execute({
+      sql: `SELECT id, subscription_plan, status, subscription_ends_at FROM shops WHERE id = ? OR slug = ?`,
+      args: [id, id]
     });
+    if (shopRes.rows.length === 0) {
+      res.status(404).json({ success: false, error: "Shop not found." });
+      return;
+    }
+    const shopRow = shopRes.rows[0];
+    const resolvedShopId = String(shopRow.id);
+    const subRes = await client.execute({
+      sql: `SELECT id, status, trial_ends_at, current_period_ends_at FROM saas_subscriptions WHERE shop_id = ?`,
+      args: [resolvedShopId]
+    });
+    const sub = subRes.rows[0];
+    const nowMs = Date.now();
+    const candidateMs = [
+      nowMs,
+      sub?.trial_ends_at ? new Date(String(sub.trial_ends_at)).getTime() : 0,
+      sub?.current_period_ends_at ? new Date(String(sub.current_period_ends_at)).getTime() : 0,
+      shopRow.subscription_ends_at ? new Date(String(shopRow.subscription_ends_at)).getTime() : 0
+    ].filter((ms) => Number.isFinite(ms));
+    const baseMs = Math.max(...candidateMs);
+    const newEnd = new Date(baseMs + days * 24 * 60 * 60 * 1e3).toISOString();
+    const nextSubStatus = sub && String(sub.status) === "ACTIVE" ? "ACTIVE" : "TRIALING";
+    if (sub) {
+      await client.execute({
+        sql: `
+          UPDATE saas_subscriptions
+          SET trial_ends_at = CASE WHEN ? = 'TRIALING' THEN ? ELSE trial_ends_at END,
+              current_period_ends_at = ?,
+              status = ?,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE shop_id = ?
+        `,
+        args: [nextSubStatus, newEnd, newEnd, nextSubStatus, resolvedShopId]
+      });
+    } else {
+      const planRes = await client.execute({
+        sql: `SELECT id FROM saas_plans WHERE code = ? OR id = ? LIMIT 1`,
+        args: [String(shopRow.subscription_plan || "PRO_ANNUAL"), String(shopRow.subscription_plan || "plan_pro_annual")]
+      });
+      const resolvedPlanId = String(planRes.rows[0]?.id || "plan_pro_annual");
+      await client.execute({
+        sql: `
+          INSERT INTO saas_subscriptions (id, shop_id, plan_id, status, trial_starts_at, trial_ends_at, current_period_ends_at)
+          VALUES (?, ?, ?, 'TRIALING', CURRENT_TIMESTAMP, ?, ?)
+        `,
+        args: [`sub_${import_node_crypto2.default.randomUUID()}`, resolvedShopId, resolvedPlanId, newEnd, newEnd]
+      });
+    }
     await client.execute({
       sql: `UPDATE shops SET status = 'ACTIVE', subscription_ends_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      args: [newEnd, id]
+      args: [newEnd, resolvedShopId]
     });
     await recordAdminAudit(
       req.user.userId,
       "TRIAL_EXTENDED",
       "SHOP",
-      id,
-      { additionalDays, newEnd, reason: reason || "Super Admin extended trial" },
+      resolvedShopId,
+      { additionalDays: days, newEnd, preservedStatus: nextSubStatus, reason: reason || "Super Admin extended subscription/trial" },
       req.ip
     );
     res.json({
       success: true,
-      message: `Trial extended by ${additionalDays} days. New trial end date: ${newEnd}`,
-      data: { trialEndsAt: newEnd }
+      message: `Access extended by ${days} days. New end date: ${newEnd}`,
+      data: { shopId: resolvedShopId, trialEndsAt: newEnd, status: nextSubStatus }
     });
   } catch (error62) {
     res.status(500).json({ success: false, error: error62.message });
@@ -94198,28 +94520,38 @@ adminRouter.put("/settings", async (req, res) => {
       res.status(400).json({ success: false, error: "Expected settings array of key-value objects." });
       return;
     }
+    const deduped = /* @__PURE__ */ new Map();
     for (const item of settings2) {
-      if (item.key && item.value !== void 0) {
-        const canonicalKey2 = SETTINGS_ALIAS_MAP[item.key] || item.key;
-        await client.execute({
-          sql: `
-            INSERT INTO saas_platform_settings (key, value, updated_at)
-            VALUES (?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
-          `,
-          args: [String(canonicalKey2), String(item.value)]
-        });
+      if (item?.key && item.value !== void 0 && item.value !== null) {
+        const rawKey = String(item.key);
+        const canonicalKey2 = SETTINGS_ALIAS_MAP[rawKey] || rawKey;
+        const fromAlias = Object.prototype.hasOwnProperty.call(SETTINGS_ALIAS_MAP, rawKey);
+        const existing = deduped.get(canonicalKey2);
+        if (!existing || fromAlias && !existing.fromAlias || fromAlias === existing.fromAlias) {
+          deduped.set(canonicalKey2, { value: String(item.value).trim(), fromAlias });
+        }
       }
     }
+    for (const [canonicalKey2, entry] of deduped.entries()) {
+      await client.execute({
+        sql: `
+          INSERT INTO saas_platform_settings (key, value, updated_at)
+          VALUES (?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        `,
+        args: [canonicalKey2, entry.value]
+      });
+    }
+    const updatedMap = Object.fromEntries(Array.from(deduped.entries()).map(([k, v]) => [k, v.value]));
     await recordAdminAudit(
       req.user.userId,
       "PLATFORM_SETTINGS_UPDATED",
       "SETTINGS",
       "GLOBAL",
-      { updatedKeys: settings2.map((s) => s.key) },
+      { updatedKeys: Array.from(deduped.keys()) },
       req.ip
     );
-    res.json({ success: true, message: "Platform settings saved successfully." });
+    res.json({ success: true, message: "Platform settings saved successfully.", data: updatedMap });
   } catch (error62) {
     res.status(500).json({ success: false, error: error62.message });
   }
@@ -94312,6 +94644,75 @@ adminRouter.get("/audit-logs", async (req, res) => {
         createdAt: row.created_at
       }))
     });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.get("/notifications", async (req, res) => {
+  try {
+    const unreadOnly = String(req.query.unreadOnly || "") === "true";
+    const client = getClient();
+    const rowsRes = await client.execute({
+      sql: `
+        SELECT id, recipient_type, recipient_id, channel, title, message, is_read, metadata_json, created_at
+        FROM saas_notifications
+        WHERE recipient_type = 'VENDOR_ADMIN' ${unreadOnly ? "AND is_read = 0" : ""}
+        ORDER BY is_read ASC, created_at DESC
+        LIMIT 50
+      `,
+      args: []
+    });
+    const unreadCountRes = await client.execute(
+      `SELECT COUNT(*) as total FROM saas_notifications WHERE recipient_type = 'VENDOR_ADMIN' AND is_read = 0`
+    );
+    const safeParseMetadata = (raw) => {
+      if (!raw)
+        return {};
+      try {
+        return JSON.parse(String(raw));
+      } catch {
+        return {};
+      }
+    };
+    res.json({
+      success: true,
+      unreadCount: Number(unreadCountRes.rows[0]?.total || 0),
+      data: rowsRes.rows.map((row) => ({
+        id: String(row.id),
+        recipientType: String(row.recipient_type),
+        recipientId: String(row.recipient_id),
+        channel: String(row.channel || "IN_APP"),
+        title: String(row.title),
+        message: String(row.message),
+        isRead: Boolean(row.is_read),
+        metadata: safeParseMetadata(row.metadata_json),
+        createdAt: String(row.created_at)
+      }))
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.put("/notifications/:id/read", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const client = getClient();
+    if (id === "mark-all-read") {
+      await client.execute(
+        `UPDATE saas_notifications SET is_read = 1 WHERE recipient_type = 'VENDOR_ADMIN' AND is_read = 0`
+      );
+      res.json({ success: true, message: "All vendor notifications marked as read." });
+      return;
+    }
+    const result = await client.execute({
+      sql: `UPDATE saas_notifications SET is_read = 1 WHERE id = ? AND recipient_type = 'VENDOR_ADMIN'`,
+      args: [id]
+    });
+    if ((result.rowsAffected ?? 0) === 0) {
+      res.status(404).json({ success: false, error: "Notification not found." });
+      return;
+    }
+    res.json({ success: true, message: "Notification marked as read." });
   } catch (error62) {
     res.status(500).json({ success: false, error: error62.message });
   }
@@ -94982,7 +95383,7 @@ jobsRouter.post("/:id/diagnosis", validateBody(jobDiagnosisSchema), async (req, 
 var import_express4 = __toESM(require_express2());
 
 // server/security/crypto.ts
-var import_node_crypto2 = __toESM(require("node:crypto"));
+var import_node_crypto3 = __toESM(require("node:crypto"));
 var import_node_os = __toESM(require("node:os"));
 var ALGORITHM = "aes-256-gcm";
 var IV_LENGTH = 12;
@@ -95014,15 +95415,15 @@ function getDynamicEntropy() {
   }
 }
 function deriveKey(salt) {
-  return import_node_crypto2.default.scryptSync(getDynamicEntropy(), salt, KEY_LENGTH);
+  return import_node_crypto3.default.scryptSync(getDynamicEntropy(), salt, KEY_LENGTH);
 }
 function encryptSecret(plaintext) {
   if (!plaintext)
     return "";
-  const salt = import_node_crypto2.default.randomBytes(SALT_LENGTH);
-  const iv = import_node_crypto2.default.randomBytes(IV_LENGTH);
+  const salt = import_node_crypto3.default.randomBytes(SALT_LENGTH);
+  const iv = import_node_crypto3.default.randomBytes(IV_LENGTH);
   const key = deriveKey(salt);
-  const cipher = import_node_crypto2.default.createCipheriv(ALGORITHM, key, iv);
+  const cipher = import_node_crypto3.default.createCipheriv(ALGORITHM, key, iv);
   let encrypted = cipher.update(plaintext, "utf8", "hex");
   encrypted += cipher.final("hex");
   const authTag = cipher.getAuthTag().toString("hex");
@@ -95040,7 +95441,7 @@ function decryptSecret(encryptedPayload) {
     const iv = Buffer.from(ivHex, "hex");
     const authTag = Buffer.from(authTagHex, "hex");
     const key = deriveKey(salt);
-    const decipher = import_node_crypto2.default.createDecipheriv(ALGORITHM, key, iv);
+    const decipher = import_node_crypto3.default.createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
     let decrypted = decipher.update(ciphertextHex, "hex", "utf8");
     decrypted += decipher.final("utf8");
@@ -97675,7 +98076,7 @@ var import_express13 = __toESM(require_express2());
 // server/storage/storageAdapter.ts
 var import_node_fs3 = __toESM(require("node:fs"));
 var import_node_path3 = __toESM(require("node:path"));
-var import_node_crypto3 = __toESM(require("node:crypto"));
+var import_node_crypto4 = __toESM(require("node:crypto"));
 var LocalStorageProvider = class {
   name = "LOCAL_DISK";
   baseDir;
@@ -97707,7 +98108,7 @@ var LocalStorageProvider = class {
   }
   async upload(options) {
     const ext = import_node_path3.default.extname(options.fileName) || ".bin";
-    const uuid3 = import_node_crypto3.default.randomUUID();
+    const uuid3 = import_node_crypto4.default.randomUUID();
     const subFolder = options.category.toLowerCase().replace("_", "s");
     const safeKey = `${options.shopId}/${subFolder}/${uuid3}${ext}`;
     const fullPath = import_node_path3.default.join(this.baseDir, safeKey);
@@ -97775,7 +98176,7 @@ var SupabaseStorageProvider = class {
   }
   async upload(options) {
     const ext = import_node_path3.default.extname(options.fileName) || ".bin";
-    const uuid3 = import_node_crypto3.default.randomUUID();
+    const uuid3 = import_node_crypto4.default.randomUUID();
     const safeKey = `${options.shopId}/${options.category.toLowerCase()}/${uuid3}${ext}`;
     const url2 = `${this.supabaseUrl}/storage/v1/object/${this.bucket}/${safeKey}`;
     const response = await fetch(url2, {

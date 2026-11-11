@@ -73,7 +73,10 @@ export interface ApiFetchOptions extends RequestInit {
   skipGlobalToast?: boolean;
 }
 
-async function apiFetch<T = any>(endpoint: string, options: ApiFetchOptions = {}): Promise<{ success: boolean; data?: T; error?: string }> {
+async function apiFetch<T = any>(
+  endpoint: string,
+  options: ApiFetchOptions = {}
+): Promise<{ success: boolean; data?: T; error?: string; message?: string; unreadCount?: number }> {
   try {
     const token = getAuthToken();
     const headers: Record<string, string> = {
@@ -749,6 +752,36 @@ export const saasApi = {
       const query = params?.limit ? `?limit=${params.limit}` : '';
       return apiFetch(`/api/admin/audit-logs${query}`);
     },
+
+    listShopUsers: async (shopId: string) => {
+      return apiFetch(`/api/admin/shops/${shopId}/users`);
+    },
+
+    resetShopCredentials: async (
+      shopId: string,
+      payload: { userId?: string; newPassword?: string; newPin?: string }
+    ) => {
+      return apiFetch(`/api/admin/shops/${shopId}/reset-credentials`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    deleteShop: async (shopId: string) => {
+      return apiFetch(`/api/admin/shops/${shopId}`, {
+        method: 'DELETE',
+      });
+    },
+
+    listNotifications: async (params?: { unreadOnly?: boolean }) => {
+      return apiFetch(`/api/admin/notifications${params?.unreadOnly ? '?unreadOnly=true' : ''}`);
+    },
+
+    markNotificationRead: async (notificationId: string) => {
+      return apiFetch(`/api/admin/notifications/${notificationId}/read`, {
+        method: 'PUT',
+      });
+    },
   },
 
   // Public Visitor & Customer Status Tracking
@@ -863,7 +896,15 @@ export const saasApi = {
     },
 
     getHealth: async () => {
-      return apiFetch('/api/health');
+      return apiFetch('/api/health') as Promise<{
+        success?: boolean;
+        status?: string;
+        environment?: string;
+        dependencies?: {
+          database?: { status?: string; provider?: string; latencyMs?: number };
+          storage?: { status?: string; provider?: string };
+        };
+      }>;
     },
 
     getWorkstationLicenseStatus: async () => {

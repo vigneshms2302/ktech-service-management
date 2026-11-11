@@ -54,7 +54,13 @@ export function getDatabasePath(): string {
     resolvedDbPath = path.resolve(process.env.KTECH_SAAS_DB_PATH);
   } else {
     const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-    const dataDir = isServerless ? path.join('/tmp', 'data') : path.join(process.cwd(), 'data');
+    const isTestEnv = process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
+    const dataDir = isServerless
+      ? path.join('/tmp', 'data')
+      : isTestEnv
+      ? path.join(process.cwd(), 'data', 'test')
+      : path.join(process.cwd(), 'data');
+
     if (!fs.existsSync(dataDir)) {
       try {
         fs.mkdirSync(dataDir, { recursive: true });
@@ -62,7 +68,8 @@ export function getDatabasePath(): string {
         console.warn('[Database] Could not create local data directory:', err);
       }
     }
-    resolvedDbPath = path.join(dataDir, 'ktech-saas.sqlite');
+    const dbFileName = isTestEnv ? 'ktech-saas.test.sqlite' : 'ktech-saas.sqlite';
+    resolvedDbPath = path.join(dataDir, dbFileName);
   }
 
   return resolvedDbPath;
@@ -125,6 +132,7 @@ export function getDb(): LibSQLDatabase<typeof schema> {
 export function resetDb(): void {
   clientInstance = null;
   dbInstance = null;
+  resolvedDbPath = '';
 }
 
 export function getClient(): Client {
