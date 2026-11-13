@@ -804,6 +804,27 @@ export async function initializeMultiTenantSchema(): Promise<void> {
       is_read INTEGER NOT NULL DEFAULT 0,
       metadata_json TEXT,
       created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+    );`,
+
+    // 31. Secure Password Reset Tokens & OTP Requests
+    `CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id TEXT PRIMARY KEY,
+      account_type TEXT NOT NULL DEFAULT 'SHOP_USER', -- 'SHOP_USER' | 'SUPER_ADMIN'
+      user_id TEXT NOT NULL,
+      shop_id TEXT,
+      username TEXT NOT NULL,
+      requested_identifier TEXT,
+      token_hash TEXT NOT NULL,
+      otp_hash TEXT NOT NULL,
+      encrypted_otp TEXT,
+      encrypted_token TEXT,
+      delivery_channel TEXT NOT NULL DEFAULT 'SUPPORT_QUEUE', -- 'EMAIL' | 'SUPPORT_QUEUE'
+      status TEXT NOT NULL DEFAULT 'PENDING', -- 'PENDING' | 'USED' | 'CANCELLED'
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      requested_ip TEXT,
+      created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
     );`
   ];
 

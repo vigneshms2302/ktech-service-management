@@ -120,6 +120,9 @@ async function apiFetch<T = any>(
       options.skipGlobalToast ||
       endpoint.includes('/api/auth/login') ||
       endpoint.includes('/api/auth/pin') ||
+      endpoint.includes('/api/auth/forgot-password') ||
+      endpoint.includes('/api/auth/reset-password') ||
+      endpoint.includes('/api/auth/change-password') ||
       endpoint.includes('/api/public/register') ||
       endpoint.includes('check-duplicates') ||
       response.status === 404;
@@ -208,6 +211,66 @@ export const saasApi = {
 
     toggleUserStatus: async (_params: any) => {
       return { success: true };
+    },
+
+    forgotPassword: async (payload: { mode?: 'SHOP_USER' | 'SUPER_ADMIN'; shopSlug?: string; username?: string; contact?: string }) => {
+      return apiFetch('/api/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    verifyResetToken: async (payload: {
+      token?: string;
+      otp?: string;
+      mode?: 'SHOP_USER' | 'SUPER_ADMIN';
+      shopSlug?: string;
+      username?: string;
+      contact?: string;
+    }) => {
+      return apiFetch('/api/auth/reset-password/verify', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    resetPassword: async (payload: {
+      token?: string;
+      otp?: string;
+      recoveryKey?: string;
+      mode?: 'SHOP_USER' | 'SUPER_ADMIN';
+      shopSlug?: string;
+      username?: string;
+      contact?: string;
+      newPassword: string;
+      newPin?: string;
+    }) => {
+      return apiFetch('/api/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    changePassword: async (payload: {
+      currentPassword: string;
+      newPassword: string;
+      newPin?: string;
+    }) => {
+      return apiFetch('/api/auth/change-password', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    listPasswordResetRequests: async () => {
+      return apiFetch('/api/auth/password-reset-requests');
+    },
+
+    resetStaffPassword: async (userId: string, payload?: { newPassword?: string; newPin?: string }) => {
+      return apiFetch(`/api/auth/users/${userId}/reset-password`, {
+        method: 'POST',
+        body: JSON.stringify(payload || {}),
+      });
     },
   },
 
@@ -866,6 +929,17 @@ export const saasApi = {
       return apiFetch('/api/admin/profile/password', {
         method: 'PUT',
         body: JSON.stringify(payload),
+      });
+    },
+
+    listPasswordResetRequests: async (params?: { includeHistory?: boolean }) => {
+      const q = params?.includeHistory ? '?includeHistory=true' : '';
+      return apiFetch(`/api/admin/password-reset-requests${q}`);
+    },
+
+    dismissPasswordResetRequest: async (requestId: string) => {
+      return apiFetch(`/api/admin/password-reset-requests/${requestId}/dismiss`, {
+        method: 'POST',
       });
     },
   },

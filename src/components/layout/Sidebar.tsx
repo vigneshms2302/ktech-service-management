@@ -200,7 +200,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </span>
                 </div>
                 <div className="text-[11px] text-[#676767] dark:text-[#b4b4b4] truncate">
-                  Repair Laboratory Platform
+                  Repair Laboratory
                 </div>
               </div>
             </div>

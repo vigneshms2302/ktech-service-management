@@ -107,7 +107,7 @@ export async function authenticateToken(req: Request, res: Response, next: NextF
       if (!isAllowedExemption) {
         res.status(403).json({
           success: false,
-          error: 'Your shop subscription is frozen. Please contact platform support or renew your subscription.',
+          error: 'Your shop subscription is frozen. Please contact vendor support or renew your subscription.',
           code: 'SHOP_FROZEN',
         });
         return;

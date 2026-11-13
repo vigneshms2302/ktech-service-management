@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { getClient } from '../db/database.ts';
 import { authenticateToken, requireSuperAdmin, hashPassword, verifyPassword, generateToken } from '../middleware/auth.ts';
 import { encryptSecret, decryptSecret } from '../security/crypto.ts';
+import { generateReadableTempPassword, resolvePublicAppUrl, buildResetUrl } from '../security/passwordUtils.ts';
 import { validateBody } from '../middleware/validate.ts';
 import { provisionShopSchema } from '../validation/schemas.ts';
 
@@ -597,16 +598,6 @@ adminRouter.get('/shops/:id/users', async (req, res) => {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
 });
-
-function generateReadableTempPassword(length = 10): string {
-  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  const bytes = crypto.randomBytes(length);
-  let out = '';
-  for (let i = 0; i < length; i++) {
-    out += charset[bytes[i] % charset.length];
-  }
-  return out;
-}
 
 // 2d. Reset Shop Owner / Staff Credentials (Issues & Stores Recoverable Temporary Password + Optional PIN)
 adminRouter.post('/shops/:id/reset-credentials', async (req, res) => {
@@ -1448,7 +1439,7 @@ adminRouter.put('/settings', async (req, res) => {
       req.ip
     );
 
-    res.json({ success: true, message: 'Platform settings saved successfully.', data: updatedMap });
+    res.json({ success: true, message: 'Commercial & UPI settings saved successfully.', data: updatedMap });
   } catch (error: unknown) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
@@ -2722,6 +2713,103 @@ adminRouter.put('/profile/password', async (req, res) => {
         email: nextEmail,
       },
     });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
+// 19. Password Reset Requests Queue (Decrypts live 6-digit OTP & direct reset links for Super-Admin support)
+adminRouter.get('/password-reset-requests', async (req, res) => {
+  try {
+    const client = getClient();
+    const publicBase = resolvePublicAppUrl(req);
+    const includeHistory = req.query.includeHistory === 'true';
+
+    const whereClause = includeHistory
+      ? `1 = 1`
+      : `prt.status = 'PENDING' AND datetime(prt.expires_at) > datetime('now')`;
+
+    const result = await client.execute({
+      sql: `
+        SELECT prt.id, prt.account_type, prt.user_id, prt.shop_id, prt.username,
+               prt.requested_identifier, prt.encrypted_otp, prt.encrypted_token,
+               prt.delivery_channel, prt.status, prt.attempts, prt.expires_at, prt.created_at,
+               s.name AS shop_name, s.slug AS shop_slug, s.phone AS shop_phone,
+               u.full_name AS user_full_name, u.role_id AS user_role_id, u.phone AS user_phone
+        FROM password_reset_tokens prt
+        LEFT JOIN shops s ON s.id = prt.shop_id
+        LEFT JOIN users u ON u.id = prt.user_id AND prt.account_type = 'SHOP_USER'
+        WHERE ${whereClause}
+        ORDER BY prt.created_at DESC
+        LIMIT 50
+      `,
+      args: [],
+    });
+
+    const data = result.rows.map((row) => {
+      const r = row as Record<string, unknown>;
+      const accountType = String(r.account_type) === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'SHOP_USER';
+      const otp = r.encrypted_otp ? decryptSecret(String(r.encrypted_otp)) : '';
+      const rawToken = r.encrypted_token ? decryptSecret(String(r.encrypted_token)) : '';
+      return {
+        id: String(r.id),
+        accountType,
+        userId: String(r.user_id),
+        shopId: r.shop_id ? String(r.shop_id) : null,
+        shopName: r.shop_name ? String(r.shop_name) : (accountType === 'SUPER_ADMIN' ? 'K-Connect Super-Admin' : 'Unknown Shop'),
+        shopSlug: r.shop_slug ? String(r.shop_slug) : null,
+        shopPhone: r.shop_phone ? String(r.shop_phone) : null,
+        username: String(r.username),
+        fullName: r.user_full_name ? String(r.user_full_name) : String(r.username),
+        roleId: r.user_role_id ? String(r.user_role_id) : (accountType === 'SUPER_ADMIN' ? 'ROLE_SUPER_ADMIN' : 'ROLE_TECHNICIAN'),
+        phone: r.user_phone ? String(r.user_phone) : (r.shop_phone ? String(r.shop_phone) : null),
+        requestedIdentifier: r.requested_identifier ? String(r.requested_identifier) : null,
+        otp: String(r.status) === 'PENDING' ? otp : '',
+        resetUrl: String(r.status) === 'PENDING' && rawToken ? buildResetUrl(publicBase, rawToken, accountType) : '',
+        deliveryChannel: String(r.delivery_channel || 'SUPPORT_QUEUE'),
+        status: String(r.status),
+        attempts: Number(r.attempts || 0),
+        expiresAt: String(r.expires_at),
+        createdAt: String(r.created_at),
+      };
+    });
+
+    res.json({ success: true, data });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
+// Dismiss / Cancel a Pending Password Reset Request
+adminRouter.post('/password-reset-requests/:requestId/dismiss', async (req, res) => {
+  try {
+    const client = getClient();
+    const { requestId } = req.params;
+
+    const existing = await client.execute({
+      sql: `SELECT id, username, shop_id FROM password_reset_tokens WHERE id = ? LIMIT 1`,
+      args: [requestId],
+    });
+    if (existing.rows.length === 0) {
+      res.status(404).json({ success: false, error: 'Password reset request not found.' });
+      return;
+    }
+
+    await client.execute({
+      sql: `UPDATE password_reset_tokens SET status = 'CANCELLED' WHERE id = ?`,
+      args: [requestId],
+    });
+
+    await recordAdminAudit(
+      req.user!.userId,
+      'PASSWORD_RESET_DISMISSED',
+      'PASSWORD_RESET',
+      requestId,
+      { username: existing.rows[0].username, shopId: existing.rows[0].shop_id },
+      req.ip
+    );
+
+    res.json({ success: true, message: 'Password reset request dismissed.' });
   } catch (error: unknown) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }

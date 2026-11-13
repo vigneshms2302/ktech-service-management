@@ -1,7 +1,7 @@
 {
   "short_name": "K-Connect",
   "name": "K-Connect - Repair & Service Cloud OS",
-  "description": "ChatGPT-style Cloud SaaS Service Management Platform for Computer & Electronics Repair Businesses",
+  "description": "K-Connect Repair Laboratory & Cloud Service Management OS for Computer & Electronics Repair Businesses",
   "icons": [
     {
       "src": "/icon.svg",

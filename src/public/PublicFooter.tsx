@@ -191,7 +191,7 @@ export const PublicFooter: React.FC = () => {
         }}
       >
         <div>
-          © {new Date().getFullYear()} K-Connect Cloud SaaS Platform. Engineered by KTech Computers. All Rights Reserved.
+          © {new Date().getFullYear()} K-Connect Repair Laboratory. Engineered by KTech Computers. All Rights Reserved.
         </div>
         <div style={{ display: 'flex', gap: '16px' }}>
           <Link to="/privacy" style={{ color: textMuted, textDecoration: 'none' }}>Privacy</Link>

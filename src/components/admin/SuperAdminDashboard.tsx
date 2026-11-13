@@ -351,7 +351,7 @@ export const SuperAdminDashboard: React.FC = () => {
       if (res.success && res.data) {
         setAnalytics(res.data);
       } else {
-        showError(res.error || 'Could not load live platform analytics.');
+        showError(res.error || 'Could not load live K-Connect analytics.');
       }
     } catch (err: unknown) {
       showError((err as Error).message || 'Failed to load live analytics.');
@@ -369,7 +369,7 @@ export const SuperAdminDashboard: React.FC = () => {
       if (activeTab === 'SETTINGS') await loadSettings();
       if (activeTab === 'AUDIT_LOGS') await loadAuditLogs();
       if (activeTab === 'PLANS') await loadPlans();
-      showSuccess('Live platform metrics synced from database.');
+      showSuccess('Live K-Connect metrics synced from database.');
     } finally {
       setIsRefreshing(false);
     }
@@ -674,8 +674,8 @@ export const SuperAdminDashboard: React.FC = () => {
       }));
       const res = await saasApi.admin.updateSettings(payload);
       if (res.success) {
-        setSettingsNotice('Live platform & UPI settings saved to database.');
-        showSuccess('Platform & UPI settings saved.');
+        setSettingsNotice('Live commercial & UPI settings saved to database.');
+        showSuccess('Commercial & UPI settings saved.');
         await loadSettings();
         setTimeout(() => setSettingsNotice(null), 4000);
       } else {
@@ -799,7 +799,7 @@ export const SuperAdminDashboard: React.FC = () => {
                   border: '1px solid rgba(16, 163, 127, 0.3)',
                 }}
               >
-                PLATFORM OWNER
+                SUPER ADMIN OWNER
               </span>
               <span
                 title={`Database Provider: ${dbProvider}`}
@@ -1214,7 +1214,7 @@ export const SuperAdminDashboard: React.FC = () => {
             cursor: 'pointer',
           }}
         >
-          <SettingsIcon size={16} /> Platform & UPI Settings
+          <SettingsIcon size={16} /> Commercial & UPI Settings
         </button>
 
         <button
@@ -1932,7 +1932,7 @@ export const SuperAdminDashboard: React.FC = () => {
         <div style={{ maxWidth: '720px', backgroundColor: '#212121', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '28px' }}>
           <div style={{ marginBottom: '24px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 6px', color: '#fff' }}>
-              Platform Commercial & Payment Settings
+              Commercial & Payment Settings
             </h2>
             <p style={{ fontSize: '13px', color: '#8e8ea0', margin: 0 }}>
               Live configuration persisted in database for customer GPay checkout, trial days, and vendor support channels.
@@ -1947,7 +1947,7 @@ export const SuperAdminDashboard: React.FC = () => {
 
           {!settingsLoaded ? (
             <div style={{ padding: '24px 0', color: '#8e8ea0', fontSize: '13px' }}>
-              Loading live platform configuration...
+              Loading live K-Connect configuration...
             </div>
           ) : (
             <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
@@ -2068,7 +2068,7 @@ export const SuperAdminDashboard: React.FC = () => {
               </h3>
             </div>
             <p style={{ fontSize: '12.5px', color: '#8e8ea0', margin: '0 0 16px' }}>
-              Signed in as <strong>@{currentUser?.username || 'superadmin'}</strong>. Change your platform owner password directly here.
+              Signed in as <strong>@{currentUser?.username || 'superadmin'}</strong>. Change your Super-Admin owner password directly here.
             </p>
 
             <form onSubmit={handleChangeAdminPassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -2209,7 +2209,7 @@ export const SuperAdminDashboard: React.FC = () => {
           <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
             <div style={{ fontSize: '15px', fontWeight: 700 }}>Super-Admin Administrative Audit Trail</div>
             <div style={{ fontSize: '12px', color: '#8e8ea0', marginTop: '2px' }}>
-              Immutable record of sensitive platform actions, credential resets, approvals, shop suspensions and trial extensions.
+              Immutable record of sensitive system actions, credential resets, approvals, shop suspensions and trial extensions.
             </div>
           </div>
           <div style={{ overflowX: 'auto' }}>
@@ -2833,7 +2833,7 @@ export const SuperAdminDashboard: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div>
                 <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 2px', color: '#fff' }}>
-                  Platform Alerts & Sales Inquiries
+                  Vendor Alerts & Sales Inquiries
                 </h3>
                 <div style={{ fontSize: '12px', color: '#8e8ea0' }}>
                   Live inquiries submitted from the public landing page and billing alerts.
@@ -2870,7 +2870,7 @@ export const SuperAdminDashboard: React.FC = () => {
 
             {notifications.length === 0 ? (
               <div style={{ padding: '40px 20px', textAlign: 'center', color: '#8e8ea0', fontSize: '13px' }}>
-                No platform alerts or public inquiries right now.
+                No vendor alerts or public inquiries right now.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

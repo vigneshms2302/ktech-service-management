@@ -15,7 +15,7 @@ export const FaqPage: React.FC = () => {
     {
       category: 'Trial & Subscription',
       q: 'How do I pay for the annual subscription?',
-      a: 'Subscription payments are collected directly via our official Google Pay / UPI QR code. Once you make the payment of ₹14,999/year via any UPI app (GPay, PhonePe, Paytm), enter your 12-digit UTR reference ID on the checkout page. The platform owner manually verifies your bank credit and activates your 365-day licence.',
+      a: 'Subscription payments are collected directly via our official Google Pay / UPI QR code. Once you make the payment of ₹14,999/year via any UPI app (GPay, PhonePe, Paytm), enter your 12-digit UTR reference ID on the checkout page. The K-Connect admin manually verifies your bank credit and activates your 365-day licence.',
     },
     {
       category: 'Trial & Subscription',

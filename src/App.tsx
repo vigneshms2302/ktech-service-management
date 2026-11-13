@@ -23,11 +23,12 @@ import {
 import { LoginPage } from './components/auth/LoginPage.tsx';
 import { SignupPage } from './components/auth/SignupPage.tsx';
 import { OnboardingWizard } from './components/auth/OnboardingWizard.tsx';
+import { ForgotPasswordPage, ResetPasswordPage } from './components/auth/PasswordResetPages.tsx';
 
 // 3. Decoupled SaaS Application (Protected, ChatGPT-Style Sidebar Layout)
 import { AppLayout, ProtectedRoute } from './app/index.ts';
 
-// Platform Super Admin Control Center
+// K-Connect Super Admin Control Center
 import { SuperAdminDashboard } from './components/admin/SuperAdminDashboard.tsx';
 import { AnnualCheckoutPage } from './components/subscription/AnnualCheckoutPage.tsx';
 
@@ -149,6 +150,8 @@ export const App: React.FC = () => {
         }
       />
       <Route path="/onboarding" element={<OnboardingWizard />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* ─────────────────────────────────────────────────────────────
           3. The SaaS App (Protected, ChatGPT-Style Sidebar Layout)
@@ -181,7 +184,7 @@ export const App: React.FC = () => {
       />
 
       {/* ─────────────────────────────────────────────────────────────
-          4. Platform Super Admin Control Center
+          4. K-Connect Super Admin Control Center
           ───────────────────────────────────────────────────────────── */}
       <Route
         path="/admin"

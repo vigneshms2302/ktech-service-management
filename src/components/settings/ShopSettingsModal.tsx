@@ -22,10 +22,13 @@ import {
   FolderOpen,
   ExternalLink,
   Monitor,
+  KeyRound,
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext.tsx';
 import { useAuth } from '../../context/AuthContext.tsx';
 import type { UpdateStatusPayload } from '../../types/index.ts';
+import { saasApi } from '../../api/client.ts';
+import { buildWhatsAppUrl, buildResetShareMessage } from '../admin/adminTypes.ts';
 import { DiagnosticsTab } from './DiagnosticsTab.tsx';
 import { RemoteSupportTab } from './RemoteSupportTab.tsx';
 
@@ -54,7 +57,7 @@ const ROLES = [
 
 export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, onClose }) => {
   const { shopSettings, updateShopSettings, refreshShopSettings } = useShop();
-  const { refreshUsers, logout, checkSetupStatus } = useAuth();
+  const { currentUser, refreshUsers, logout, checkSetupStatus } = useAuth();
   const [isResetting, setIsResetting] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'shop' | 'staff' | 'backup' | 'updates' | 'diagnostics' | 'security'>('shop');
@@ -159,6 +162,10 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
     }
   };
 
+  const [staffResetRequests, setStaffResetRequests] = useState<any[]>([]);
+  const [resetResultUser, setResetResultUser] = useState<{ username: string; fullName: string; temporaryPassword: string; pinCode?: string | null; phone?: string | null } | null>(null);
+  const [isResettingStaffId, setIsResettingStaffId] = useState<string | null>(null);
+
   const fetchStaffList = async () => {
     setIsLoadingStaff(true);
     try {
@@ -168,8 +175,44 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
           setStaffList(res.data as StaffUser[]);
         }
       }
+      if (currentUser?.roleId === 'ROLE_OWNER') {
+        try {
+          const reqRes = await saasApi.auth.listPasswordResetRequests();
+          if (reqRes.success && Array.isArray(reqRes.data)) {
+            setStaffResetRequests(reqRes.data);
+          }
+        } catch {
+          // Non-critical
+        }
+      }
     } finally {
       setIsLoadingStaff(false);
+    }
+  };
+
+  const handleResetStaffPassword = async (staffUser: StaffUser) => {
+    if (!window.confirm(`Issue a new temporary password and reset credentials for @${staffUser.username}?`)) {
+      return;
+    }
+    setIsResettingStaffId(staffUser.id);
+    try {
+      const res = await saasApi.auth.resetStaffPassword(staffUser.id);
+      if (res.success && res.data) {
+        setResetResultUser({
+          username: res.data.username,
+          fullName: res.data.fullName,
+          temporaryPassword: res.data.temporaryPassword,
+          pinCode: res.data.pinCode,
+          phone: res.data.phone || staffUser.phone,
+        });
+        await fetchStaffList();
+      } else {
+        alert(res.error || 'Failed to reset staff password.');
+      }
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Failed to reset staff password.');
+    } finally {
+      setIsResettingStaffId(null);
     }
   };
 
@@ -700,6 +743,107 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                 </div>
               )}
 
+              {/* PENDING STAFF PASSWORD RESET REQUESTS */}
+              {staffResetRequests.length > 0 && (
+                <div style={{ padding: '12px', backgroundColor: 'rgba(16, 163, 127, 0.08)', border: '1px solid rgba(16, 163, 127, 0.3)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#10a37f', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <KeyRound size={14} />
+                    <span>Pending Staff Password Reset Requests ({staffResetRequests.length})</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {staffResetRequests.map((req) => (
+                      <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', backgroundColor: 'var(--bg-surface)', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '11.5px', flexWrap: 'wrap', gap: '6px' }}>
+                        <div>
+                          <strong>{req.fullName}</strong> (@{req.username}) &bull; Code:{' '}
+                          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#10a37f' }}>{req.otp}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => {
+                              navigator.clipboard.writeText(req.otp);
+                              alert(`Copied code ${req.otp}`);
+                            }}
+                            style={{ padding: '2px 8px', fontSize: '10.5px' }}
+                          >
+                            Copy Code
+                          </button>
+                          {req.resetUrl && (
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              onClick={() => {
+                                navigator.clipboard.writeText(req.resetUrl);
+                                alert('Copied reset link to clipboard');
+                              }}
+                              style={{ padding: '2px 8px', fontSize: '10.5px' }}
+                            >
+                              Copy Link
+                            </button>
+                          )}
+                          <a
+                            href={buildWhatsAppUrl(
+                              req.phone,
+                              buildResetShareMessage({
+                                shopName: shopSettings.shopName,
+                                username: req.username,
+                                otp: req.otp,
+                                resetUrl: req.resetUrl,
+                              })
+                            )}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn"
+                            style={{ padding: '2px 8px', fontSize: '10.5px', backgroundColor: '#25D366', color: '#000', textDecoration: 'none', fontWeight: 700 }}
+                          >
+                            WhatsApp
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* NEW TEMPORARY PASSWORD BANNER */}
+              {resetResultUser && (
+                <div style={{ padding: '12px 14px', backgroundColor: 'rgba(16, 163, 127, 0.12)', border: '1px solid #10a37f', borderRadius: '8px', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ fontWeight: 700, color: '#10a37f' }}>
+                    Credentials Reset for {resetResultUser.fullName} (@{resetResultUser.username})
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', fontSize: '11.5px' }}>
+                    <div>
+                      Temp Password: <strong style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: '#fff' }}>{resetResultUser.temporaryPassword}</strong>
+                    </div>
+                    {resetResultUser.pinCode && (
+                      <div>
+                        Quick PIN: <strong style={{ fontFamily: 'var(--font-mono)', color: '#fff' }}>{resetResultUser.pinCode}</strong>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`Shop: ${shopSettings.shopName}\nUsername: ${resetResultUser.username}\nPassword: ${resetResultUser.temporaryPassword}\nPIN: ${resetResultUser.pinCode || 'None'}`);
+                        alert('Copied new credentials to clipboard');
+                      }}
+                      style={{ padding: '2px 8px', fontSize: '10.5px' }}
+                    >
+                      Copy
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setResetResultUser(null)}
+                      style={{ padding: '2px 8px', fontSize: '10.5px', marginLeft: 'auto' }}
+                    >
+                      Close Banner
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Add User Sub-Form */}
               {showAddUserForm && (
                 <form
@@ -853,13 +997,28 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                             </span>
                           </td>
                           <td>
-                            <button
-                              className="btn btn-secondary"
-                              onClick={() => handleToggleUserStatus(u)}
-                              style={{ padding: '2px 8px', fontSize: '10px' }}
-                            >
-                              {u.isActive ? 'Disable' : 'Enable'}
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <button
+                                className="btn btn-secondary"
+                                onClick={() => handleToggleUserStatus(u)}
+                                style={{ padding: '2px 8px', fontSize: '10px' }}
+                              >
+                                {u.isActive ? 'Disable' : 'Enable'}
+                              </button>
+                              {currentUser?.roleId === 'ROLE_OWNER' && (
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary"
+                                  disabled={isResettingStaffId === u.id}
+                                  onClick={() => handleResetStaffPassword(u)}
+                                  title="Issue new temporary password"
+                                  style={{ padding: '2px 8px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '3px' }}
+                                >
+                                  <KeyRound size={11} color="var(--brand-primary)" />
+                                  <span>{isResettingStaffId === u.id ? 'Resetting...' : 'Reset'}</span>
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))

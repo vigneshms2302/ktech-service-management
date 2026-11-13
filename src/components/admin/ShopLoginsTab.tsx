@@ -23,8 +23,10 @@ import {
   ShopItem,
   ShopUserAccount,
   RevealedCredentialPayload,
+  PasswordResetRequestItem,
   SHOP_ROLE_OPTIONS,
   buildCredentialShareMessage,
+  buildResetShareMessage,
   buildWhatsAppUrl,
   downloadCsv,
   formatDateSafe,
@@ -78,19 +80,31 @@ export const ShopLoginsTab: React.FC<ShopLoginsTabProps> = ({
   const [resetPinInput, setResetPinInput] = useState('');
   const [isResetting, setIsResetting] = useState(false);
 
+  // Live Password Reset Queue
+  const [resetRequests, setResetRequests] = useState<PasswordResetRequestItem[]>([]);
+  const [isDismissingId, setIsDismissingId] = useState<string | null>(null);
+
   const loadLogins = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await saasApi.admin.listLogins({
-        search: search.trim() || undefined,
-        shopId: shopFilter !== 'ALL' ? shopFilter : undefined,
-        roleId: roleFilter !== 'ALL' ? roleFilter : undefined,
-        status: statusFilter !== 'ALL' ? statusFilter : undefined,
-      });
-      if (res.success && Array.isArray(res.data)) {
-        setLogins(res.data);
+      const [loginsRes, requestsRes] = await Promise.all([
+        saasApi.admin.listLogins({
+          search: search.trim() || undefined,
+          shopId: shopFilter !== 'ALL' ? shopFilter : undefined,
+          roleId: roleFilter !== 'ALL' ? roleFilter : undefined,
+          status: statusFilter !== 'ALL' ? statusFilter : undefined,
+        }),
+        saasApi.admin.listPasswordResetRequests(),
+      ]);
+
+      if (loginsRes.success && Array.isArray(loginsRes.data)) {
+        setLogins(loginsRes.data);
       } else {
-        showError(res.error || 'Failed to load shop logins.');
+        showError(loginsRes.error || 'Failed to load shop logins.');
+      }
+
+      if (requestsRes.success && Array.isArray(requestsRes.data)) {
+        setResetRequests(requestsRes.data);
       }
     } catch (err: unknown) {
       showError((err as Error).message || 'Could not fetch shop logins.');
@@ -98,6 +112,23 @@ export const ShopLoginsTab: React.FC<ShopLoginsTabProps> = ({
       setIsLoading(false);
     }
   }, [search, shopFilter, roleFilter, statusFilter, showError]);
+
+  const handleDismissResetRequest = async (requestId: string) => {
+    setIsDismissingId(requestId);
+    try {
+      const res = await saasApi.admin.dismissPasswordResetRequest(requestId);
+      if (res.success) {
+        showSuccess('Password reset request dismissed.');
+        setResetRequests((prev) => prev.filter((r) => r.id !== requestId));
+      } else {
+        showError(res.error || 'Failed to dismiss reset request.');
+      }
+    } catch (err: unknown) {
+      showError((err as Error).message || 'Failed to dismiss request.');
+    } finally {
+      setIsDismissingId(null);
+    }
+  };
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -305,6 +336,222 @@ export const ShopLoginsTab: React.FC<ShopLoginsTabProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {/* LIVE PENDING PASSWORD RESET REQUESTS QUEUE */}
+      {resetRequests.length > 0 && (
+        <div
+          style={{
+            backgroundColor: 'rgba(16, 163, 127, 0.05)',
+            border: '1px solid rgba(16, 163, 127, 0.3)',
+            borderRadius: '16px',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(16, 163, 127, 0.15)',
+                  color: '#10a37f',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <KeyRound size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>Pending Password Reset Requests</span>
+                  <span
+                    style={{
+                      padding: '2px 8px',
+                      borderRadius: '9999px',
+                      backgroundColor: '#10a37f',
+                      color: '#fff',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {resetRequests.length} active
+                  </span>
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#8e8ea0' }}>
+                  Users requesting password recovery. Copy the 6-digit code or share the direct reset link via WhatsApp.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '12px' }}>
+            {resetRequests.map((req) => (
+              <div
+                key={req.id}
+                style={{
+                  backgroundColor: '#191919',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#ececec' }}>
+                      {req.fullName} <span style={{ color: '#8e8ea0', fontWeight: 500 }}>@{req.username}</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#10a37f', fontWeight: 600 }}>
+                      {req.shopName} {req.shopSlug ? `(/${req.shopSlug})` : ''}
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                      color: '#b4b4b4',
+                    }}
+                  >
+                    {req.roleId.replace('ROLE_', '')}
+                  </span>
+                </div>
+
+                {/* 6-Digit Verification Code */}
+                <div
+                  style={{
+                    backgroundColor: '#141414',
+                    border: '1px solid rgba(16, 163, 127, 0.25)',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '9.5px', textTransform: 'uppercase', color: '#8e8ea0', letterSpacing: '0.5px' }}>
+                      6-Digit Code
+                    </div>
+                    <div style={{ fontSize: '18px', fontWeight: 800, fontFamily: 'monospace', letterSpacing: '2px', color: '#34d399' }}>
+                      {req.otp || '••••••'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (req.otp) {
+                        navigator.clipboard.writeText(req.otp);
+                        showSuccess(`Copied code ${req.otp}`);
+                      }
+                    }}
+                    style={{
+                      padding: '5px 8px',
+                      backgroundColor: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: '#ececec',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Copy size={12} />
+                    <span>Copy Code</span>
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', paddingTop: '2px' }}>
+                  {req.resetUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(req.resetUrl);
+                        showSuccess('Copied direct reset link to clipboard.');
+                      }}
+                      style={{
+                        flex: '1 1 auto',
+                        padding: '6px 10px',
+                        backgroundColor: '#282828',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        color: '#ececec',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '5px',
+                      }}
+                    >
+                      <Copy size={12} />
+                      <span>Copy Reset Link</span>
+                    </button>
+                  )}
+
+                  <a
+                    href={buildWhatsAppUrl(
+                      req.phone,
+                      buildResetShareMessage({
+                        shopName: req.shopName,
+                        username: req.username,
+                        otp: req.otp,
+                        resetUrl: req.resetUrl,
+                      })
+                    )}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      padding: '6px 10px',
+                      backgroundColor: '#25D366',
+                      color: '#000',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      textDecoration: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                  >
+                    <MessageCircle size={13} />
+                    <span>WhatsApp</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    disabled={isDismissingId === req.id}
+                    onClick={() => handleDismissResetRequest(req.id)}
+                    style={{
+                      padding: '6px 10px',
+                      backgroundColor: 'transparent',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      color: '#8e8ea0',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Action & Filter Toolbar */}
       <div
         style={{

@@ -433,7 +433,7 @@ export const AppLayout: React.FC = () => {
             <div className="flex items-center gap-2">
               <Clock size={14} className="text-amber-300" />
               <span>
-                <strong>GPay Payment Verification Pending:</strong> Reference {subStatus?.latestClaim?.upiTransactionId} is under review by platform admin.
+                <strong>GPay Payment Verification Pending:</strong> Reference {subStatus?.latestClaim?.upiTransactionId} is under review by K-Connect admin.
               </span>
             </div>
             <Link

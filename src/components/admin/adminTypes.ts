@@ -367,3 +367,43 @@ export function buildCredentialShareMessage(params: {
   lines.push(`Please keep these credentials safe.`);
   return lines.join('\n');
 }
+
+export interface PasswordResetRequestItem {
+  id: string;
+  accountType: 'SHOP_USER' | 'SUPER_ADMIN';
+  userId: string;
+  shopId?: string | null;
+  shopName: string;
+  shopSlug?: string | null;
+  shopPhone?: string | null;
+  username: string;
+  fullName: string;
+  roleId: string;
+  phone?: string | null;
+  requestedIdentifier?: string | null;
+  otp: string;
+  resetUrl: string;
+  deliveryChannel: 'EMAIL' | 'SUPPORT_QUEUE' | string;
+  status: 'PENDING' | 'USED' | 'CANCELLED' | string;
+  attempts: number;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export function buildResetShareMessage(params: {
+  shopName?: string;
+  username: string;
+  otp: string;
+  resetUrl: string;
+  expiresInMinutes?: number;
+}): string {
+  const lines = [
+    `*K-Connect Password Reset Verification*`,
+    params.shopName ? `Shop: ${params.shopName}` : null,
+    `Username: @${params.username}`,
+    `6-Digit Code: ${params.otp}`,
+    params.resetUrl ? `Reset Link: ${params.resetUrl}` : null,
+    `Valid for ${params.expiresInMinutes || 15} minutes.`,
+  ].filter(Boolean);
+  return lines.join('\n');
+}

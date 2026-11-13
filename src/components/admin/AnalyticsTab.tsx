@@ -61,7 +61,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
   const handleExportLeaderboard = () => {
     if (!analytics) return;
     downloadCsv(
-      `kconnect-platform-analytics-${new Date().toISOString().slice(0, 10)}.csv`,
+      `kconnect-analytics-${new Date().toISOString().slice(0, 10)}.csv`,
       [
         'Shop Name',
         'Slug',
@@ -127,7 +127,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
           color: '#8e8ea0',
         }}
       >
-        Aggregating live platform telemetry across all shops, customers, devices, jobs, and invoices...
+        Aggregating live K-Connect telemetry across all shops, customers, devices, jobs, and invoices...
       </div>
     );
   }
@@ -186,7 +186,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <BarChart3 size={18} color="#10a37f" />
-          <span style={{ fontWeight: 700, fontSize: '15px' }}>Live K-Connect Platform Analytics</span>
+          <span style={{ fontWeight: 700, fontSize: '15px' }}>Live K-Connect Analytics</span>
           <span
             style={{
               fontSize: '11px',
@@ -284,7 +284,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
 
         <div style={{ backgroundColor: '#1e1e1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '14px', padding: '18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', color: '#8e8ea0', fontSize: '12px', fontWeight: 600 }}>
-            <span>Platform Growth (7d / 30d)</span>
+            <span>Network Growth (7d / 30d)</span>
             <TrendingUp size={15} color="#fbbf24" />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '10px' }}>

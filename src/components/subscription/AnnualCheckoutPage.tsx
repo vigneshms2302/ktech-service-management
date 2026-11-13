@@ -398,7 +398,7 @@ export const AnnualCheckoutPage: React.FC = () => {
                   lineHeight: 1.5,
                 }}
               >
-                🔒 <strong>Manual Verification Process:</strong> Our platform owner verifies bank receipt directly. Once confirmed, your subscription status updates to <strong>ACTIVE (365 Days)</strong> automatically.
+                🔒 <strong>Manual Verification Process:</strong> Our K-Connect admin verifies bank receipt directly. Once confirmed, your subscription status updates to <strong>ACTIVE (365 Days)</strong> automatically.
               </div>
 
               <button

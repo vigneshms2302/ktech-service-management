@@ -186,7 +186,7 @@ export const LoginPage: React.FC = () => {
           <div className="max-w-2xl mb-8">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-4">
               <Sparkles size={13} />
-              <span>Multi-Shop Repair Laboratory Platform</span>
+              <span>Multi-Shop Repair Laboratory</span>
             </div>
             <h1 className="text-3xl sm:text-4xl xl:text-5xl font-extrabold tracking-tight text-white leading-tight mb-4">
               The Real-Time Operating System for Modern Repair Centers.
@@ -282,7 +282,7 @@ export const LoginPage: React.FC = () => {
               <span>99.99% Cloud Uptime</span>
             </span>
           </div>
-          <span className="font-mono text-[11px] text-slate-500">&copy; {new Date().getFullYear()} K-Connect Platform</span>
+          <span className="font-mono text-[11px] text-slate-500">&copy; {new Date().getFullYear()} K-Connect</span>
         </div>
       </div>
 
@@ -345,7 +345,7 @@ export const LoginPage: React.FC = () => {
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-1.5">
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                {isSuperAdmin ? 'Platform Super-Admin' : 'Shop Staff Authentication'}
+                {isSuperAdmin ? 'Super-Admin Console' : 'Shop Staff Authentication'}
               </span>
               {isDesktop && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-blue-500/10 text-blue-500 border border-blue-500/20">
@@ -521,6 +521,16 @@ export const LoginPage: React.FC = () => {
                 >
                   Password
                 </label>
+                <Link
+                  to={
+                    isSuperAdmin
+                      ? `/forgot-password?mode=superadmin&username=${encodeURIComponent(username || 'superadmin')}`
+                      : `/forgot-password?shop=${encodeURIComponent(shopSlug || '')}&username=${encodeURIComponent(username || '')}`
+                  }
+                  className="text-xs font-semibold text-emerald-500 hover:text-emerald-400 hover:underline transition-colors"
+                >
+                  Forgot password?
+                </Link>
               </div>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
@@ -544,6 +554,8 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                   className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
                   title={showPassword ? 'Hide password' : 'Show password'}
                 >
@@ -621,7 +633,7 @@ export const LoginPage: React.FC = () => {
                   isLight ? 'text-gray-400 hover:text-gray-600' : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
-                {isSuperAdmin ? '&larr; Return to Regular Shop Staff Login' : 'Platform Vendor / Master Super-Admin Portal &rarr;'}
+                {isSuperAdmin ? '← Return to Regular Shop Staff Login' : 'Vendor / Master Super-Admin Portal →'}
               </button>
             </div>
           </div>

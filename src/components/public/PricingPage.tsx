@@ -170,7 +170,7 @@ export const PricingPage: React.FC = () => {
               <div className="font-semibold text-[#0d0d0d] dark:text-[#ececec] mb-1">
                 3. Verified & Activated
               </div>
-              Submit your 12-digit UTR ID. The platform owner manually verifies your payment and activates your 365-day licence.
+              Submit your 12-digit UTR ID. The K-Connect admin manually verifies your payment and activates your 365-day licence.
             </div>
           </div>
         </div>

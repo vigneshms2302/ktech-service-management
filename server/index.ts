@@ -99,6 +99,18 @@ export const authLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/pin', authLimiter);
 
+// Password reset limiter: 25 requests per 15 min per IP
+export const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 25,
+  standardHeaders: true,
+  legacyHeaders: false,
+  statusCode: 429,
+  message: { success: false, error: 'Too many password reset attempts. Please wait 15 minutes and try again.' },
+});
+app.use('/api/auth/forgot-password', passwordResetLimiter);
+app.use('/api/auth/reset-password', passwordResetLimiter);
+
 // Public tracking limiter: 60 requests per 15 min per IP
 export const publicLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

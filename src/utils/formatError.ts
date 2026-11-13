@@ -84,7 +84,7 @@ export function formatUserFriendlyError(rawError: unknown, status?: number): str
     return 'Incorrect 4-digit PIN. Please try again.';
   }
   if (lower.includes('frozen')) {
-    return 'Your shop account is currently suspended. Please contact platform support.';
+    return 'Your shop account is currently suspended. Please contact vendor support.';
   }
   if (lower.includes('expired')) {
     return 'Your free trial has ended. Please upgrade your subscription plan.';

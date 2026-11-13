@@ -19,14 +19,14 @@ export const PrivacyPolicyPage: React.FC = () => {
             1. Tenant Isolation & Zero Cross-Access
           </h2>
           <p className="mb-6">
-            K-Connect is a multi-tenant platform. All repair jobs, customer names, phone numbers, hardware passcodes, and invoices entered by your shop are strictly isolated to your shop identifier. Neither other shops nor unauthorized third parties can access your data.
+            K-Connect is a multi-tenant service management system. All repair jobs, customer names, phone numbers, hardware passcodes, and invoices entered by your shop are strictly isolated to your shop identifier. Neither other shops nor unauthorized third parties can access your data.
           </p>
 
           <h2 className="text-base font-bold text-[#0d0d0d] dark:text-[#ececec] mb-2">
             2. Encrypted Hardware Passcodes
           </h2>
           <p className="mb-6">
-            Customer device PINs, patterns, and Windows passwords collected during bench intake are encrypted using AES-256-GCM. Passcodes are accessible only to authorized shop technicians during active repairs and are never visible to platform administrators.
+            Customer device PINs, patterns, and Windows passwords collected during bench intake are encrypted using AES-256-GCM. Passcodes are accessible only to authorized shop technicians during active repairs and are never visible to K-Connect administrators.
           </p>
 
           <h2 className="text-base font-bold text-[#0d0d0d] dark:text-[#ececec] mb-2">
@@ -63,10 +63,10 @@ export const TermsOfServicePage: React.FC = () => {
 
         <div className="p-6 sm:p-8 rounded-2xl bg-[#f9f9f9] dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#2f2f2f] text-xs sm:text-sm text-[#676767] dark:text-[#b4b4b4] leading-relaxed">
           <h2 className="text-base font-bold text-[#0d0d0d] dark:text-[#ececec] mb-2">
-            1. SaaS Platform License
+            1. SaaS License
           </h2>
           <p className="mb-6">
-            K-Connect grants registered repair laboratories a non-exclusive, non-transferable licence to use the service management platform for legitimate computer, electronics, and mobile repair operations for the duration of an active trial or paid annual term.
+            K-Connect grants registered repair laboratories a non-exclusive, non-transferable licence to use the service management system for legitimate computer, electronics, and mobile repair operations for the duration of an active trial or paid annual term.
           </p>
 
           <h2 className="text-base font-bold text-[#0d0d0d] dark:text-[#ececec] mb-2">
@@ -80,14 +80,14 @@ export const TermsOfServicePage: React.FC = () => {
             3. Annual Subscription & GPay Verification
           </h2>
           <p className="mb-6">
-            Annual subscription licences are billed in Indian Rupees (INR) at the rate configured in the active plan (₹14,999/year). Payments are collected via UPI/Google Pay and manually approved by the platform operator after verifying the 12-digit bank UTR reference. Licences run for exactly 365 days.
+            Annual subscription licences are billed in Indian Rupees (INR) at the rate configured in the active plan (₹14,999/year). Payments are collected via UPI/Google Pay and manually approved by the K-Connect operator after verifying the 12-digit bank UTR reference. Licences run for exactly 365 days.
           </p>
 
           <h2 className="text-base font-bold text-[#0d0d0d] dark:text-[#ececec] mb-2">
             4. Acceptable Bench Use
           </h2>
           <p>
-            Users agree not to upload malicious payloads, reverse engineer platform source code, or attempt to compromise other tenants’ repair records.
+            Users agree not to upload malicious payloads, reverse engineer K-Connect source code, or attempt to compromise other tenants’ repair records.
           </p>
         </div>
       </div>

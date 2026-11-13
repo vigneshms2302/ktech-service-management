@@ -882,3 +882,16 @@ dialog.admin-native-dialog::backdrop {
   overflow: hidden;
   overscroll-behavior: contain;
 }
+
+/* ==========================================================================
+   Modern Auth & Password Reset Forms (:user-invalid / :user-valid styling)
+   ========================================================================== */
+.kconnect-auth-form input:not([type="submit"]):not([type="button"]):user-invalid,
+.kconnect-auth-form input[aria-invalid="true"] {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.35) !important;
+}
+
+.kconnect-auth-form input:not([type="submit"]):not([type="button"]):user-valid:not(:placeholder-shown) {
+  border-color: #10a37f !important;
+}

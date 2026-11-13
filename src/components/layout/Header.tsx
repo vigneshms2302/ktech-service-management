@@ -10,12 +10,14 @@ import {
   PanelLeft,
   Monitor,
   Download,
+  KeyRound,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { useTheme } from '../../context/ThemeContext.tsx';
 import { useShop } from '../../context/ShopContext.tsx';
 import { PricingModal } from '../pricing/PricingModal.tsx';
 import { DownloadAppModal } from '../common/DownloadAppModal.tsx';
+import { ChangePasswordModal } from '../auth/ChangePasswordModal.tsx';
 
 interface HeaderProps {
   onOpenPinModal: () => void;
@@ -41,6 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const isDesktop = Boolean(window.electronAPI?.isDesktop);
 
@@ -240,6 +243,19 @@ export const Header: React.FC<HeaderProps> = ({
                   </>
                 )}
 
+                {/* Change Password Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    setIsChangePasswordOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-[#0d0d0d] dark:text-[#ececec] hover:bg-gray-100 dark:hover:bg-[#282828] transition-colors text-left cursor-pointer"
+                >
+                  <KeyRound size={13} className="text-emerald-500" />
+                  <span>Change Password</span>
+                </button>
+
                 {/* Sign Out Button */}
                 <button
                   type="button"
@@ -260,6 +276,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
       <DownloadAppModal isOpen={isDownloadOpen} onClose={() => setIsDownloadOpen(false)} />
+      <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
     </>
   );
 };

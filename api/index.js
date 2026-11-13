@@ -22592,8 +22592,8 @@ var require_escape_html = __commonJS({
   "node_modules/escape-html/index.js"(exports2, module2) {
     "use strict";
     var matchHtmlRegExp = /["'&<>]/;
-    module2.exports = escapeHtml;
-    function escapeHtml(string4) {
+    module2.exports = escapeHtml2;
+    function escapeHtml2(string4) {
       var str = "" + string4;
       var match = matchHtmlRegExp.exec(str);
       if (!match) {
@@ -22718,13 +22718,13 @@ var require_finalhandler = __commonJS({
     "use strict";
     var debug = require_src()("finalhandler");
     var encodeUrl = require_encodeurl();
-    var escapeHtml = require_escape_html();
+    var escapeHtml2 = require_escape_html();
     var onFinished = require_on_finished();
     var parseUrl = require_parseurl();
     var statuses = require_statuses();
     var isFinished = onFinished.isFinished;
     function createHtmlDocument(message) {
-      var body = escapeHtml(message).replaceAll("\n", "<br>").replaceAll("  ", " &nbsp;");
+      var body = escapeHtml2(message).replaceAll("\n", "<br>").replaceAll("  ", " &nbsp;");
       return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>Error</title>\n</head>\n<body>\n<pre>' + body + "</pre>\n</body>\n</html>\n";
     }
     module2.exports = finalhandler;
@@ -22938,14 +22938,14 @@ var require_etag = __commonJS({
   "node_modules/etag/index.js"(exports2, module2) {
     "use strict";
     module2.exports = etag;
-    var crypto5 = require("crypto");
+    var crypto7 = require("crypto");
     var Stats = require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash3 = crypto5.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash3 = crypto7.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash3 + '"';
     }
@@ -45487,13 +45487,13 @@ var require_dist3 = __commonJS({
 // node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "node_modules/cookie-signature/index.js"(exports2) {
-    var crypto5 = require("crypto");
+    var crypto7 = require("crypto");
     exports2.sign = function(val, secret) {
       if ("string" != typeof val)
         throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret)
         throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto5.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto7.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports2.unsign = function(input2, secret) {
       if ("string" != typeof input2)
@@ -45501,7 +45501,7 @@ var require_cookie_signature = __commonJS({
       if (null == secret)
         throw new TypeError("Secret key must be provided.");
       var tentativeValue = input2.slice(0, input2.lastIndexOf(".")), expectedInput = exports2.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input2);
-      return expectedBuffer.length === inputBuffer.length && crypto5.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
+      return expectedBuffer.length === inputBuffer.length && crypto7.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
 });
@@ -55190,7 +55190,7 @@ var require_send = __commonJS({
     var createError = require_http_errors();
     var debug = require_src()("send");
     var encodeUrl = require_encodeurl();
-    var escapeHtml = require_escape_html();
+    var escapeHtml2 = require_escape_html();
     var etag = require_etag();
     var fresh = require_fresh();
     var fs4 = require("fs");
@@ -55243,7 +55243,7 @@ var require_send = __commonJS({
       }
       var res = this.res;
       var msg = statuses.message[status] || String(status);
-      var doc = createHtmlDocument("Error", escapeHtml(msg));
+      var doc = createHtmlDocument("Error", escapeHtml2(msg));
       clearHeaders(res);
       if (err && err.headers) {
         setHeaders(res, err.headers);
@@ -55343,7 +55343,7 @@ var require_send = __commonJS({
         return;
       }
       var loc = encodeUrl(collapseLeadingSlashes(this.path + "/"));
-      var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml(loc));
+      var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml2(loc));
       res.statusCode = 301;
       res.setHeader("Content-Type", "text/html; charset=UTF-8");
       res.setHeader("Content-Length", Buffer.byteLength(doc));
@@ -55757,7 +55757,7 @@ var require_response = __commonJS({
     var createError = require_http_errors();
     var deprecate = require_depd()("express");
     var encodeUrl = require_encodeurl();
-    var escapeHtml = require_escape_html();
+    var escapeHtml2 = require_escape_html();
     var http = require("node:http");
     var onFinished = require_on_finished();
     var mime = require_mime_types2();
@@ -56099,7 +56099,7 @@ var require_response = __commonJS({
           body = statuses.message[status] + ". Redirecting to " + address;
         },
         html: function() {
-          var u = escapeHtml(address);
+          var u = escapeHtml2(address);
           body = "<!DOCTYPE html><head><title>" + statuses.message[status] + "</title></head><body><p>" + statuses.message[status] + ". Redirecting to " + u + "</p></body>";
         },
         default: function() {
@@ -56235,7 +56235,7 @@ var require_serve_static = __commonJS({
   "node_modules/serve-static/index.js"(exports2, module2) {
     "use strict";
     var encodeUrl = require_encodeurl();
-    var escapeHtml = require_escape_html();
+    var escapeHtml2 = require_escape_html();
     var parseUrl = require_parseurl();
     var resolve = require("path").resolve;
     var send = require_send();
@@ -56321,7 +56321,7 @@ var require_serve_static = __commonJS({
         originalUrl.path = null;
         originalUrl.pathname = collapseLeadingSlashes(originalUrl.pathname + "/");
         var loc = encodeUrl(url2.format(originalUrl));
-        var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml(loc));
+        var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml2(loc));
         res.statusCode = 301;
         res.setHeader("Content-Type", "text/html; charset=UTF-8");
         res.setHeader("Content-Length", Buffer.byteLength(doc));
@@ -57490,23 +57490,23 @@ var require_helpers = __commonJS({
   "node_modules/ip-address/dist/v6/helpers.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.escapeHtml = escapeHtml;
+    exports2.escapeHtml = escapeHtml2;
     exports2.spanAllZeroes = spanAllZeroes;
     exports2.spanAll = spanAll;
     exports2.spanLeadingZeroes = spanLeadingZeroes;
     exports2.simpleGroup = simpleGroup;
-    function escapeHtml(s) {
+    function escapeHtml2(s) {
       return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     }
     function spanAllZeroes(s) {
-      return escapeHtml(s).replace(/(0+)/g, '<span class="zero">$1</span>');
+      return escapeHtml2(s).replace(/(0+)/g, '<span class="zero">$1</span>');
     }
     function spanAll(s, offset = 0) {
       const letters = s.split("");
-      return letters.map((n, i) => `<span class="digit value-${escapeHtml(n)} position-${i + offset}">${spanAllZeroes(n)}</span>`).join("");
+      return letters.map((n, i) => `<span class="digit value-${escapeHtml2(n)} position-${i + offset}">${spanAllZeroes(n)}</span>`).join("");
     }
     function spanLeadingZeroesSimple(group) {
-      return escapeHtml(group).replace(/^(0+)/, '<span class="zero">$1</span>');
+      return escapeHtml2(group).replace(/^(0+)/, '<span class="zero">$1</span>');
     }
     function spanLeadingZeroes(address) {
       const groups = address.split(":");
@@ -59760,14 +59760,14 @@ var require_buffer_equal_constant_time = __commonJS({
 var require_jwa = __commonJS({
   "node_modules/jwa/index.js"(exports2, module2) {
     var Buffer3 = require_safe_buffer().Buffer;
-    var crypto5 = require("crypto");
+    var crypto7 = require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
     var util = require("util");
     var MSG_INVALID_ALGORITHM = '"%s" is not a valid algorithm.\n  Supported algorithms are:\n  "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512" and "none".';
     var MSG_INVALID_SECRET = "secret must be a string or buffer";
     var MSG_INVALID_VERIFIER_KEY = "key must be a string or a buffer";
     var MSG_INVALID_SIGNER_KEY = "key must be a string, a buffer or an object";
-    var supportsKeyObjects = typeof crypto5.createPublicKey === "function";
+    var supportsKeyObjects = typeof crypto7.createPublicKey === "function";
     if (supportsKeyObjects) {
       MSG_INVALID_VERIFIER_KEY += " or a KeyObject";
       MSG_INVALID_SECRET += "or a KeyObject";
@@ -59857,17 +59857,17 @@ var require_jwa = __commonJS({
       return function sign(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
-        var hmac = crypto5.createHmac("sha" + bits, secret);
+        var hmac = crypto7.createHmac("sha" + bits, secret);
         var sig = (hmac.update(thing), hmac.digest("base64"));
         return fromBase64(sig);
       };
     }
     var bufferEqual;
-    var timingSafeEqual = "timingSafeEqual" in crypto5 ? function timingSafeEqual2(a, b) {
+    var timingSafeEqual = "timingSafeEqual" in crypto7 ? function timingSafeEqual2(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
-      return crypto5.timingSafeEqual(a, b);
+      return crypto7.timingSafeEqual(a, b);
     } : function timingSafeEqual2(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
@@ -59884,7 +59884,7 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto5.createSign("RSA-SHA" + bits);
+        var signer = crypto7.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign(privateKey, "base64"));
         return fromBase64(sig);
       };
@@ -59894,7 +59894,7 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto5.createVerify("RSA-SHA" + bits);
+        var verifier = crypto7.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify(publicKey, signature, "base64");
       };
@@ -59903,11 +59903,11 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto5.createSign("RSA-SHA" + bits);
+        var signer = crypto7.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign({
           key: privateKey,
-          padding: crypto5.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto5.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto7.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto7.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig);
       };
@@ -59917,12 +59917,12 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto5.createVerify("RSA-SHA" + bits);
+        var verifier = crypto7.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify({
           key: publicKey,
-          padding: crypto5.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto5.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto7.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto7.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
       };
     }
@@ -71389,6 +71389,26 @@ async function initializeMultiTenantSchema() {
       is_read INTEGER NOT NULL DEFAULT 0,
       metadata_json TEXT,
       created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+    );`,
+    // 31. Secure Password Reset Tokens & OTP Requests
+    `CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id TEXT PRIMARY KEY,
+      account_type TEXT NOT NULL DEFAULT 'SHOP_USER', -- 'SHOP_USER' | 'SUPER_ADMIN'
+      user_id TEXT NOT NULL,
+      shop_id TEXT,
+      username TEXT NOT NULL,
+      requested_identifier TEXT,
+      token_hash TEXT NOT NULL,
+      otp_hash TEXT NOT NULL,
+      encrypted_otp TEXT,
+      encrypted_token TEXT,
+      delivery_channel TEXT NOT NULL DEFAULT 'SUPPORT_QUEUE', -- 'EMAIL' | 'SUPPORT_QUEUE'
+      status TEXT NOT NULL DEFAULT 'PENDING', -- 'PENDING' | 'USED' | 'CANCELLED'
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      requested_ip TEXT,
+      created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
     );`
   ];
   for (const statement of ddlStatements) {
@@ -73232,7 +73252,7 @@ async function authenticateToken(req, res, next) {
       if (!isAllowedExemption) {
         res.status(403).json({
           success: false,
-          error: "Your shop subscription is frozen. Please contact platform support or renew your subscription.",
+          error: "Your shop subscription is frozen. Please contact vendor support or renew your subscription.",
           code: "SHOP_FROZEN"
         });
         return;
@@ -73387,10 +73407,13 @@ async function seedInitialPlatform() {
   }
   await client.execute({
     sql: `INSERT INTO vendor_admins (id, username, password_hash, full_name, email)
-          VALUES ('VND-ROOT-01', ?, ?, 'Platform Administrator', 'vendor@ktech.com')
+          VALUES ('VND-ROOT-01', ?, ?, 'K-Connect Super Admin', 'vendor@ktech.com')
           ON CONFLICT(id) DO UPDATE SET
             username = excluded.username,
-            password_hash = excluded.password_hash;`,
+            password_hash = CASE
+              WHEN vendor_admins.password_hash IS NULL OR vendor_admins.password_hash = '' THEN excluded.password_hash
+              ELSE vendor_admins.password_hash
+            END;`,
     args: [adminUsername, superAdminPasswordHash]
   });
   const oneYearFromNow = new Date(Date.now() + 365 * 24 * 60 * 60 * 1e3).toISOString();
@@ -73459,7 +73482,172 @@ async function seedInitialPlatform() {
 }
 
 // server/routes/auth.ts
+var import_node_crypto4 = __toESM(require("node:crypto"));
 var import_express = __toESM(require_express2());
+
+// server/security/passwordUtils.ts
+var import_node_crypto3 = __toESM(require("node:crypto"));
+function generateReadableTempPassword(length = 10) {
+  const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  const bytes = import_node_crypto3.default.randomBytes(length);
+  let out = "";
+  for (let i = 0; i < length; i++) {
+    out += charset[bytes[i] % charset.length];
+  }
+  return out;
+}
+function hashResetSecret(value) {
+  return import_node_crypto3.default.createHash("sha256").update(value.trim()).digest("hex");
+}
+function timingSafeEqualHex(a, b) {
+  const bufA = Buffer.from(a, "utf8");
+  const bufB = Buffer.from(b, "utf8");
+  if (bufA.length !== bufB.length)
+    return false;
+  return import_node_crypto3.default.timingSafeEqual(bufA, bufB);
+}
+function normalizePhoneDigits(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits)
+    return "";
+  return digits.length > 10 ? digits.slice(-10) : digits;
+}
+function resolvePublicAppUrl(req) {
+  const configured = process.env.PUBLIC_APP_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/+$/, "");
+  }
+  if (req) {
+    const originHeader = typeof req.headers?.origin === "string" ? req.headers.origin.trim() : "";
+    if (originHeader && /^https?:\/\//i.test(originHeader)) {
+      return originHeader.replace(/\/+$/, "");
+    }
+    const hostHeader = req.get?.("host")?.trim();
+    if (hostHeader) {
+      const protoHeader = typeof req.headers?.["x-forwarded-proto"] === "string" ? req.headers["x-forwarded-proto"].split(",")[0].trim() : req.protocol || "https";
+      return `${protoHeader}://${hostHeader}`.replace(/\/+$/, "");
+    }
+  }
+  return "https://ktech-service-management.vercel.app";
+}
+function buildResetUrl(baseUrl, token, accountType) {
+  const params = new URLSearchParams({ token });
+  if (accountType === "SUPER_ADMIN") {
+    params.set("mode", "superadmin");
+  }
+  return `${baseUrl.replace(/\/+$/, "")}/reset-password?${params.toString()}`;
+}
+
+// server/services/emailService.ts
+function escapeHtml(text2) {
+  return text2.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function maskEmailAddress(email3) {
+  if (!email3 || !email3.includes("@"))
+    return null;
+  const [local, domain2] = email3.trim().split("@");
+  if (!local || !domain2)
+    return null;
+  const prefix = local.slice(0, Math.min(2, local.length));
+  return `${prefix}${"*".repeat(Math.max(2, local.length - prefix.length))}@${domain2}`;
+}
+function isEmailDeliveryConfigured() {
+  return Boolean(
+    process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() || process.env.RESET_EMAIL_WEBHOOK_URL && process.env.RESET_EMAIL_WEBHOOK_URL.trim()
+  );
+}
+async function sendPasswordResetEmail(payload) {
+  const fromEmail = (process.env.RESEND_FROM_EMAIL || "K-Connect Repair Laboratory <noreply@kconnect.cloud>").trim();
+  const safeName = escapeHtml(payload.recipientName);
+  const safeUsername = escapeHtml(payload.username);
+  const safeShopInfo = payload.shopSlug ? `${escapeHtml(payload.shopName || payload.shopSlug)} (Shop ID: @${escapeHtml(payload.shopSlug)})` : "K-Connect Super-Admin";
+  const safeUrl = escapeHtml(payload.resetUrl);
+  const safeOtp = escapeHtml(payload.otp);
+  const subject = `K-Connect Password Reset Code: ${payload.otp}`;
+  const textBody = [
+    `Hello ${payload.recipientName},`,
+    "",
+    `A password reset was requested for your K-Connect Repair Laboratory account:`,
+    `Workspace: ${payload.shopSlug ? `${payload.shopName || payload.shopSlug} (@${payload.shopSlug})` : "Super-Admin"}`,
+    `Username: @${payload.username}`,
+    `One-Time Reset Code (OTP): ${payload.otp}`,
+    `Direct Reset Link: ${payload.resetUrl}`,
+    "",
+    `This code expires in ${payload.expiresInMinutes} minutes. If you did not request this, you can safely ignore this message.`
+  ].join("\n");
+  const htmlBody = `
+    <div style="font-family:Inter,Segoe UI,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#111827;color:#f3f4f6;border-radius:14px;border:1px solid #374151;">
+      <div style="font-size:18px;font-weight:800;color:#10a37f;margin-bottom:8px;">K-Connect Repair Laboratory</div>
+      <h2 style="font-size:20px;margin:0 0 12px;color:#ffffff;">Reset Your Account Password</h2>
+      <p style="font-size:14px;line-height:1.6;color:#d1d5db;margin:0 0 16px;">
+        Hello ${safeName}, we received a request to reset the password for <strong>${safeShopInfo}</strong> (username: <strong>@${safeUsername}</strong>).
+      </p>
+      <div style="background:#1f2937;border:1px solid #374151;border-radius:10px;padding:16px;text-align:center;margin-bottom:18px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:#9ca3af;margin-bottom:6px;">6-Digit Verification Code</div>
+        <div style="font-size:28px;font-weight:800;letter-spacing:6px;color:#34d399;font-family:monospace;">${safeOtp}</div>
+      </div>
+      <a href="${safeUrl}" style="display:inline-block;padding:12px 22px;background:#10a37f;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;font-size:14px;">
+        Reset Password Now
+      </a>
+      <p style="font-size:12px;color:#9ca3af;margin:18px 0 0;line-height:1.5;">
+        Valid for ${payload.expiresInMinutes} minutes. Or paste this link into your browser:<br />
+        <span style="color:#6ee7b7;word-break:break-all;">${safeUrl}</span>
+      </p>
+    </div>
+  `;
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  if (resendApiKey) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [payload.to],
+          subject,
+          text: textBody,
+          html: htmlBody
+        })
+      });
+      if (response.ok) {
+        return { delivered: true, provider: "RESEND" };
+      }
+      const errBody = await response.text().catch(() => "");
+      return { delivered: false, provider: "RESEND", error: `Resend HTTP ${response.status}: ${errBody}` };
+    } catch (err) {
+      return { delivered: false, provider: "RESEND", error: err.message };
+    }
+  }
+  const webhookUrl = process.env.RESET_EMAIL_WEBHOOK_URL?.trim();
+  if (webhookUrl) {
+    try {
+      const headers = { "Content-Type": "application/json" };
+      if (process.env.RESET_EMAIL_WEBHOOK_TOKEN?.trim()) {
+        headers["Authorization"] = `Bearer ${process.env.RESET_EMAIL_WEBHOOK_TOKEN.trim()}`;
+      }
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          ...payload,
+          subject,
+          text: textBody,
+          html: htmlBody
+        })
+      });
+      if (response.ok) {
+        return { delivered: true, provider: "WEBHOOK" };
+      }
+      return { delivered: false, provider: "WEBHOOK", error: `Webhook HTTP ${response.status}` };
+    } catch (err) {
+      return { delivered: false, provider: "WEBHOOK", error: err.message };
+    }
+  }
+  return { delivered: false, error: "Email delivery provider is not configured." };
+}
 
 // server/middleware/validate.ts
 function validateBody(schema) {
@@ -93339,9 +93527,54 @@ var provisionShopSchema = external_exports.object({
   ownerPassword: external_exports.string().min(6, "Password must be at least 6 characters").optional(),
   ownerPin: external_exports.string().optional()
 });
+var forgotPasswordSchema = external_exports.object({
+  mode: external_exports.enum(["SHOP_USER", "SUPER_ADMIN"]).optional().default("SHOP_USER"),
+  shopSlug: external_exports.string().trim().optional(),
+  username: external_exports.string().trim().optional(),
+  contact: external_exports.string().trim().optional()
+}).refine(
+  (data) => Boolean(data.shopSlug && (data.username || data.contact) || data.contact || data.username),
+  { message: "Please enter your Shop ID and username, or your registered phone or email." }
+);
+var verifyResetSchema = external_exports.object({
+  token: external_exports.string().trim().min(16).optional(),
+  mode: external_exports.enum(["SHOP_USER", "SUPER_ADMIN"]).optional().default("SHOP_USER"),
+  shopSlug: external_exports.string().trim().optional(),
+  username: external_exports.string().trim().optional(),
+  contact: external_exports.string().trim().optional(),
+  otp: external_exports.string().trim().regex(/^\d{6}$/, "Verification code must be 6 digits").optional()
+}).refine(
+  (data) => Boolean(data.token || data.otp),
+  { message: "Reset token or 6-digit verification code is required." }
+);
+var resetPasswordSchema = external_exports.object({
+  token: external_exports.string().trim().min(16).optional(),
+  mode: external_exports.enum(["SHOP_USER", "SUPER_ADMIN"]).optional().default("SHOP_USER"),
+  shopSlug: external_exports.string().trim().optional(),
+  username: external_exports.string().trim().optional(),
+  contact: external_exports.string().trim().optional(),
+  otp: external_exports.string().trim().regex(/^\d{6}$/, "Verification code must be 6 digits").optional(),
+  recoveryKey: external_exports.string().trim().min(8).optional(),
+  newPassword: external_exports.string().min(6, "New password must be at least 6 characters long").max(128),
+  newPin: external_exports.string().regex(/^\d{4,6}$/, "Quick PIN must be 4 to 6 numeric digits").optional()
+}).refine(
+  (data) => Boolean(data.token || data.otp || data.recoveryKey),
+  { message: "A valid reset link token, 6-digit verification code, or recovery key is required." }
+);
+var changePasswordSchema = external_exports.object({
+  currentPassword: external_exports.string().min(1, "Current password is required"),
+  newPassword: external_exports.string().min(6, "New password must be at least 6 characters long").max(128),
+  newPin: external_exports.string().regex(/^\d{4,6}$/, "Quick PIN must be 4 to 6 numeric digits").optional()
+});
+var ownerResetStaffSchema = external_exports.object({
+  newPassword: external_exports.string().min(6, "Password must be at least 6 characters long").max(128).optional(),
+  newPin: external_exports.string().regex(/^\d{4,6}$/, "Quick PIN must be 4 to 6 numeric digits").optional()
+});
 
 // server/routes/auth.ts
 var authRouter = (0, import_express.Router)();
+var RESET_TTL_MINUTES = 15;
+var MAX_RESET_ATTEMPTS = 5;
 authRouter.post("/login", validateBody(loginSchema), async (req, res) => {
   try {
     const { shopSlug, username, password, isSuperAdmin } = req.body;
@@ -93633,9 +93866,666 @@ authRouter.post("/users", authenticateToken, validateBody(createUserSchema), asy
 authRouter.post("/logout", authenticateToken, (_req, res) => {
   res.json({ success: true, message: "Logged out successfully." });
 });
+async function getVendorSupportPhone() {
+  try {
+    const client = getClient();
+    const res = await client.execute({
+      sql: `SELECT value FROM saas_platform_settings WHERE key IN ('support_phone', 'support_whatsapp', 'vendor_phone') LIMIT 1`,
+      args: []
+    });
+    if (res.rows.length > 0 && res.rows[0].value) {
+      return String(res.rows[0].value);
+    }
+  } catch {
+  }
+  return null;
+}
+async function findShopUserForReset(params) {
+  const client = getClient();
+  const cleanSlug = params.shopSlug?.trim().toLowerCase() || "";
+  const cleanUsername = params.username?.trim().toLowerCase() || "";
+  const cleanContact = params.contact?.trim() || "";
+  const isEmailContact = cleanContact.includes("@");
+  const contactDigits = isEmailContact ? "" : normalizePhoneDigits(cleanContact);
+  const mapRow = (r) => ({
+    id: String(r.id),
+    shopId: String(r.shop_id),
+    shopName: String(r.shop_name),
+    shopSlug: String(r.shop_slug),
+    shopPhone: r.shop_phone ? String(r.shop_phone) : null,
+    shopEmail: r.shop_email ? String(r.shop_email) : null,
+    username: String(r.username),
+    fullName: String(r.full_name),
+    roleId: String(r.role_id),
+    phone: r.phone ? String(r.phone) : null
+  });
+  const baseSelect = `
+    SELECT u.id, u.shop_id, u.username, u.full_name, u.role_id, u.phone,
+           s.name AS shop_name, s.slug AS shop_slug, s.phone AS shop_phone, s.email AS shop_email
+    FROM users u
+    INNER JOIN shops s ON s.id = u.shop_id
+    WHERE u.is_active = 1
+  `;
+  if (cleanSlug && cleanUsername) {
+    const res = await client.execute({
+      sql: `${baseSelect} AND LOWER(s.slug) = ? AND LOWER(u.username) = ? LIMIT 1`,
+      args: [cleanSlug, cleanUsername]
+    });
+    if (res.rows.length > 0) {
+      return { status: "FOUND", user: mapRow(res.rows[0]) };
+    }
+    return { status: "NOT_FOUND" };
+  }
+  const candidatesRes = cleanSlug ? await client.execute({ sql: `${baseSelect} AND LOWER(s.slug) = ?`, args: [cleanSlug] }) : await client.execute({ sql: baseSelect, args: [] });
+  const allCandidates = candidatesRes.rows.map((row) => mapRow(row));
+  if (cleanContact) {
+    const matched = allCandidates.filter((u) => {
+      if (cleanUsername && u.username.toLowerCase() !== cleanUsername)
+        return false;
+      if (isEmailContact) {
+        return u.roleId === "ROLE_OWNER" && (u.shopEmail || "").trim().toLowerCase() === cleanContact.toLowerCase();
+      }
+      if (!contactDigits)
+        return false;
+      const userDigits = normalizePhoneDigits(u.phone);
+      const shopDigits = normalizePhoneDigits(u.shopPhone);
+      return userDigits === contactDigits || u.roleId === "ROLE_OWNER" && shopDigits === contactDigits;
+    });
+    if (matched.length === 0)
+      return { status: "NOT_FOUND" };
+    if (matched.length === 1)
+      return { status: "FOUND", user: matched[0] };
+    return {
+      status: "AMBIGUOUS",
+      message: "Multiple accounts match this contact detail. Please enter your Shop ID (slug) or username to select the exact account."
+    };
+  }
+  if (cleanUsername) {
+    const matched = allCandidates.filter((u) => u.username.toLowerCase() === cleanUsername);
+    if (matched.length === 0)
+      return { status: "NOT_FOUND" };
+    if (matched.length === 1)
+      return { status: "FOUND", user: matched[0] };
+    return {
+      status: "AMBIGUOUS",
+      message: "Multiple shops use this username. Please include your Shop ID (slug) or registered phone/email."
+    };
+  }
+  return { status: "NOT_FOUND" };
+}
+function getClientIp(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  return req.ip || raw || "127.0.0.1";
+}
+async function applyUserPasswordUpdate(params) {
+  const client = getClient();
+  const passwordHash = hashPassword(params.newPassword);
+  if (params.accountType === "SUPER_ADMIN") {
+    await client.execute({
+      sql: `UPDATE vendor_admins SET password_hash = ? WHERE id = ?`,
+      args: [passwordHash, params.userId]
+    });
+    await client.execute({
+      sql: `INSERT INTO saas_admin_audit_logs (id, admin_id, action, target_entity_type, target_entity_id, details_json, ip_address)
+            VALUES (?, ?, ?, 'VENDOR_ADMIN', ?, ?, ?)`,
+      args: [
+        `audit_${Date.now()}_${import_node_crypto4.default.randomBytes(3).toString("hex")}`,
+        params.actorId,
+        params.auditAction,
+        params.userId,
+        JSON.stringify({ updatedAt: (/* @__PURE__ */ new Date()).toISOString() }),
+        params.ipAddress
+      ]
+    });
+    return;
+  }
+  if (!params.shopId) {
+    throw new Error("Shop context missing for user password update.");
+  }
+  const recoveryCipher = encryptSecret(params.newPassword);
+  if (params.newPin) {
+    await client.execute({
+      sql: `UPDATE users SET password_hash = ?, encrypted_recovery_password = ?, pin_code = ?, is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND shop_id = ?`,
+      args: [passwordHash, recoveryCipher, params.newPin, params.userId, params.shopId]
+    });
+  } else {
+    await client.execute({
+      sql: `UPDATE users SET password_hash = ?, encrypted_recovery_password = ?, is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND shop_id = ?`,
+      args: [passwordHash, recoveryCipher, params.userId, params.shopId]
+    });
+  }
+  await client.execute({
+    sql: `INSERT INTO audit_logs (id, shop_id, user_id, action, entity_type, entity_id, after_state, ip_address)
+          VALUES (?, ?, ?, ?, 'USER', ?, ?, ?)`,
+    args: [
+      `audit_${Date.now()}_${import_node_crypto4.default.randomBytes(3).toString("hex")}`,
+      params.shopId,
+      params.actorId,
+      params.auditAction,
+      params.userId,
+      JSON.stringify({ pinUpdated: Boolean(params.newPin) }),
+      params.ipAddress
+    ]
+  });
+}
+async function resolveResetTargetAccount(input2) {
+  const client = getClient();
+  if (input2.mode === "SUPER_ADMIN") {
+    const cleanUser = (input2.username || "").trim().toLowerCase();
+    const cleanContact = (input2.contact || "").trim().toLowerCase();
+    const adminRes = cleanUser || cleanContact ? await client.execute({
+      sql: `SELECT id, username, full_name, email FROM vendor_admins
+                WHERE (? != '' AND LOWER(username) = ?)
+                   OR (? != '' AND email IS NOT NULL AND LOWER(email) = ?)
+                LIMIT 1`,
+      args: [cleanUser, cleanUser, cleanContact, cleanContact]
+    }) : await client.execute({
+      sql: `SELECT id, username, full_name, email FROM vendor_admins ORDER BY created_at ASC LIMIT 1`,
+      args: []
+    });
+    if (adminRes.rows.length === 0)
+      return { status: "NOT_FOUND" };
+    const row = adminRes.rows[0];
+    return {
+      status: "FOUND",
+      accountType: "SUPER_ADMIN",
+      admin: {
+        id: String(row.id),
+        username: String(row.username),
+        fullName: String(row.full_name),
+        email: row.email ? String(row.email) : null
+      }
+    };
+  }
+  const lookup = await findShopUserForReset({
+    shopSlug: input2.shopSlug,
+    username: input2.username,
+    contact: input2.contact
+  });
+  if (lookup.status === "FOUND") {
+    return { status: "FOUND", accountType: "SHOP_USER", user: lookup.user };
+  }
+  return lookup;
+}
+authRouter.post("/forgot-password", validateBody(forgotPasswordSchema), async (req, res) => {
+  try {
+    const client = getClient();
+    const { mode = "SHOP_USER", shopSlug, username, contact } = req.body;
+    const ipAddress = getClientIp(req);
+    const supportPhone = await getVendorSupportPhone();
+    const target = await resolveResetTargetAccount({ mode, shopSlug, username, contact });
+    if (target.status === "AMBIGUOUS") {
+      res.status(400).json({ success: false, error: target.message });
+      return;
+    }
+    if (target.status === "NOT_FOUND") {
+      if (mode === "SUPER_ADMIN") {
+        res.json({
+          success: true,
+          data: {
+            requestSubmitted: true,
+            deliveryChannel: "SUPPORT_QUEUE",
+            maskedEmail: null,
+            supportPhone,
+            recoveryKeyAvailable: Boolean(process.env.SUPERADMIN_RECOVERY_KEY && process.env.SUPERADMIN_RECOVERY_KEY.trim().length >= 8),
+            expiresInMinutes: RESET_TTL_MINUTES
+          },
+          message: "If a matching Super-Admin account exists, recovery instructions have been prepared."
+        });
+        return;
+      }
+      res.status(404).json({
+        success: false,
+        error: "No active shop user matched that Shop ID, username, or contact detail. Check your details or contact K-Connect support."
+      });
+      return;
+    }
+    const accountType = target.accountType;
+    const userId = accountType === "SUPER_ADMIN" ? target.admin.id : target.user.id;
+    const shopId = accountType === "SUPER_ADMIN" ? null : target.user.shopId;
+    const accountUsername = accountType === "SUPER_ADMIN" ? target.admin.username : target.user.username;
+    const recipientName = accountType === "SUPER_ADMIN" ? target.admin.fullName : target.user.fullName;
+    const targetEmail = accountType === "SUPER_ADMIN" ? target.admin.email : target.user.roleId === "ROLE_OWNER" ? target.user.shopEmail : null;
+    await client.execute({
+      sql: `UPDATE password_reset_tokens SET status = 'CANCELLED' WHERE account_type = ? AND user_id = ? AND status = 'PENDING'`,
+      args: [accountType, userId]
+    });
+    const otp = import_node_crypto4.default.randomInt(1e5, 1e6).toString();
+    const rawToken = import_node_crypto4.default.randomBytes(32).toString("hex");
+    const otpHash = hashResetSecret(otp);
+    const tokenHash = hashResetSecret(rawToken);
+    const encryptedOtp = encryptSecret(otp);
+    const encryptedToken = encryptSecret(rawToken);
+    const expiresAt = new Date(Date.now() + RESET_TTL_MINUTES * 60 * 1e3).toISOString();
+    const resetId = `prt_${Date.now()}_${import_node_crypto4.default.randomBytes(4).toString("hex")}`;
+    const publicBase = resolvePublicAppUrl(req);
+    const resetUrl = buildResetUrl(publicBase, rawToken, accountType);
+    let deliveryChannel = "SUPPORT_QUEUE";
+    if (targetEmail && isEmailDeliveryConfigured()) {
+      const emailRes = await sendPasswordResetEmail({
+        to: targetEmail,
+        recipientName,
+        username: accountUsername,
+        shopName: accountType === "SHOP_USER" ? target.user.shopName : void 0,
+        shopSlug: accountType === "SHOP_USER" ? target.user.shopSlug : void 0,
+        otp,
+        resetUrl,
+        expiresInMinutes: RESET_TTL_MINUTES
+      });
+      if (emailRes.delivered) {
+        deliveryChannel = "EMAIL";
+      }
+    }
+    const identifierUsed = [shopSlug, username, contact].filter(Boolean).join(" / ") || accountUsername;
+    await client.execute({
+      sql: `
+        INSERT INTO password_reset_tokens (
+          id, account_type, user_id, shop_id, username, requested_identifier,
+          token_hash, otp_hash, encrypted_otp, encrypted_token,
+          delivery_channel, status, expires_at, attempts, requested_ip
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, 0, ?)
+      `,
+      args: [
+        resetId,
+        accountType,
+        userId,
+        shopId,
+        accountUsername,
+        identifierUsed,
+        tokenHash,
+        otpHash,
+        encryptedOtp,
+        encryptedToken,
+        deliveryChannel,
+        expiresAt,
+        ipAddress
+      ]
+    });
+    if (accountType === "SHOP_USER") {
+      await client.execute({
+        sql: `
+          INSERT INTO saas_notifications (id, recipient_type, recipient_id, channel, title, message, metadata_json)
+          VALUES (?, 'VENDOR_ADMIN', 'VND-ROOT-01', 'IN_APP', ?, ?, ?)
+        `,
+        args: [
+          `notif_rst_${Date.now()}_${import_node_crypto4.default.randomBytes(2).toString("hex")}`,
+          `Password Reset Requested: ${target.user.shopName}`,
+          `User "${accountUsername}" (@${target.user.shopSlug}) requested a password reset. Open Shop Logins -> Pending Reset Requests to view or share the 6-digit code.`,
+          JSON.stringify({ resetId, shopId, userId, username: accountUsername })
+        ]
+      });
+    } else {
+      await client.execute({
+        sql: `INSERT INTO saas_admin_audit_logs (id, admin_id, action, target_entity_type, target_entity_id, details_json, ip_address)
+              VALUES (?, ?, 'SUPERADMIN_RESET_REQUESTED', 'VENDOR_ADMIN', ?, ?, ?)`,
+        args: [
+          `audit_${Date.now()}_${import_node_crypto4.default.randomBytes(3).toString("hex")}`,
+          userId,
+          userId,
+          JSON.stringify({ deliveryChannel }),
+          ipAddress
+        ]
+      });
+    }
+    const maskedEmail = maskEmailAddress(targetEmail);
+    res.json({
+      success: true,
+      data: {
+        requestSubmitted: true,
+        deliveryChannel,
+        maskedEmail,
+        supportPhone,
+        recoveryKeyAvailable: accountType === "SUPER_ADMIN" ? Boolean(process.env.SUPERADMIN_RECOVERY_KEY && process.env.SUPERADMIN_RECOVERY_KEY.trim().length >= 8) : false,
+        expiresInMinutes: RESET_TTL_MINUTES
+      },
+      message: deliveryChannel === "EMAIL" && maskedEmail ? `A 6-digit verification code and direct reset link were sent to ${maskedEmail}.` : accountType === "SHOP_USER" ? target.user.roleId === "ROLE_OWNER" ? "Reset request created! Contact your K-Connect support admin to receive your 6-digit reset code or link." : "Reset request created! Ask your Shop Owner (Settings -> Staff) or K-Connect support for your 6-digit reset code or link." : "Super-Admin reset request recorded. Check the configured email or enter your emergency SUPERADMIN_RECOVERY_KEY."
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+async function locatePendingResetRow(input2) {
+  const client = getClient();
+  if (input2.token) {
+    const tHash = hashResetSecret(input2.token);
+    const res2 = await client.execute({
+      sql: `
+        SELECT prt.*, s.name AS shop_name, s.slug AS shop_slug
+        FROM password_reset_tokens prt
+        LEFT JOIN shops s ON s.id = prt.shop_id
+        WHERE prt.token_hash = ? AND prt.status = 'PENDING'
+        LIMIT 1
+      `,
+      args: [tHash]
+    });
+    if (res2.rows.length === 0) {
+      return { error: { status: 400, message: "This password reset link is invalid or has already been used." } };
+    }
+    const row2 = res2.rows[0];
+    const rowId2 = String(row2.id);
+    if (new Date(String(row2.expires_at)).getTime() <= Date.now()) {
+      await client.execute({ sql: `UPDATE password_reset_tokens SET status = 'CANCELLED' WHERE id = ?`, args: [rowId2] });
+      return { error: { status: 400, message: "This password reset link has expired. Please request a new one." } };
+    }
+    return { row: row2 };
+  }
+  const target = await resolveResetTargetAccount({
+    mode: input2.mode,
+    shopSlug: input2.shopSlug,
+    username: input2.username,
+    contact: input2.contact
+  });
+  if (target.status === "AMBIGUOUS") {
+    return { error: { status: 400, message: target.message } };
+  }
+  if (target.status === "NOT_FOUND") {
+    return { error: { status: 400, message: "No active pending password reset request found for this account." } };
+  }
+  const targetUserId = target.accountType === "SUPER_ADMIN" ? target.admin.id : target.user.id;
+  const res = await client.execute({
+    sql: `
+      SELECT prt.*, s.name AS shop_name, s.slug AS shop_slug
+      FROM password_reset_tokens prt
+      LEFT JOIN shops s ON s.id = prt.shop_id
+      WHERE prt.account_type = ? AND prt.user_id = ? AND prt.status = 'PENDING'
+      ORDER BY prt.created_at DESC
+      LIMIT 1
+    `,
+    args: [target.accountType, targetUserId]
+  });
+  if (res.rows.length === 0) {
+    return { error: { status: 400, message: "No active reset request found. Please request a new verification code first." } };
+  }
+  const row = res.rows[0];
+  const rowId = String(row.id);
+  if (new Date(String(row.expires_at)).getTime() <= Date.now()) {
+    await client.execute({ sql: `UPDATE password_reset_tokens SET status = 'CANCELLED' WHERE id = ?`, args: [rowId] });
+    return { error: { status: 400, message: "Your 6-digit verification code has expired. Please request a new code." } };
+  }
+  const attempts = Number(row.attempts || 0);
+  if (attempts >= MAX_RESET_ATTEMPTS) {
+    await client.execute({ sql: `UPDATE password_reset_tokens SET status = 'CANCELLED' WHERE id = ?`, args: [rowId] });
+    return { error: { status: 429, message: "Too many invalid verification attempts. Please request a new reset code." } };
+  }
+  const suppliedOtpHash = hashResetSecret(input2.otp || "");
+  if (!timingSafeEqualHex(suppliedOtpHash, String(row.otp_hash))) {
+    const nextAttempts = attempts + 1;
+    if (nextAttempts >= MAX_RESET_ATTEMPTS) {
+      await client.execute({
+        sql: `UPDATE password_reset_tokens SET attempts = ?, status = 'CANCELLED' WHERE id = ?`,
+        args: [nextAttempts, rowId]
+      });
+      return { error: { status: 429, message: "Verification code locked after 5 failed attempts. Please request a new code." } };
+    }
+    await client.execute({
+      sql: `UPDATE password_reset_tokens SET attempts = ? WHERE id = ?`,
+      args: [nextAttempts, rowId]
+    });
+    const remaining = MAX_RESET_ATTEMPTS - nextAttempts;
+    return { error: { status: 400, message: `Invalid 6-digit verification code. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.` } };
+  }
+  return { row };
+}
+authRouter.post("/reset-password/verify", validateBody(verifyResetSchema), async (req, res) => {
+  try {
+    const located = await locatePendingResetRow(req.body);
+    if (located.error || !located.row) {
+      res.status(located.error?.status || 400).json({ success: false, error: located.error?.message || "Invalid reset request." });
+      return;
+    }
+    const row = located.row;
+    res.json({
+      success: true,
+      data: {
+        valid: true,
+        accountType: String(row.account_type),
+        username: String(row.username),
+        shopName: row.shop_name ? String(row.shop_name) : null,
+        shopSlug: row.shop_slug ? String(row.shop_slug) : null,
+        expiresAt: String(row.expires_at)
+      }
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+authRouter.post("/reset-password", validateBody(resetPasswordSchema), async (req, res) => {
+  try {
+    const client = getClient();
+    const ipAddress = getClientIp(req);
+    const { recoveryKey, newPassword, newPin, mode, shopSlug, username, contact, token, otp } = req.body;
+    if (recoveryKey) {
+      if (mode !== "SUPER_ADMIN") {
+        res.status(400).json({ success: false, error: "Emergency recovery key is only valid for Super-Admin recovery." });
+        return;
+      }
+      const envKey = process.env.SUPERADMIN_RECOVERY_KEY?.trim() || "";
+      if (!envKey || envKey.length < 8) {
+        res.status(400).json({ success: false, error: "Super-Admin emergency recovery key is not configured on this server." });
+        return;
+      }
+      if (!timingSafeEqualHex(hashResetSecret(recoveryKey), hashResetSecret(envKey))) {
+        res.status(401).json({ success: false, error: "Invalid Super-Admin recovery key." });
+        return;
+      }
+      const target = await resolveResetTargetAccount({ mode: "SUPER_ADMIN", username, contact });
+      if (target.status !== "FOUND" || target.accountType !== "SUPER_ADMIN") {
+        res.status(404).json({ success: false, error: "Super-Admin account not found." });
+        return;
+      }
+      await applyUserPasswordUpdate({
+        accountType: "SUPER_ADMIN",
+        userId: target.admin.id,
+        newPassword,
+        actorId: target.admin.id,
+        auditAction: "SUPERADMIN_PASSWORD_RESET_BY_RECOVERY_KEY",
+        ipAddress
+      });
+      res.json({
+        success: true,
+        data: { accountType: "SUPER_ADMIN", username: target.admin.username },
+        message: "Super-Admin password updated successfully. You can now sign in with your new password."
+      });
+      return;
+    }
+    const located = await locatePendingResetRow({ token, otp, mode, shopSlug, username, contact });
+    if (located.error || !located.row) {
+      res.status(located.error?.status || 400).json({ success: false, error: located.error?.message || "Invalid or expired reset code." });
+      return;
+    }
+    const row = located.row;
+    const accountType = String(row.account_type) === "SUPER_ADMIN" ? "SUPER_ADMIN" : "SHOP_USER";
+    const userId = String(row.user_id);
+    const shopId = row.shop_id ? String(row.shop_id) : null;
+    await applyUserPasswordUpdate({
+      accountType,
+      userId,
+      shopId,
+      newPassword,
+      newPin: accountType === "SHOP_USER" ? newPin : void 0,
+      actorId: userId,
+      auditAction: accountType === "SUPER_ADMIN" ? "SUPERADMIN_PASSWORD_RESET" : "PASSWORD_RESET_COMPLETED",
+      ipAddress
+    });
+    await client.execute({
+      sql: `UPDATE password_reset_tokens SET status = 'USED', used_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      args: [String(row.id)]
+    });
+    res.json({
+      success: true,
+      data: {
+        accountType,
+        username: String(row.username),
+        shopSlug: row.shop_slug ? String(row.shop_slug) : null
+      },
+      message: "Your password has been reset successfully. You can now sign in."
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+authRouter.put("/change-password", authenticateToken, validateBody(changePasswordSchema), async (req, res) => {
+  try {
+    const client = getClient();
+    const { currentPassword, newPassword, newPin } = req.body;
+    const ipAddress = getClientIp(req);
+    if (req.user.isSuperAdmin) {
+      const adminRes = await client.execute({
+        sql: `SELECT id, password_hash FROM vendor_admins WHERE id = ? LIMIT 1`,
+        args: [req.user.userId]
+      });
+      if (adminRes.rows.length === 0) {
+        res.status(404).json({ success: false, error: "Admin account not found." });
+        return;
+      }
+      if (!verifyPassword(currentPassword, String(adminRes.rows[0].password_hash))) {
+        res.status(401).json({ success: false, error: "Current password is incorrect." });
+        return;
+      }
+      await applyUserPasswordUpdate({
+        accountType: "SUPER_ADMIN",
+        userId: req.user.userId,
+        newPassword,
+        actorId: req.user.userId,
+        auditAction: "SUPERADMIN_PASSWORD_CHANGED",
+        ipAddress
+      });
+      res.json({ success: true, message: "Super-Admin password updated successfully." });
+      return;
+    }
+    if (!req.user.shopId) {
+      res.status(403).json({ success: false, error: "Shop workspace context required." });
+      return;
+    }
+    const userRes = await client.execute({
+      sql: `SELECT id, password_hash FROM users WHERE id = ? AND shop_id = ? LIMIT 1`,
+      args: [req.user.userId, req.user.shopId]
+    });
+    if (userRes.rows.length === 0) {
+      res.status(404).json({ success: false, error: "User account not found." });
+      return;
+    }
+    if (!verifyPassword(currentPassword, String(userRes.rows[0].password_hash))) {
+      res.status(401).json({ success: false, error: "Current password is incorrect." });
+      return;
+    }
+    await applyUserPasswordUpdate({
+      accountType: "SHOP_USER",
+      userId: req.user.userId,
+      shopId: req.user.shopId,
+      newPassword,
+      newPin,
+      actorId: req.user.userId,
+      auditAction: "PASSWORD_CHANGED_SELF",
+      ipAddress
+    });
+    res.json({ success: true, message: "Your password has been updated successfully." });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+authRouter.get("/password-reset-requests", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.roleId !== "ROLE_OWNER" || !req.user.shopId) {
+      res.status(403).json({ success: false, error: "Only the Shop Owner can view staff password reset requests." });
+      return;
+    }
+    const client = getClient();
+    const publicBase = resolvePublicAppUrl(req);
+    const result = await client.execute({
+      sql: `
+        SELECT prt.id, prt.user_id, prt.username, prt.encrypted_otp, prt.encrypted_token,
+               prt.delivery_channel, prt.expires_at, prt.created_at,
+               u.full_name, u.role_id, u.phone
+        FROM password_reset_tokens prt
+        INNER JOIN users u ON u.id = prt.user_id AND u.shop_id = prt.shop_id
+        WHERE prt.account_type = 'SHOP_USER'
+          AND prt.shop_id = ?
+          AND prt.status = 'PENDING'
+          AND datetime(prt.expires_at) > datetime('now')
+        ORDER BY prt.created_at DESC
+        LIMIT 25
+      `,
+      args: [req.user.shopId]
+    });
+    const data = result.rows.map((row) => {
+      const r = row;
+      const otp = r.encrypted_otp ? decryptSecret(String(r.encrypted_otp)) : "";
+      const rawToken = r.encrypted_token ? decryptSecret(String(r.encrypted_token)) : "";
+      return {
+        id: String(r.id),
+        userId: String(r.user_id),
+        username: String(r.username),
+        fullName: String(r.full_name || r.username),
+        roleId: String(r.role_id),
+        phone: r.phone ? String(r.phone) : null,
+        otp,
+        resetUrl: rawToken ? buildResetUrl(publicBase, rawToken, "SHOP_USER") : "",
+        deliveryChannel: String(r.delivery_channel || "SUPPORT_QUEUE"),
+        expiresAt: String(r.expires_at),
+        createdAt: String(r.created_at)
+      };
+    });
+    res.json({ success: true, data });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+authRouter.post("/users/:userId/reset-password", authenticateToken, validateBody(ownerResetStaffSchema), async (req, res) => {
+  try {
+    if (req.user.roleId !== "ROLE_OWNER" || !req.user.shopId) {
+      res.status(403).json({ success: false, error: "Only the Shop Owner can reset staff passwords." });
+      return;
+    }
+    const client = getClient();
+    const { userId } = req.params;
+    const { newPassword, newPin } = req.body;
+    const ipAddress = getClientIp(req);
+    const targetRes = await client.execute({
+      sql: `SELECT id, username, full_name, role_id, phone, pin_code FROM users WHERE id = ? AND shop_id = ? LIMIT 1`,
+      args: [String(userId), req.user.shopId]
+    });
+    if (targetRes.rows.length === 0) {
+      res.status(404).json({ success: false, error: "User not found in your shop." });
+      return;
+    }
+    const target = targetRes.rows[0];
+    const tempPassword = newPassword && newPassword.trim() || generateReadableTempPassword(10);
+    const nextPin = newPin && newPin.trim() || (target.pin_code ? String(target.pin_code) : void 0);
+    await applyUserPasswordUpdate({
+      accountType: "SHOP_USER",
+      userId: String(target.id),
+      shopId: req.user.shopId,
+      newPassword: tempPassword,
+      newPin: nextPin,
+      actorId: req.user.userId,
+      auditAction: "OWNER_RESET_USER_PASSWORD",
+      ipAddress
+    });
+    await client.execute({
+      sql: `UPDATE password_reset_tokens SET status = 'CANCELLED' WHERE account_type = 'SHOP_USER' AND user_id = ? AND shop_id = ? AND status = 'PENDING'`,
+      args: [String(target.id), req.user.shopId]
+    });
+    res.json({
+      success: true,
+      data: {
+        userId: String(target.id),
+        username: String(target.username),
+        fullName: String(target.full_name),
+        phone: target.phone ? String(target.phone) : null,
+        temporaryPassword: tempPassword,
+        pinCode: nextPin || null
+      },
+      message: `Credentials updated for ${String(target.full_name)}.`
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
 
 // server/routes/admin.ts
-var import_node_crypto3 = __toESM(require("node:crypto"));
+var import_node_crypto5 = __toESM(require("node:crypto"));
 var import_express2 = __toESM(require_express2());
 var adminRouter = (0, import_express2.Router)();
 adminRouter.use(authenticateToken, requireSuperAdmin);
@@ -94185,15 +95075,6 @@ adminRouter.get("/shops/:id/users", async (req, res) => {
     res.status(500).json({ success: false, error: error62.message });
   }
 });
-function generateReadableTempPassword(length = 10) {
-  const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  const bytes = import_node_crypto3.default.randomBytes(length);
-  let out = "";
-  for (let i = 0; i < length; i++) {
-    out += charset[bytes[i] % charset.length];
-  }
-  return out;
-}
 adminRouter.post("/shops/:id/reset-credentials", async (req, res) => {
   try {
     const { id } = req.params;
@@ -94556,7 +95437,7 @@ adminRouter.post("/shops/:id/extend-trial", async (req, res) => {
           INSERT INTO saas_subscriptions (id, shop_id, plan_id, status, trial_starts_at, trial_ends_at, current_period_ends_at)
           VALUES (?, ?, ?, 'TRIALING', CURRENT_TIMESTAMP, ?, ?)
         `,
-        args: [`sub_${import_node_crypto3.default.randomUUID()}`, resolvedShopId, resolvedPlanId, newEnd, newEnd]
+        args: [`sub_${import_node_crypto5.default.randomUUID()}`, resolvedShopId, resolvedPlanId, newEnd, newEnd]
       });
     }
     await client.execute({
@@ -94910,7 +95791,7 @@ adminRouter.put("/settings", async (req, res) => {
       { updatedKeys: Array.from(deduped.keys()) },
       req.ip
     );
-    res.json({ success: true, message: "Platform settings saved successfully.", data: updatedMap });
+    res.json({ success: true, message: "Commercial & UPI settings saved successfully.", data: updatedMap });
   } catch (error62) {
     res.status(500).json({ success: false, error: error62.message });
   }
@@ -95211,7 +96092,7 @@ adminRouter.post("/shops/:id/users", async (req, res) => {
       res.status(409).json({ success: false, error: `Username "@${rawUsername}" already exists in this shop.` });
       return;
     }
-    const newUserId = `usr_${Date.now()}_${import_node_crypto3.default.randomBytes(3).toString("hex")}`;
+    const newUserId = `usr_${Date.now()}_${import_node_crypto5.default.randomBytes(3).toString("hex")}`;
     const passwordHash = hashPassword(password);
     const recoveryCipher = encryptSecret(password);
     const pinToStore = rawPin || null;
@@ -96059,6 +96940,89 @@ adminRouter.put("/profile/password", async (req, res) => {
         email: nextEmail
       }
     });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.get("/password-reset-requests", async (req, res) => {
+  try {
+    const client = getClient();
+    const publicBase = resolvePublicAppUrl(req);
+    const includeHistory = req.query.includeHistory === "true";
+    const whereClause = includeHistory ? `1 = 1` : `prt.status = 'PENDING' AND datetime(prt.expires_at) > datetime('now')`;
+    const result = await client.execute({
+      sql: `
+        SELECT prt.id, prt.account_type, prt.user_id, prt.shop_id, prt.username,
+               prt.requested_identifier, prt.encrypted_otp, prt.encrypted_token,
+               prt.delivery_channel, prt.status, prt.attempts, prt.expires_at, prt.created_at,
+               s.name AS shop_name, s.slug AS shop_slug, s.phone AS shop_phone,
+               u.full_name AS user_full_name, u.role_id AS user_role_id, u.phone AS user_phone
+        FROM password_reset_tokens prt
+        LEFT JOIN shops s ON s.id = prt.shop_id
+        LEFT JOIN users u ON u.id = prt.user_id AND prt.account_type = 'SHOP_USER'
+        WHERE ${whereClause}
+        ORDER BY prt.created_at DESC
+        LIMIT 50
+      `,
+      args: []
+    });
+    const data = result.rows.map((row) => {
+      const r = row;
+      const accountType = String(r.account_type) === "SUPER_ADMIN" ? "SUPER_ADMIN" : "SHOP_USER";
+      const otp = r.encrypted_otp ? decryptSecret(String(r.encrypted_otp)) : "";
+      const rawToken = r.encrypted_token ? decryptSecret(String(r.encrypted_token)) : "";
+      return {
+        id: String(r.id),
+        accountType,
+        userId: String(r.user_id),
+        shopId: r.shop_id ? String(r.shop_id) : null,
+        shopName: r.shop_name ? String(r.shop_name) : accountType === "SUPER_ADMIN" ? "K-Connect Super-Admin" : "Unknown Shop",
+        shopSlug: r.shop_slug ? String(r.shop_slug) : null,
+        shopPhone: r.shop_phone ? String(r.shop_phone) : null,
+        username: String(r.username),
+        fullName: r.user_full_name ? String(r.user_full_name) : String(r.username),
+        roleId: r.user_role_id ? String(r.user_role_id) : accountType === "SUPER_ADMIN" ? "ROLE_SUPER_ADMIN" : "ROLE_TECHNICIAN",
+        phone: r.user_phone ? String(r.user_phone) : r.shop_phone ? String(r.shop_phone) : null,
+        requestedIdentifier: r.requested_identifier ? String(r.requested_identifier) : null,
+        otp: String(r.status) === "PENDING" ? otp : "",
+        resetUrl: String(r.status) === "PENDING" && rawToken ? buildResetUrl(publicBase, rawToken, accountType) : "",
+        deliveryChannel: String(r.delivery_channel || "SUPPORT_QUEUE"),
+        status: String(r.status),
+        attempts: Number(r.attempts || 0),
+        expiresAt: String(r.expires_at),
+        createdAt: String(r.created_at)
+      };
+    });
+    res.json({ success: true, data });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+adminRouter.post("/password-reset-requests/:requestId/dismiss", async (req, res) => {
+  try {
+    const client = getClient();
+    const { requestId } = req.params;
+    const existing = await client.execute({
+      sql: `SELECT id, username, shop_id FROM password_reset_tokens WHERE id = ? LIMIT 1`,
+      args: [requestId]
+    });
+    if (existing.rows.length === 0) {
+      res.status(404).json({ success: false, error: "Password reset request not found." });
+      return;
+    }
+    await client.execute({
+      sql: `UPDATE password_reset_tokens SET status = 'CANCELLED' WHERE id = ?`,
+      args: [requestId]
+    });
+    await recordAdminAudit(
+      req.user.userId,
+      "PASSWORD_RESET_DISMISSED",
+      "PASSWORD_RESET",
+      requestId,
+      { username: existing.rows[0].username, shopId: existing.rows[0].shop_id },
+      req.ip
+    );
+    res.json({ success: true, message: "Password reset request dismissed." });
   } catch (error62) {
     res.status(500).json({ success: false, error: error62.message });
   }
@@ -99352,7 +100316,7 @@ var import_express13 = __toESM(require_express2());
 // server/storage/storageAdapter.ts
 var import_node_fs3 = __toESM(require("node:fs"));
 var import_node_path3 = __toESM(require("node:path"));
-var import_node_crypto4 = __toESM(require("node:crypto"));
+var import_node_crypto6 = __toESM(require("node:crypto"));
 var LocalStorageProvider = class {
   name = "LOCAL_DISK";
   baseDir;
@@ -99384,7 +100348,7 @@ var LocalStorageProvider = class {
   }
   async upload(options) {
     const ext = import_node_path3.default.extname(options.fileName) || ".bin";
-    const uuid3 = import_node_crypto4.default.randomUUID();
+    const uuid3 = import_node_crypto6.default.randomUUID();
     const subFolder = options.category.toLowerCase().replace("_", "s");
     const safeKey = `${options.shopId}/${subFolder}/${uuid3}${ext}`;
     const fullPath = import_node_path3.default.join(this.baseDir, safeKey);
@@ -99452,7 +100416,7 @@ var SupabaseStorageProvider = class {
   }
   async upload(options) {
     const ext = import_node_path3.default.extname(options.fileName) || ".bin";
-    const uuid3 = import_node_crypto4.default.randomUUID();
+    const uuid3 = import_node_crypto6.default.randomUUID();
     const safeKey = `${options.shopId}/${options.category.toLowerCase()}/${uuid3}${ext}`;
     const url2 = `${this.supabaseUrl}/storage/v1/object/${this.bucket}/${safeKey}`;
     const response = await fetch(url2, {
@@ -99738,6 +100702,16 @@ var authLimiter = rate_limit_default({
 });
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/pin", authLimiter);
+var passwordResetLimiter = rate_limit_default({
+  windowMs: 15 * 60 * 1e3,
+  max: 25,
+  standardHeaders: true,
+  legacyHeaders: false,
+  statusCode: 429,
+  message: { success: false, error: "Too many password reset attempts. Please wait 15 minutes and try again." }
+});
+app.use("/api/auth/forgot-password", passwordResetLimiter);
+app.use("/api/auth/reset-password", passwordResetLimiter);
 var publicLimiter = rate_limit_default({
   windowMs: 15 * 60 * 1e3,
   max: 60,

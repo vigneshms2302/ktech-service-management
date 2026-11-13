@@ -160,3 +160,51 @@ export const provisionShopSchema = z.object({
   ownerPassword: z.string().min(6, 'Password must be at least 6 characters').optional(),
   ownerPin: z.string().optional(),
 });
+
+export const forgotPasswordSchema = z.object({
+  mode: z.enum(['SHOP_USER', 'SUPER_ADMIN']).optional().default('SHOP_USER'),
+  shopSlug: z.string().trim().optional(),
+  username: z.string().trim().optional(),
+  contact: z.string().trim().optional(),
+}).refine(
+  (data) => Boolean((data.shopSlug && (data.username || data.contact)) || data.contact || data.username),
+  { message: 'Please enter your Shop ID and username, or your registered phone or email.' }
+);
+
+export const verifyResetSchema = z.object({
+  token: z.string().trim().min(16).optional(),
+  mode: z.enum(['SHOP_USER', 'SUPER_ADMIN']).optional().default('SHOP_USER'),
+  shopSlug: z.string().trim().optional(),
+  username: z.string().trim().optional(),
+  contact: z.string().trim().optional(),
+  otp: z.string().trim().regex(/^\d{6}$/, 'Verification code must be 6 digits').optional(),
+}).refine(
+  (data) => Boolean(data.token || data.otp),
+  { message: 'Reset token or 6-digit verification code is required.' }
+);
+
+export const resetPasswordSchema = z.object({
+  token: z.string().trim().min(16).optional(),
+  mode: z.enum(['SHOP_USER', 'SUPER_ADMIN']).optional().default('SHOP_USER'),
+  shopSlug: z.string().trim().optional(),
+  username: z.string().trim().optional(),
+  contact: z.string().trim().optional(),
+  otp: z.string().trim().regex(/^\d{6}$/, 'Verification code must be 6 digits').optional(),
+  recoveryKey: z.string().trim().min(8).optional(),
+  newPassword: z.string().min(6, 'New password must be at least 6 characters long').max(128),
+  newPin: z.string().regex(/^\d{4,6}$/, 'Quick PIN must be 4 to 6 numeric digits').optional(),
+}).refine(
+  (data) => Boolean(data.token || data.otp || data.recoveryKey),
+  { message: 'A valid reset link token, 6-digit verification code, or recovery key is required.' }
+);
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(6, 'New password must be at least 6 characters long').max(128),
+  newPin: z.string().regex(/^\d{4,6}$/, 'Quick PIN must be 4 to 6 numeric digits').optional(),
+});
+
+export const ownerResetStaffSchema = z.object({
+  newPassword: z.string().min(6, 'Password must be at least 6 characters long').max(128).optional(),
+  newPin: z.string().regex(/^\d{4,6}$/, 'Quick PIN must be 4 to 6 numeric digits').optional(),
+});
