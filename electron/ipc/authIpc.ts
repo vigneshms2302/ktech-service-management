@@ -175,6 +175,7 @@ export function registerAuthIpc(): void {
     password?: string;
     pinCode?: string;
     phone?: string;
+    email?: string;
   }) => {
     try {
       const client = getClient();
@@ -182,10 +183,11 @@ export function registerAuthIpc(): void {
       const pwd = payload.password && payload.password.trim() ? payload.password.trim() : 'kconnect123';
       const passwordHash = hashPassword(pwd);
       const pin = payload.pinCode && payload.pinCode.trim() ? payload.pinCode.trim() : '1234';
+      const cleanEmail = payload.email && payload.email.trim() ? payload.email.trim().toLowerCase() : null;
 
       await client.execute({
-        sql: `INSERT INTO users (id, username, full_name, role_id, password_hash, pin_code, phone, is_active)
-              VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
+        sql: `INSERT INTO users (id, username, full_name, role_id, password_hash, pin_code, phone, email, is_active)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
         args: [
           userId,
           payload.username.trim().toLowerCase(),
@@ -194,10 +196,11 @@ export function registerAuthIpc(): void {
           passwordHash,
           pin,
           payload.phone ? payload.phone.trim() : null,
+          cleanEmail,
         ],
       });
 
-      return { success: true, data: { id: userId, username: payload.username, fullName: payload.fullName, roleId: payload.roleId } };
+      return { success: true, data: { id: userId, username: payload.username, fullName: payload.fullName, roleId: payload.roleId, email: cleanEmail } };
     } catch (error: unknown) {
       return { success: false, error: (error as Error).message };
     }

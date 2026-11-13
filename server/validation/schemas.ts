@@ -20,6 +20,7 @@ export const createUserSchema = z.object({
   password: z.string().optional(),
   pinCode: z.string().optional(),
   phone: z.string().optional().nullable(),
+  email: z.string().email('Please enter a valid email address').optional().nullable().or(z.literal('')),
 });
 
 // ── Job Schemas ──────────────────────────────────────────────────────────────

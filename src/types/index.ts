@@ -22,6 +22,7 @@ export interface UserProfile {
   roleName: string;
   isActive?: boolean;
   phone?: string | null;
+  email?: string | null;
   pinCode?: string;
 }
 
@@ -411,8 +412,8 @@ export interface ElectronAPI {
     getCurrentUser: () => Promise<IPCResponse<UserSession | null>>;
     logout: () => Promise<IPCResponse<void>>;
     listUsers: () => Promise<IPCResponse<UserProfile[]>>;
-    createUser: (payload: { username: string; fullName: string; roleId: string; password?: string; pinCode?: string; phone?: string }) => Promise<IPCResponse<{ userId: string }>>;
-    updateUser: (payload: { id: string; fullName?: string; roleId?: string; password?: string; pinCode?: string; phone?: string }) => Promise<IPCResponse<void>>;
+    createUser: (payload: { username: string; fullName: string; roleId: string; password?: string; pinCode?: string; phone?: string; email?: string }) => Promise<IPCResponse<{ userId: string }>>;
+    updateUser: (payload: { id: string; fullName?: string; roleId?: string; password?: string; pinCode?: string; phone?: string; email?: string }) => Promise<IPCResponse<void>>;
     toggleUserStatus: (params: { id: string; isActive: boolean }) => Promise<IPCResponse<void>>;
   };
   system: {

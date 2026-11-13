@@ -46,6 +46,7 @@ interface StaffUser {
   isActive: boolean;
   pinCode?: string;
   phone?: string;
+  email?: string;
 }
 
 const ROLES = [
@@ -81,6 +82,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
   const [newPassword, setNewPassword] = useState('');
   const [newPinCode, setNewPinCode] = useState('');
   const [newPhone, setNewPhone] = useState('');
+  const [newEmail, setNewEmail] = useState('');
   const [userError, setUserError] = useState<string | null>(null);
   const [userSuccess, setUserSuccess] = useState<string | null>(null);
 
@@ -174,6 +176,11 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
         if (res.success && res.data) {
           setStaffList(res.data as StaffUser[]);
         }
+      } else {
+        const res = await saasApi.auth.listUsers();
+        if (res.success && res.data) {
+          setStaffList(res.data as StaffUser[]);
+        }
       }
       if (currentUser?.roleId === 'ROLE_OWNER') {
         try {
@@ -256,30 +263,34 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
     }
 
     try {
-      if (window.electronAPI?.auth?.createUser) {
-        const res = await window.electronAPI.auth.createUser({
-          username: newUsername.trim(),
-          fullName: newFullName.trim(),
-          roleId: newRoleId,
-          password: newPassword.trim() || 'kconnect123',
-          pinCode: newPinCode.trim() || '1234',
-          phone: newPhone.trim() || undefined,
-        });
+      const payload = {
+        username: newUsername.trim(),
+        fullName: newFullName.trim(),
+        roleId: newRoleId,
+        password: newPassword.trim() || 'kconnect123',
+        pinCode: newPinCode.trim() || '1234',
+        phone: newPhone.trim() || undefined,
+        email: newEmail.trim() || undefined,
+      };
 
-        if (res.success) {
-          setUserSuccess(`User account for ${newFullName} created successfully!`);
-          setShowAddUserForm(false);
-          setNewUsername('');
-          setNewFullName('');
-          setNewPassword('');
-          setNewPinCode('');
-          setNewPhone('');
-          fetchStaffList();
-          refreshUsers();
-          setTimeout(() => setUserSuccess(null), 3000);
-        } else {
-          setUserError(res.error || 'Failed to create user');
-        }
+      const res = window.electronAPI?.auth?.createUser
+        ? await window.electronAPI.auth.createUser(payload)
+        : await saasApi.auth.createUser(payload);
+
+      if (res.success) {
+        setUserSuccess(`User account for ${newFullName} created successfully!`);
+        setShowAddUserForm(false);
+        setNewUsername('');
+        setNewFullName('');
+        setNewPassword('');
+        setNewPinCode('');
+        setNewPhone('');
+        setNewEmail('');
+        fetchStaffList();
+        refreshUsers();
+        setTimeout(() => setUserSuccess(null), 3000);
+      } else {
+        setUserError(res.error || 'Failed to create user');
       }
     } catch (err: unknown) {
       setUserError((err as Error).message);
@@ -288,15 +299,13 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
 
   const handleToggleUserStatus = async (user: StaffUser) => {
     try {
-      if (window.electronAPI?.auth?.toggleUserStatus) {
-        const res = await window.electronAPI.auth.toggleUserStatus({
-          id: user.id,
-          isActive: !user.isActive,
-        });
-        if (res.success) {
-          fetchStaffList();
-          refreshUsers();
-        }
+      const res = window.electronAPI?.auth?.toggleUserStatus
+        ? await window.electronAPI.auth.toggleUserStatus({ id: user.id, isActive: !user.isActive })
+        : await saasApi.auth.toggleUserStatus({ id: user.id, isActive: !user.isActive });
+
+      if (res.success) {
+        fetchStaffList();
+        refreshUsers();
       }
     } catch (err: unknown) {
       alert((err as Error).message);
@@ -939,6 +948,17 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                     </div>
                   </div>
 
+                  <div>
+                    <label style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-dim)' }}>EMAIL / GMAIL (FOR PASSWORD RESET &amp; RECOVERY)</label>
+                    <input
+                      type="email"
+                      className="input-field"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      placeholder="e.g. staff.member@gmail.com"
+                    />
+                  </div>
+
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
                     <button type="button" className="btn btn-secondary" onClick={() => setShowAddUserForm(false)}>
                       Cancel
@@ -955,7 +975,7 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                 <table className="ktech-table">
                   <thead>
                     <tr>
-                      <th>Staff Name</th>
+                      <th>Staff Name &amp; Contact</th>
                       <th>Username</th>
                       <th>Role</th>
                       <th>4-Digit PIN</th>
@@ -981,6 +1001,11 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({ isOpen, on
                         <tr key={u.id}>
                           <td>
                             <strong>{u.fullName}</strong>
+                            {(u.email || u.phone) && (
+                              <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                                {u.email || u.phone}
+                              </div>
+                            )}
                           </td>
                           <td style={{ fontFamily: 'var(--font-mono)', fontSize: '11px' }}>{u.username}</td>
                           <td>

@@ -18,6 +18,7 @@ describe('Password Reset & Forgot Password Full Verification Suite', () => {
   const techUserId = `usr_tech_${testSuffix}`;
   const testOwnerPhone = `97${Date.now().toString().slice(-8)}`;
   const testOwnerEmail = `owner_${testSuffix}@repairlab.in`;
+  const testTechEmail = `tech_${testSuffix}@gmail.com`;
 
   beforeAll(async () => {
     await initializeMultiTenantSchema();
@@ -53,9 +54,9 @@ describe('Password Reset & Forgot Password Full Verification Suite', () => {
     });
 
     await client.execute({
-      sql: `INSERT INTO users (id, shop_id, username, password_hash, full_name, role_id, phone, pin_code, is_active)
-            VALUES (?, ?, 'alphatech', ?, 'Mano Tech', 'ROLE_TECHNICIAN', '9876500099', '5555', 1)`,
-      args: [techUserId, testShopId, hashPassword('TechSecret456')],
+      sql: `INSERT INTO users (id, shop_id, username, password_hash, full_name, role_id, phone, email, pin_code, is_active)
+            VALUES (?, ?, 'alphatech', ?, 'Mano Tech', 'ROLE_TECHNICIAN', '9876500099', ?, '5555', 1)`,
+      args: [techUserId, testShopId, hashPassword('TechSecret456'), testTechEmail],
     });
 
     superAdminToken = generateToken({
@@ -137,6 +138,27 @@ describe('Password Reset & Forgot Password Full Verification Suite', () => {
       args: [ownerUserId],
     });
     expect(tokenRes.rows.length).toBe(1);
+  });
+
+  it('2b. Forgot-password request creation by staff Gmail ID without knowing shop ID or username', async () => {
+    const res = await request(app)
+      .post('/api/auth/forgot-password')
+      .send({
+        mode: 'SHOP_USER',
+        contact: testTechEmail,
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.requestSubmitted).toBe(true);
+
+    const client = getClient();
+    const tokenRes = await client.execute({
+      sql: `SELECT * FROM password_reset_tokens WHERE user_id = ? AND status = 'PENDING'`,
+      args: [techUserId],
+    });
+    expect(tokenRes.rows.length).toBe(1);
+    expect(tokenRes.rows[0].username).toBe('alphatech');
   });
 
   it('3. Brute force protection: rejects wrong OTP and locks request after 5 attempts', async () => {

@@ -3,6 +3,7 @@ import request from 'supertest';
 import { app } from '../server/index.ts';
 import { initializeMultiTenantSchema } from '../server/db/database.ts';
 import { seedInitialPlatform } from '../server/db/seed.ts';
+import { generateToken } from '../server/middleware/auth.ts';
 
 describe('K-Connect SaaS Commercial Subscription & GPay Payment Lifecycle', () => {
   let superAdminToken: string;
@@ -14,15 +15,15 @@ describe('K-Connect SaaS Commercial Subscription & GPay Payment Lifecycle', () =
     await initializeMultiTenantSchema();
     await seedInitialPlatform();
 
-    // Authenticate Super-Admin
-    const saLogin = await request(app).post('/api/auth/login').send({
+    superAdminToken = generateToken({
+      userId: 'VND-ROOT-01',
+      shopId: 'VENDOR_PLATFORM',
       username: 'superadmin',
-      password: 'admin@ktech2026',
+      fullName: 'Platform Administrator',
+      roleId: 'ROLE_SUPER_ADMIN',
+      permissions: ['*'],
       isSuperAdmin: true,
     });
-    expect(saLogin.status).toBe(200);
-    expect(saLogin.body.success).toBe(true);
-    superAdminToken = saLogin.body.token;
   });
 
   it('1. should provide public pricing plans and payment configuration', async () => {

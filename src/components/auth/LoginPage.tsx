@@ -619,23 +619,25 @@ export const LoginPage: React.FC = () => {
               </div>
             )}
 
-            {/* Toggle Super Admin Mode */}
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSuperAdmin(!isSuperAdmin);
-                  setError(null);
-                  setUsername(isSuperAdmin ? '' : 'superadmin');
-                  setPassword('');
-                }}
-                className={`text-[11px] underline transition-colors cursor-pointer ${
-                  isLight ? 'text-gray-400 hover:text-gray-600' : 'text-slate-500 hover:text-slate-300'
-                }`}
-              >
-                {isSuperAdmin ? '← Return to Regular Shop Staff Login' : 'Vendor / Master Super-Admin Portal →'}
-              </button>
-            </div>
+            {/* Return from Super Admin Mode (Only visible if ?admin=1 is explicitly opened) */}
+            {isSuperAdmin && (
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSuperAdmin(false);
+                    setError(null);
+                    setUsername('');
+                    setPassword('');
+                  }}
+                  className={`text-[11px] underline transition-colors cursor-pointer ${
+                    isLight ? 'text-gray-400 hover:text-gray-600' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  ← Return to Regular Shop Staff Login
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

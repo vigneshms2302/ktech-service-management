@@ -74,3 +74,4 @@ export function buildResetUrl(baseUrl: string, token: string, accountType: 'SHOP
   }
   return `${baseUrl.replace(/\/+$/, '')}/reset-password?${params.toString()}`;
 }
+

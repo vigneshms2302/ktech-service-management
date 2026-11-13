@@ -29,11 +29,10 @@ type ResetMode = 'SHOP_USER' | 'SUPER_ADMIN';
 export const ForgotPasswordPage: React.FC = () => {
   const [searchParams] = useSearchParams();
 
-  const initialMode: ResetMode = searchParams.get('mode') === 'superadmin' ? 'SUPER_ADMIN' : 'SHOP_USER';
+  const mode: ResetMode = searchParams.get('mode') === 'superadmin' ? 'SUPER_ADMIN' : 'SHOP_USER';
   const initialShop = searchParams.get('shop') || '';
   const initialUser = searchParams.get('username') || '';
 
-  const [mode, setMode] = useState<ResetMode>(initialMode);
   const [step, setStep] = useState<'REQUEST' | 'VERIFY' | 'SUCCESS'>('REQUEST');
 
   // Step 1 Fields
@@ -76,24 +75,17 @@ export const ForgotPasswordPage: React.FC = () => {
     }
   }, [step]);
 
-  const handleModeChange = (newMode: ResetMode) => {
-    setMode(newMode);
-    setErrorMessage(null);
-    setStatusMessage(null);
-    setStep('REQUEST');
-  };
-
   const handleRequestReset = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
     setStatusMessage(null);
 
-    if (mode === 'SHOP_USER' && !shopSlug.trim() && !contact.trim()) {
-      setErrorMessage('Please enter either your Shop ID or your registered phone/email.');
+    if (mode === 'SHOP_USER' && !contact.trim() && !shopSlug.trim() && !username.trim()) {
+      setErrorMessage('Please enter your registered Gmail address, phone number, or Shop ID.');
       return;
     }
-    if (mode === 'SHOP_USER' && shopSlug.trim() && !username.trim() && !contact.trim()) {
-      setErrorMessage('Please enter your username or registered contact for this shop.');
+    if (mode === 'SUPER_ADMIN' && !username.trim() && !contact.trim()) {
+      setErrorMessage('Please enter your Super-Admin username or registered email.');
       return;
     }
 
@@ -195,34 +187,6 @@ export const ForgotPasswordPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Mode Selector Tabs */}
-        {step === 'REQUEST' && (
-          <div className="flex rounded-xl bg-slate-900/90 border border-slate-800 p-1 mb-6">
-            <button
-              type="button"
-              onClick={() => handleModeChange('SHOP_USER')}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
-                mode === 'SHOP_USER'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Shop Staff &amp; Owner
-            </button>
-            <button
-              type="button"
-              onClick={() => handleModeChange('SUPER_ADMIN')}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
-                mode === 'SUPER_ADMIN'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              K-Connect Super-Admin
-            </button>
-          </div>
-        )}
-
         {/* Main Card */}
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
           {/* Accessible Error Summary */}
@@ -258,71 +222,14 @@ export const ForgotPasswordPage: React.FC = () => {
               {mode === 'SHOP_USER' ? (
                 <>
                   <div>
-                    <label htmlFor="shopSlug" className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
-                      Shop ID (Slug)
-                    </label>
-                    <div className="text-[11px] text-slate-400 mb-1.5">
-                      The custom URL identifier for your workshop (e.g. <code>ktech</code>).
-                    </div>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                        <Store size={16} />
-                      </div>
-                      <input
-                        id="shopSlug"
-                        name="shopSlug"
-                        type="text"
-                        value={shopSlug}
-                        onChange={(e) => setShopSlugInput(e.target.value.toLowerCase().replace(/\s+/g, ''))}
-                        placeholder="e.g. ktech"
-                        autoComplete="organization"
-                        className="w-full pl-10 pr-3 py-2.5 bg-slate-950/70 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="username" className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
-                      Username
-                    </label>
-                    <div className="text-[11px] text-slate-400 mb-1.5">Your workshop login username (e.g. <code>admin</code> or <code>tech1</code>).</div>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                        <User size={16} />
-                      </div>
-                      <input
-                        id="username"
-                        name="username"
-                        type="text"
-                        value={username}
-                        onChange={(e) => setUsernameInput(e.target.value)}
-                        placeholder="e.g. admin"
-                        autoComplete="username"
-                        className="w-full pl-10 pr-3 py-2.5 bg-slate-950/70 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="relative my-4">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-slate-800" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-slate-900 px-3 text-slate-500 font-semibold tracking-wider">
-                        Or verify by contact
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
                     <label htmlFor="contact" className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
-                      Registered Phone or Email
+                      Registered Email (Gmail) or Mobile Number
                     </label>
-                    <div className="text-[11px] text-slate-400 mb-1.5">
-                      Forgot your username or Shop ID? Enter your shop's registered phone or owner email.
+                    <div className="text-[11px] text-slate-400 mb-2">
+                      Enter the Gmail address or mobile number linked to your account to receive an instant reset link &amp; 6-digit code.
                     </div>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-500">
                         <Mail size={16} />
                       </div>
                       <input
@@ -331,12 +238,64 @@ export const ForgotPasswordPage: React.FC = () => {
                         type="text"
                         value={contact}
                         onChange={(e) => setContactInput(e.target.value)}
-                        placeholder="e.g. 9842200000 or owner@shop.com"
+                        placeholder="e.g. technician@gmail.com or 9842200000"
                         autoComplete="email tel"
-                        className="w-full pl-10 pr-3 py-2.5 bg-slate-950/70 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+                        enterKeyHint="go"
+                        className="w-full pl-10 pr-3.5 py-3 bg-slate-950/70 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
                       />
                     </div>
                   </div>
+
+                  {/* Secondary / Bench Fast-Lookup Toggle */}
+                  <details className="mt-3 pt-3 border-t border-slate-800 text-xs">
+                    <summary className="cursor-pointer text-slate-400 hover:text-slate-200 font-medium select-none flex items-center justify-between">
+                      <span>Know your Shop ID and Username? (Bench Lookup)</span>
+                      <span className="text-[10px] text-slate-500 font-mono">OPTIONAL</span>
+                    </summary>
+                    <div className="pt-3 space-y-3">
+                      <div>
+                        <label htmlFor="shopSlug" className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                          Shop ID (Slug)
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                            <Store size={15} />
+                          </div>
+                          <input
+                            id="shopSlug"
+                            name="shopSlug"
+                            type="text"
+                            value={shopSlug}
+                            onChange={(e) => setShopSlugInput(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                            placeholder="e.g. ktech"
+                            autoComplete="organization"
+                            className="w-full pl-9 pr-3 py-2 bg-slate-950/70 border border-slate-700/80 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label htmlFor="username" className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                          Staff Username
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                            <User size={15} />
+                          </div>
+                          <input
+                            id="username"
+                            name="username"
+                            type="text"
+                            value={username}
+                            onChange={(e) => setUsernameInput(e.target.value)}
+                            placeholder="e.g. admin or tech1"
+                            autoComplete="username"
+                            className="w-full pl-9 pr-3 py-2 bg-slate-950/70 border border-slate-700/80 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </details>
                 </>
               ) : (
                 <div>
@@ -371,11 +330,11 @@ export const ForgotPasswordPage: React.FC = () => {
                 {isLoading ? (
                   <>
                     <RefreshCw size={16} className="animate-spin" />
-                    <span>Preparing Reset Code...</span>
+                    <span>Preparing Reset Link...</span>
                   </>
                 ) : (
                   <>
-                    <span>Request Verification Code</span>
+                    <span>Send Password Reset Code &amp; Link</span>
                     <ArrowRight size={16} />
                   </>
                 )}
@@ -391,13 +350,13 @@ export const ForgotPasswordPage: React.FC = () => {
                 <div className="space-y-1">
                   {deliveryInfo.deliveryChannel === 'EMAIL' && deliveryInfo.maskedEmail ? (
                     <div>
-                      We dispatched a 6-digit code to <strong>{deliveryInfo.maskedEmail}</strong>. Valid for{' '}
+                      We dispatched a 6-digit code and direct reset link to <strong>{deliveryInfo.maskedEmail}</strong>. Please check your Gmail / email inbox. Valid for{' '}
                       {deliveryInfo.expiresInMinutes || 15} minutes.
                     </div>
                   ) : mode === 'SHOP_USER' ? (
                     <div>
-                      A 6-digit code has been queued for your account. You can request it directly from your{' '}
-                      <strong>Shop Owner</strong> (Settings &rarr; Staff) or <strong>K-Connect Support Admin</strong>.
+                      A 6-digit verification code has been generated. Check your Gmail inbox, or ask your{' '}
+                      <strong>Shop Owner</strong> to view this code or set a new password/PIN for you in <strong>Shop Settings &rarr; Staff Accounts</strong>.
                     </div>
                   ) : (
                     <div>

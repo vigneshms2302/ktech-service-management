@@ -287,7 +287,7 @@ authRouter.get('/users', authenticateToken, async (req, res) => {
   try {
     const client = getClient();
     const result = await client.execute({
-      sql: `SELECT u.id, u.username, u.full_name, u.role_id, r.name as role_name, u.is_active, u.phone,
+      sql: `SELECT u.id, u.username, u.full_name, u.role_id, r.name as role_name, u.is_active, u.phone, u.email,
             (CASE WHEN u.pin_code IS NOT NULL AND u.pin_code != '' THEN 1 ELSE 0 END) as has_pin
             FROM users u 
             JOIN roles r ON u.role_id = r.id 
@@ -307,6 +307,7 @@ authRouter.get('/users', authenticateToken, async (req, res) => {
         isActive: Boolean((row as Record<string, unknown>).is_active),
         hasPin: Boolean((row as Record<string, unknown>).has_pin),
         phone: (row as Record<string, unknown>).phone,
+        email: (row as Record<string, unknown>).email || null,
       })),
     });
   } catch (error: unknown) {
@@ -317,9 +318,10 @@ authRouter.get('/users', authenticateToken, async (req, res) => {
 // Create User in Current Shop
 authRouter.post('/users', authenticateToken, validateBody(createUserSchema), async (req, res) => {
   try {
-    const { username, fullName, roleId, password, pinCode, phone } = req.body;
+    const { username, fullName, roleId, password, pinCode, phone, email } = req.body;
     const client = getClient();
     const cleanUsername = username.trim().toLowerCase();
+    const cleanEmail = email && typeof email === 'string' && email.trim() ? email.trim().toLowerCase() : null;
 
     // Check username uniqueness in current shop
     const dupUser = await client.execute({
@@ -341,8 +343,8 @@ authRouter.post('/users', authenticateToken, validateBody(createUserSchema), asy
     const pin = pinCode && pinCode.trim() ? pinCode.trim() : '1234';
 
     await client.execute({
-      sql: `INSERT INTO users (id, shop_id, username, full_name, role_id, password_hash, encrypted_recovery_password, pin_code, phone, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      sql: `INSERT INTO users (id, shop_id, username, full_name, role_id, password_hash, encrypted_recovery_password, pin_code, phone, email, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       args: [
         userId,
         req.user!.shopId,
@@ -353,10 +355,11 @@ authRouter.post('/users', authenticateToken, validateBody(createUserSchema), asy
         recoveryCipher,
         pin,
         phone ? phone.trim() : null,
+        cleanEmail,
       ],
     });
 
-    res.json({ success: true, data: { id: userId, username: cleanUsername, fullName, roleId } });
+    res.json({ success: true, data: { id: userId, username: cleanUsername, fullName, roleId, email: cleanEmail } });
   } catch (error: unknown) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
@@ -378,6 +381,7 @@ interface ResolvedShopUser {
   fullName: string;
   roleId: string;
   phone: string | null;
+  userEmail: string | null;
 }
 
 type ShopUserLookupResult =
@@ -424,10 +428,11 @@ async function findShopUserForReset(params: {
     fullName: String(r.full_name),
     roleId: String(r.role_id),
     phone: r.phone ? String(r.phone) : null,
+    userEmail: r.user_email ? String(r.user_email) : null,
   });
 
   const baseSelect = `
-    SELECT u.id, u.shop_id, u.username, u.full_name, u.role_id, u.phone,
+    SELECT u.id, u.shop_id, u.username, u.full_name, u.role_id, u.phone, u.email AS user_email,
            s.name AS shop_name, s.slug AS shop_slug, s.phone AS shop_phone, s.email AS shop_email
     FROM users u
     INNER JOIN shops s ON s.id = u.shop_id
@@ -455,7 +460,10 @@ async function findShopUserForReset(params: {
     const matched = allCandidates.filter((u) => {
       if (cleanUsername && u.username.toLowerCase() !== cleanUsername) return false;
       if (isEmailContact) {
-        return u.roleId === 'ROLE_OWNER' && (u.shopEmail || '').trim().toLowerCase() === cleanContact.toLowerCase();
+        const contactLower = cleanContact.toLowerCase();
+        const userEmailMatch = (u.userEmail || '').trim().toLowerCase() === contactLower;
+        const ownerEmailMatch = u.roleId === 'ROLE_OWNER' && (u.shopEmail || '').trim().toLowerCase() === contactLower;
+        return userEmailMatch || ownerEmailMatch;
       }
       if (!contactDigits) return false;
       const userDigits = normalizePhoneDigits(u.phone);
@@ -641,7 +649,7 @@ authRouter.post('/forgot-password', validateBody(forgotPasswordSchema), async (r
       }
       res.status(404).json({
         success: false,
-        error: 'No active shop user matched that Shop ID, username, or contact detail. Check your details or contact K-Connect support.',
+        error: 'No active account matched that email address, phone, or shop details. Check your spelling or ask your Shop Owner to reset your password.',
       });
       return;
     }
@@ -653,7 +661,7 @@ authRouter.post('/forgot-password', validateBody(forgotPasswordSchema), async (r
     const recipientName = accountType === 'SUPER_ADMIN' ? target.admin.fullName : target.user.fullName;
     const targetEmail = accountType === 'SUPER_ADMIN'
       ? target.admin.email
-      : (target.user.roleId === 'ROLE_OWNER' ? target.user.shopEmail : null);
+      : (target.user.userEmail || (target.user.roleId === 'ROLE_OWNER' ? target.user.shopEmail : null));
 
     // Cancel prior pending requests for this user
     await client.execute({
@@ -761,8 +769,10 @@ authRouter.post('/forgot-password', validateBody(forgotPasswordSchema), async (r
           ? `A 6-digit verification code and direct reset link were sent to ${maskedEmail}.`
           : accountType === 'SHOP_USER'
             ? target.user.roleId === 'ROLE_OWNER'
-              ? 'Reset request created! Contact your K-Connect support admin to receive your 6-digit reset code or link.'
-              : 'Reset request created! Ask your Shop Owner (Settings -> Staff) or K-Connect support for your 6-digit reset code or link.'
+              ? (targetEmail
+                  ? `A reset link was generated. Check your inbox at ${maskedEmail || 'your registered email'}.`
+                  : 'A reset request has been recorded. Check your email or ask your administrator.')
+              : 'Reset request created! Check your email inbox, or ask your Shop Owner to reset your password or PIN in Shop Settings -> Staff Accounts.'
             : 'Super-Admin reset request recorded. Check the configured email or enter your emergency SUPERADMIN_RECOVERY_KEY.',
     });
   } catch (error: unknown) {

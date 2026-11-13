@@ -230,6 +230,7 @@ export async function initializeMultiTenantSchema(): Promise<void> {
       full_name TEXT NOT NULL,
       role_id TEXT NOT NULL REFERENCES roles(id),
       phone TEXT,
+      email TEXT,
       is_active INTEGER NOT NULL DEFAULT 1,
       commission_pct REAL NOT NULL DEFAULT 0.0,
       created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
@@ -839,6 +840,7 @@ export async function initializeMultiTenantSchema(): Promise<void> {
   // Safe idempotent schema migrations for existing SQLite / Turso Cloud databases
   const safeMigrations = [
     `ALTER TABLE users ADD COLUMN encrypted_recovery_password TEXT;`,
+    `ALTER TABLE users ADD COLUMN email TEXT;`,
   ];
   for (const migrationSql of safeMigrations) {
     try {
