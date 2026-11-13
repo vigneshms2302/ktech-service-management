@@ -1,13 +1,38 @@
 import { Router } from 'express';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs';
 import { getClient } from '../db/database.ts';
 import { hashPassword, generateToken } from '../middleware/auth.ts';
 import { encryptSecret } from '../security/crypto.ts';
+import { hashResetSecret, timingSafeEqualHex, normalizePhoneDigits } from '../security/passwordUtils.ts';
+import { sendRegistrationVerificationEmail, maskEmailAddress } from '../services/emailService.ts';
 import { validateBody } from '../middleware/validate.ts';
 import { z } from 'zod';
 
 export const publicRouter = Router();
+
+function maskPhoneNumber(phone?: string | null): string {
+  if (!phone) return '';
+  const digits = phone.replace(/[^0-9]/g, '');
+  if (digits.length < 4) return phone;
+  const last4 = digits.slice(-4);
+  return `${digits.slice(0, 2)}******${last4}`;
+}
+
+const sendVerificationSchema = z.object({
+  email: z.string().trim().email('Please enter a valid email address'),
+  phone: z.string().trim().min(10, 'Valid 10-digit mobile number required'),
+  shopName: z.string().trim().optional(),
+  ownerName: z.string().trim().optional(),
+  slug: z.string().trim().optional(),
+});
+
+const verifyCodeSchema = z.object({
+  verificationId: z.string().trim().min(1, 'Verification ID is required'),
+  emailOtp: z.string().trim().regex(/^\d{6}$/, 'Email confirmation code must be 6 digits').optional(),
+  phoneOtp: z.string().trim().regex(/^\d{6}$/, 'Mobile OTP must be 6 digits').optional(),
+});
 
 const publicRegistrationSchema = z.object({
   shopName: z.string().trim().min(2, 'Shop name must be at least 2 characters').max(100),
@@ -20,8 +45,8 @@ const publicRegistrationSchema = z.object({
   ownerName: z.string().trim().min(2, 'Owner name must be at least 2 characters').max(100),
   phone: z.string().trim().min(10, 'Valid 10-digit mobile number required').max(20),
   email: z.preprocess(
-    (val) => (val === '' || val === null ? undefined : typeof val === 'string' ? val.trim() : val),
-    z.string().email('Please enter a valid email address').optional()
+    (val) => (typeof val === 'string' ? val.trim() : val),
+    z.string().min(1, 'Email address is required').email('Please enter a valid email address')
   ),
   username: z.string().trim().min(3).max(50).default('admin'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -31,6 +56,9 @@ const publicRegistrationSchema = z.object({
     (val) => (val === '' || val === null ? undefined : typeof val === 'string' ? val.trim() : val),
     z.string().max(10).optional()
   ),
+  verificationId: z.string().trim().optional(),
+  emailOtp: z.string().trim().optional(),
+  phoneOtp: z.string().trim().optional(),
 });
 
 const contactInquirySchema = z.object({
@@ -105,21 +133,198 @@ publicRouter.get('/check-availability', async (req, res) => {
   }
 });
 
-// 1. Self-Service Customer Registration & Instant 14-Day Free Trial Provisioning
+// 1. Dispatch Email Confirmation Code + Mobile OTP for Shop Registration
+publicRouter.post('/send-verification', validateBody(sendVerificationSchema), async (req, res) => {
+  try {
+    const { email, phone, shopName = 'Your Workshop', ownerName = 'Shop Owner', slug } = req.body;
+    const client = getClient();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhoneDigits = normalizePhoneDigits(phone);
+    const last10Digits = cleanPhoneDigits.slice(-10);
+
+    // 1. Check email uniqueness (1 email per shop)
+    const checkEmail = await client.execute({
+      sql: `SELECT id, name FROM shops WHERE LOWER(email) = ? LIMIT 1`,
+      args: [cleanEmail],
+    });
+    if (checkEmail.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        field: 'email',
+        error: `Email "${cleanEmail}" is already registered to shop "${checkEmail.rows[0].name}". Each shop must use a unique email address.`,
+      });
+    }
+
+    // 2. Check mobile uniqueness (1 mobile per shop)
+    const checkPhone = await client.execute({
+      sql: `SELECT id, name FROM shops WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') LIKE ? LIMIT 1`,
+      args: [`%${last10Digits}`],
+    });
+    if (checkPhone.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        field: 'phone',
+        error: `Mobile number is already registered to shop "${checkPhone.rows[0].name}". Each shop must use a unique mobile number.`,
+      });
+    }
+
+    // 3. Check slug uniqueness if provided
+    if (slug && slug.trim()) {
+      const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+      const checkSlug = await client.execute({
+        sql: `SELECT id FROM shops WHERE slug = ? OR id = ? LIMIT 1`,
+        args: [cleanSlug, `shop_${cleanSlug}`],
+      });
+      if (checkSlug.rows.length > 0) {
+        return res.status(409).json({
+          success: false,
+          field: 'slug',
+          error: `Shop handle "${cleanSlug}" is already taken.`,
+        });
+      }
+    }
+
+    const emailOtp = crypto.randomInt(100000, 1000000).toString();
+    const phoneOtp = crypto.randomInt(100000, 1000000).toString();
+    const emailHash = hashResetSecret(emailOtp);
+    const phoneHash = hashResetSecret(phoneOtp);
+    const encryptedEmailOtp = encryptSecret(emailOtp);
+    const encryptedPhoneOtp = encryptSecret(phoneOtp);
+    const verificationId = `reg_v_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    const expiresInMinutes = 15;
+    const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
+    const ipAddress = req.ip || (req.headers['x-forwarded-for'] as string) || '127.0.0.1';
+
+    await client.execute({
+      sql: `
+        INSERT INTO registration_verifications (
+          id, email, phone, email_otp_hash, phone_otp_hash,
+          encrypted_email_otp, encrypted_phone_otp, status,
+          expires_at, attempts, requested_ip
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, 0, ?)
+      `,
+      args: [
+        verificationId,
+        cleanEmail,
+        cleanPhoneDigits,
+        emailHash,
+        phoneHash,
+        encryptedEmailOtp,
+        encryptedPhoneOtp,
+        expiresAt,
+        ipAddress,
+      ],
+    });
+
+    // Send email confirmation code via transactional email service
+    await sendRegistrationVerificationEmail({
+      to: cleanEmail,
+      recipientName: ownerName,
+      shopName,
+      otp: emailOtp,
+      expiresInMinutes,
+    });
+
+    const maskedEmail = maskEmailAddress(cleanEmail);
+    const maskedPhone = maskPhoneNumber(phone);
+
+    res.json({
+      success: true,
+      data: {
+        verificationId,
+        maskedEmail,
+        maskedPhone,
+        expiresInMinutes,
+        devEmailOtp: process.env.NODE_ENV !== 'production' ? emailOtp : undefined,
+        devPhoneOtp: process.env.NODE_ENV !== 'production' ? phoneOtp : undefined,
+      },
+      message: `Confirmation codes dispatched! Check ${maskedEmail} for your email code and ${maskedPhone} for your mobile OTP.`,
+    });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
+// 2. Verify Registration Codes (Email + Phone)
+publicRouter.post('/verify-code', validateBody(verifyCodeSchema), async (req, res) => {
+  try {
+    const { verificationId, emailOtp, phoneOtp } = req.body;
+    const client = getClient();
+
+    const verifRes = await client.execute({
+      sql: `SELECT * FROM registration_verifications WHERE id = ? LIMIT 1`,
+      args: [verificationId],
+    });
+    if (verifRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Verification session not found.' });
+    }
+
+    const verif = verifRes.rows[0] as Record<string, unknown>;
+    if (verif.status === 'CONSUMED') {
+      return res.status(400).json({ success: false, error: 'This verification session has already been used.' });
+    }
+    if (new Date(String(verif.expires_at)).getTime() < Date.now()) {
+      return res.status(400).json({ success: false, error: 'Verification session expired. Please request a new code.' });
+    }
+    if (Number(verif.attempts || 0) >= 5) {
+      return res.status(429).json({ success: false, error: 'Too many failed verification attempts. Please request a new code.' });
+    }
+
+    let isEmailValid = true;
+    let isPhoneValid = true;
+
+    if (emailOtp) {
+      const emailHash = hashResetSecret(emailOtp.trim());
+      isEmailValid = timingSafeEqualHex(emailHash, String(verif.email_otp_hash));
+    }
+    if (phoneOtp) {
+      const phoneHash = hashResetSecret(phoneOtp.trim());
+      isPhoneValid = timingSafeEqualHex(phoneHash, String(verif.phone_otp_hash));
+    }
+
+    if (!isEmailValid || !isPhoneValid) {
+      await client.execute({
+        sql: `UPDATE registration_verifications SET attempts = attempts + 1 WHERE id = ?`,
+        args: [verificationId],
+      });
+      return res.status(400).json({
+        success: false,
+        error: !isEmailValid && !isPhoneValid
+          ? 'Both codes are invalid.'
+          : !isEmailValid
+            ? 'Invalid email confirmation code.'
+            : 'Invalid mobile OTP.',
+      });
+    }
+
+    await client.execute({
+      sql: `UPDATE registration_verifications SET status = 'VERIFIED' WHERE id = ?`,
+      args: [verificationId],
+    });
+
+    res.json({ success: true, verified: true, message: 'Codes verified successfully.' });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
+// 3. Self-Service Customer Registration & Instant 14-Day Free Trial Provisioning
 publicRouter.post('/register', validateBody(publicRegistrationSchema), async (req, res) => {
   try {
-    const { shopName, slug, ownerName, phone, email, username, password, city, state, pincode } = req.body;
+    const { shopName, slug, ownerName, phone, email, username, password, city, state, pincode, verificationId, emailOtp, phoneOtp } = req.body;
     const client = getClient();
 
     const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
     const shopId = `shop_${cleanSlug}`;
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhoneDigits = normalizePhoneDigits(phone);
+    const last10Digits = cleanPhoneDigits.slice(-10);
 
     // 1. Verify slug uniqueness
     const checkSlug = await client.execute({
-      sql: `SELECT id, name FROM shops WHERE slug = ? OR id = ?`,
+      sql: `SELECT id, name FROM shops WHERE slug = ? OR id = ? LIMIT 1`,
       args: [cleanSlug, shopId],
     });
-
     if (checkSlug.rows.length > 0) {
       res.status(400).json({
         success: false,
@@ -129,12 +334,112 @@ publicRouter.post('/register', validateBody(publicRegistrationSchema), async (re
       return;
     }
 
+    // 2. Verify email uniqueness (Strict 1 email per shop rule)
+    const checkEmail = await client.execute({
+      sql: `SELECT id, name FROM shops WHERE LOWER(email) = ? LIMIT 1`,
+      args: [cleanEmail],
+    });
+    if (checkEmail.rows.length > 0) {
+      res.status(409).json({
+        success: false,
+        field: 'email',
+        error: `Email "${cleanEmail}" is already registered to shop "${checkEmail.rows[0].name}". Each shop must use a unique email.`,
+      });
+      return;
+    }
+
+    // 3. Verify mobile number uniqueness (Strict 1 mobile per shop rule)
+    const checkPhone = await client.execute({
+      sql: `SELECT id, name FROM shops WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') LIKE ? LIMIT 1`,
+      args: [`%${last10Digits}`],
+    });
+    if (checkPhone.rows.length > 0) {
+      res.status(409).json({
+        success: false,
+        field: 'phone',
+        error: `Mobile number is already registered to shop "${checkPhone.rows[0].name}". Each shop must use a unique mobile number.`,
+      });
+      return;
+    }
+
+    // 4. Verify OTPs if verificationId is provided
+    if (verificationId) {
+      const verifRes = await client.execute({
+        sql: `SELECT * FROM registration_verifications WHERE id = ? LIMIT 1`,
+        args: [verificationId],
+      });
+      if (verifRes.rows.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Verification session not found. Please request a new verification code.',
+        });
+        return;
+      }
+      const verif = verifRes.rows[0] as Record<string, unknown>;
+      if (verif.status === 'CONSUMED') {
+        res.status(400).json({
+          success: false,
+          error: 'This verification session has already been used. Please request a new code.',
+        });
+        return;
+      }
+      if (new Date(String(verif.expires_at)).getTime() < Date.now()) {
+        res.status(400).json({
+          success: false,
+          error: 'Verification session expired. Please request a new code.',
+        });
+        return;
+      }
+
+      if (String(verif.email).toLowerCase() !== cleanEmail || String(verif.phone) !== cleanPhoneDigits) {
+        res.status(400).json({
+          success: false,
+          error: 'Verification session contact details do not match the registration email and mobile number.',
+        });
+        return;
+      }
+
+      if (verif.status !== 'VERIFIED') {
+        if (!emailOtp || !phoneOtp) {
+          res.status(400).json({
+            success: false,
+            error: 'Both email confirmation code and mobile OTP are required to complete registration.',
+          });
+          return;
+        }
+
+        const emailHash = hashResetSecret(emailOtp.trim());
+        const phoneHash = hashResetSecret(phoneOtp.trim());
+        const isEmailMatch = timingSafeEqualHex(emailHash, String(verif.email_otp_hash));
+        const isPhoneMatch = timingSafeEqualHex(phoneHash, String(verif.phone_otp_hash));
+
+        if (!isEmailMatch || !isPhoneMatch) {
+          await client.execute({
+            sql: `UPDATE registration_verifications SET attempts = attempts + 1 WHERE id = ?`,
+            args: [verificationId],
+          });
+          const errorMsg = !isEmailMatch && !isPhoneMatch
+            ? 'Both email confirmation code and mobile OTP are incorrect.'
+            : !isEmailMatch
+              ? 'Invalid email confirmation code.'
+              : 'Invalid mobile OTP.';
+          res.status(400).json({ success: false, error: errorMsg });
+          return;
+        }
+      }
+
+      await client.execute({
+        sql: `UPDATE registration_verifications SET status = 'CONSUMED' WHERE id = ?`,
+        args: [verificationId],
+      });
+    }
+
     // 14-day free trial timestamp calculation
     const trialDays = 14;
     const now = new Date();
     const trialEndsAt = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000).toISOString();
 
-    // 1. Create Shop Record
+    // 1. Create Shop Record (with mandatory email & phone)
     await client.execute({
       sql: `
         INSERT INTO shops (
@@ -148,7 +453,7 @@ publicRouter.post('/register', validateBody(publicRegistrationSchema), async (re
         cleanSlug,
         ownerName.trim(),
         phone.trim(),
-        email ? email.trim() : null,
+        cleanEmail,
         `${city.trim()}, ${state.trim()}`,
         city.trim(),
         state.trim(),
@@ -169,7 +474,7 @@ publicRouter.post('/register', validateBody(publicRegistrationSchema), async (re
       args: [subId, shopId, trialEndsAt, trialEndsAt],
     });
 
-    // 3. Create Shop Owner Account (ROLE_OWNER)
+    // 3. Create Shop Owner Account (ROLE_OWNER) with both phone and email attached
     const ownerUserId = `usr_${cleanSlug}_owner`;
     const cleanUsername = username ? username.trim().toLowerCase() : 'admin';
     const passwordHash = hashPassword(password);
@@ -178,10 +483,10 @@ publicRouter.post('/register', validateBody(publicRegistrationSchema), async (re
 
     await client.execute({
       sql: `
-        INSERT INTO users (id, shop_id, username, password_hash, encrypted_recovery_password, pin_code, full_name, role_id, phone, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'ROLE_OWNER', ?, 1)
+        INSERT INTO users (id, shop_id, username, password_hash, encrypted_recovery_password, pin_code, full_name, role_id, phone, email, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'ROLE_OWNER', ?, ?, 1)
       `,
-      args: [ownerUserId, shopId, cleanUsername, passwordHash, encryptedRecovery, pin, ownerName.trim(), phone.trim()],
+      args: [ownerUserId, shopId, cleanUsername, passwordHash, encryptedRecovery, pin, ownerName.trim(), phone.trim(), cleanEmail],
     });
 
     // 4. Fetch permissions for token
@@ -210,7 +515,7 @@ publicRouter.post('/register', validateBody(publicRegistrationSchema), async (re
       args: [
         `notif_${Date.now()}`,
         `New Shop Registration: ${shopName.trim()}`,
-        `New shop "${shopName.trim()}" (slug: ${cleanSlug}) started a 14-day free trial. Owner: ${ownerName.trim()} (${phone.trim()}).`,
+        `New shop "${shopName.trim()}" (slug: ${cleanSlug}) started a 14-day free trial. Owner: ${ownerName.trim()} (${phone.trim()} / ${cleanEmail}).`,
       ],
     });
 

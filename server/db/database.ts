@@ -826,6 +826,22 @@ export async function initializeMultiTenantSchema(): Promise<void> {
       attempts INTEGER NOT NULL DEFAULT 0,
       requested_ip TEXT,
       created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+    );`,
+
+    // 32. Self-Service Shop Registration Verifications (Email & Mobile OTP)
+    `CREATE TABLE IF NOT EXISTS registration_verifications (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      email_otp_hash TEXT NOT NULL,
+      phone_otp_hash TEXT NOT NULL,
+      encrypted_email_otp TEXT,
+      encrypted_phone_otp TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING', -- 'PENDING' | 'VERIFIED' | 'CONSUMED' | 'EXPIRED'
+      expires_at TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      requested_ip TEXT,
+      created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
     );`
   ];
 
@@ -841,6 +857,20 @@ export async function initializeMultiTenantSchema(): Promise<void> {
   const safeMigrations = [
     `ALTER TABLE users ADD COLUMN encrypted_recovery_password TEXT;`,
     `ALTER TABLE users ADD COLUMN email TEXT;`,
+    `CREATE TABLE IF NOT EXISTS registration_verifications (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      email_otp_hash TEXT NOT NULL,
+      phone_otp_hash TEXT NOT NULL,
+      encrypted_email_otp TEXT,
+      encrypted_phone_otp TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      expires_at TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      requested_ip TEXT,
+      created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+    );`,
   ];
   for (const migrationSql of safeMigrations) {
     try {

@@ -954,6 +954,30 @@ export const saasApi = {
       return apiFetch(`/api/public/check-availability?${q.toString()}`);
     },
 
+    sendRegistrationVerification: async (payload: {
+      email: string;
+      phone: string;
+      shopName?: string;
+      ownerName?: string;
+      slug?: string;
+    }) => {
+      return apiFetch('/api/public/send-verification', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    verifyRegistrationCode: async (payload: {
+      verificationId: string;
+      emailOtp?: string;
+      phoneOtp?: string;
+    }) => {
+      return apiFetch('/api/public/verify-code', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
     register: async (payload: any) => {
       const res = await apiFetch('/api/public/register', {
         method: 'POST',

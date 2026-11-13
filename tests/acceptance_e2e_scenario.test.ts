@@ -25,8 +25,10 @@ describe('K-Connect Acceptance Scenario — Complete End-to-End Lifecycle', () =
   let superAdminToken: string;
 
   // Shop A credentials and tokens
-  const shopASlug = `acceptance_shop_${Date.now()}`;
-  const shopAOwnerPhone = '9876543210';
+  const runId = `${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+  const shopASlug = `acceptance_shop_${runId}`;
+  const shopAOwnerPhone = `987${Math.floor(100000 + Math.random() * 900000)}0`;
+  const shopAOwnerEmail = `vignesh_${runId}@metrochips.in`;
   const shopAPassword = 'SecureShopPass2026!';
   let shopAToken: string;
   let shopAId: string;
@@ -37,7 +39,9 @@ describe('K-Connect Acceptance Scenario — Complete End-to-End Lifecycle', () =
   let shopAClaimId: string;
 
   // Shop B credentials and tokens
-  const shopBSlug = `rival_shop_${Date.now()}`;
+  const shopBSlug = `rival_shop_${runId}`;
+  const shopBOwnerPhone = `999${Math.floor(100000 + Math.random() * 900000)}6`;
+  const shopBOwnerEmail = `rival_${runId}@quickfix.in`;
   let shopBToken: string;
 
   beforeAll(async () => {
@@ -62,6 +66,7 @@ describe('K-Connect Acceptance Scenario — Complete End-to-End Lifecycle', () =
       slug: shopASlug,
       ownerName: 'Vignesh M',
       phone: shopAOwnerPhone,
+      email: shopAOwnerEmail,
       password: shopAPassword,
     });
 
@@ -311,7 +316,8 @@ describe('K-Connect Acceptance Scenario — Complete End-to-End Lifecycle', () =
       shopName: 'Rival QuickFix Shop',
       slug: shopBSlug,
       ownerName: 'Competitor Owner',
-      phone: '9998887776',
+      phone: shopBOwnerPhone,
+      email: shopBOwnerEmail,
       password: 'RivalPassword2026!',
     });
     expect([200, 201]).toContain(bReg.status);

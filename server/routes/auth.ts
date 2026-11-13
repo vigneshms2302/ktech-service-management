@@ -163,6 +163,7 @@ authRouter.post('/login', validateBody(loginSchema), async (req, res) => {
         roleId: user.role_id,
         roleName: user.role_name,
         phone: user.phone,
+        email: user.email,
         commissionPct: user.commission_pct,
         permissions,
       },
@@ -225,6 +226,7 @@ authRouter.post('/pin', validateBody(pinLoginSchema), async (req, res) => {
         roleId: user.role_id,
         roleName: user.role_name,
         phone: user.phone,
+        email: user.email,
         permissions,
       },
     });

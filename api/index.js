@@ -22938,14 +22938,14 @@ var require_etag = __commonJS({
   "node_modules/etag/index.js"(exports2, module2) {
     "use strict";
     module2.exports = etag;
-    var crypto7 = require("crypto");
+    var crypto8 = require("crypto");
     var Stats = require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash3 = crypto7.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash3 = crypto8.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash3 + '"';
     }
@@ -45487,13 +45487,13 @@ var require_dist3 = __commonJS({
 // node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "node_modules/cookie-signature/index.js"(exports2) {
-    var crypto7 = require("crypto");
+    var crypto8 = require("crypto");
     exports2.sign = function(val, secret) {
       if ("string" != typeof val)
         throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret)
         throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto7.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto8.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports2.unsign = function(input2, secret) {
       if ("string" != typeof input2)
@@ -45501,7 +45501,7 @@ var require_cookie_signature = __commonJS({
       if (null == secret)
         throw new TypeError("Secret key must be provided.");
       var tentativeValue = input2.slice(0, input2.lastIndexOf(".")), expectedInput = exports2.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input2);
-      return expectedBuffer.length === inputBuffer.length && crypto7.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
+      return expectedBuffer.length === inputBuffer.length && crypto8.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
 });
@@ -59760,14 +59760,14 @@ var require_buffer_equal_constant_time = __commonJS({
 var require_jwa = __commonJS({
   "node_modules/jwa/index.js"(exports2, module2) {
     var Buffer3 = require_safe_buffer().Buffer;
-    var crypto7 = require("crypto");
+    var crypto8 = require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
     var util = require("util");
     var MSG_INVALID_ALGORITHM = '"%s" is not a valid algorithm.\n  Supported algorithms are:\n  "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512" and "none".';
     var MSG_INVALID_SECRET = "secret must be a string or buffer";
     var MSG_INVALID_VERIFIER_KEY = "key must be a string or a buffer";
     var MSG_INVALID_SIGNER_KEY = "key must be a string, a buffer or an object";
-    var supportsKeyObjects = typeof crypto7.createPublicKey === "function";
+    var supportsKeyObjects = typeof crypto8.createPublicKey === "function";
     if (supportsKeyObjects) {
       MSG_INVALID_VERIFIER_KEY += " or a KeyObject";
       MSG_INVALID_SECRET += "or a KeyObject";
@@ -59857,17 +59857,17 @@ var require_jwa = __commonJS({
       return function sign(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
-        var hmac = crypto7.createHmac("sha" + bits, secret);
+        var hmac = crypto8.createHmac("sha" + bits, secret);
         var sig = (hmac.update(thing), hmac.digest("base64"));
         return fromBase64(sig);
       };
     }
     var bufferEqual;
-    var timingSafeEqual = "timingSafeEqual" in crypto7 ? function timingSafeEqual2(a, b) {
+    var timingSafeEqual = "timingSafeEqual" in crypto8 ? function timingSafeEqual2(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
-      return crypto7.timingSafeEqual(a, b);
+      return crypto8.timingSafeEqual(a, b);
     } : function timingSafeEqual2(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
@@ -59884,7 +59884,7 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto7.createSign("RSA-SHA" + bits);
+        var signer = crypto8.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign(privateKey, "base64"));
         return fromBase64(sig);
       };
@@ -59894,7 +59894,7 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto7.createVerify("RSA-SHA" + bits);
+        var verifier = crypto8.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify(publicKey, signature, "base64");
       };
@@ -59903,11 +59903,11 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto7.createSign("RSA-SHA" + bits);
+        var signer = crypto8.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign({
           key: privateKey,
-          padding: crypto7.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto7.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto8.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto8.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig);
       };
@@ -59917,12 +59917,12 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto7.createVerify("RSA-SHA" + bits);
+        var verifier = crypto8.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify({
           key: publicKey,
-          padding: crypto7.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto7.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto8.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto8.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
       };
     }
@@ -71410,6 +71410,21 @@ async function initializeMultiTenantSchema() {
       attempts INTEGER NOT NULL DEFAULT 0,
       requested_ip TEXT,
       created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+    );`,
+    // 32. Self-Service Shop Registration Verifications (Email & Mobile OTP)
+    `CREATE TABLE IF NOT EXISTS registration_verifications (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      email_otp_hash TEXT NOT NULL,
+      phone_otp_hash TEXT NOT NULL,
+      encrypted_email_otp TEXT,
+      encrypted_phone_otp TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING', -- 'PENDING' | 'VERIFIED' | 'CONSUMED' | 'EXPIRED'
+      expires_at TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      requested_ip TEXT,
+      created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
     );`
   ];
   for (const statement of ddlStatements) {
@@ -71421,7 +71436,21 @@ async function initializeMultiTenantSchema() {
   }
   const safeMigrations = [
     `ALTER TABLE users ADD COLUMN encrypted_recovery_password TEXT;`,
-    `ALTER TABLE users ADD COLUMN email TEXT;`
+    `ALTER TABLE users ADD COLUMN email TEXT;`,
+    `CREATE TABLE IF NOT EXISTS registration_verifications (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      email_otp_hash TEXT NOT NULL,
+      phone_otp_hash TEXT NOT NULL,
+      encrypted_email_otp TEXT,
+      encrypted_phone_otp TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      expires_at TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      requested_ip TEXT,
+      created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+    );`
   ];
   for (const migrationSql of safeMigrations) {
     try {
@@ -73594,6 +73623,92 @@ async function sendPasswordResetEmail(payload) {
       <p style="font-size:12px;color:#9ca3af;margin:18px 0 0;line-height:1.5;">
         Valid for ${payload.expiresInMinutes} minutes. Or paste this link into your browser:<br />
         <span style="color:#6ee7b7;word-break:break-all;">${safeUrl}</span>
+      </p>
+    </div>
+  `;
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  if (resendApiKey) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [payload.to],
+          subject,
+          text: textBody,
+          html: htmlBody
+        })
+      });
+      if (response.ok) {
+        return { delivered: true, provider: "RESEND" };
+      }
+      const errBody = await response.text().catch(() => "");
+      return { delivered: false, provider: "RESEND", error: `Resend HTTP ${response.status}: ${errBody}` };
+    } catch (err) {
+      return { delivered: false, provider: "RESEND", error: err.message };
+    }
+  }
+  const webhookUrl = process.env.RESET_EMAIL_WEBHOOK_URL?.trim();
+  if (webhookUrl) {
+    try {
+      const headers = { "Content-Type": "application/json" };
+      if (process.env.RESET_EMAIL_WEBHOOK_TOKEN?.trim()) {
+        headers["Authorization"] = `Bearer ${process.env.RESET_EMAIL_WEBHOOK_TOKEN.trim()}`;
+      }
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          ...payload,
+          subject,
+          text: textBody,
+          html: htmlBody
+        })
+      });
+      if (response.ok) {
+        return { delivered: true, provider: "WEBHOOK" };
+      }
+      return { delivered: false, provider: "WEBHOOK", error: `Webhook HTTP ${response.status}` };
+    } catch (err) {
+      return { delivered: false, provider: "WEBHOOK", error: err.message };
+    }
+  }
+  return { delivered: false, error: "Email delivery provider is not configured." };
+}
+async function sendRegistrationVerificationEmail(payload) {
+  const fromEmail = (process.env.RESEND_FROM_EMAIL || "K-Connect Repair Laboratory <noreply@kconnect.cloud>").trim();
+  const safeName = escapeHtml(payload.recipientName);
+  const safeShop = escapeHtml(payload.shopName);
+  const safeOtp = escapeHtml(payload.otp);
+  const subject = `Confirm your email for ${payload.shopName}: ${payload.otp}`;
+  const textBody = [
+    `Hello ${payload.recipientName},`,
+    "",
+    `Thank you for registering your shop "${payload.shopName}" with K-Connect Repair Laboratory!`,
+    "",
+    `Your Email Confirmation Code is: ${payload.otp}`,
+    "",
+    `This code will expire in ${payload.expiresInMinutes} minutes. Enter this code on the registration page to verify your email address and activate your 14-day free trial.`,
+    "",
+    `If you did not request this registration, you can safely ignore this message.`
+  ].join("\n");
+  const htmlBody = `
+    <div style="font-family:Inter,Segoe UI,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#111827;color:#f3f4f6;border-radius:14px;border:1px solid #374151;">
+      <div style="font-size:18px;font-weight:800;color:#10a37f;margin-bottom:8px;">K-Connect Repair Laboratory</div>
+      <h2 style="font-size:20px;margin:0 0 12px;color:#ffffff;">Confirm Your Email Address</h2>
+      <p style="font-size:14px;line-height:1.6;color:#d1d5db;margin:0 0 16px;">
+        Hello ${safeName}, please use the code below to confirm your email and activate your 14-day free trial for <strong>${safeShop}</strong>.
+      </p>
+      <div style="background:#1f2937;border:1px solid #374151;border-radius:10px;padding:16px;text-align:center;margin-bottom:18px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:#9ca3af;margin-bottom:6px;">Email Confirmation Code</div>
+        <div style="font-size:28px;font-weight:800;letter-spacing:6px;color:#34d399;font-family:monospace;">${safeOtp}</div>
+      </div>
+      <p style="font-size:12px;color:#9ca3af;margin:18px 0 0;line-height:1.5;">
+        Valid for ${payload.expiresInMinutes} minutes. If you did not initiate this registration, you can safely ignore this email.
       </p>
     </div>
   `;
@@ -98897,17 +99012,39 @@ inventoryRouter.put("/items/:id", async (req, res) => {
 
 // server/routes/public.ts
 var import_express7 = __toESM(require_express2());
+var import_node_crypto6 = __toESM(require("node:crypto"));
 var import_node_path2 = __toESM(require("node:path"));
 var import_node_fs2 = __toESM(require("node:fs"));
 var publicRouter = (0, import_express7.Router)();
+function maskPhoneNumber(phone) {
+  if (!phone)
+    return "";
+  const digits = phone.replace(/[^0-9]/g, "");
+  if (digits.length < 4)
+    return phone;
+  const last4 = digits.slice(-4);
+  return `${digits.slice(0, 2)}******${last4}`;
+}
+var sendVerificationSchema = external_exports.object({
+  email: external_exports.string().trim().email("Please enter a valid email address"),
+  phone: external_exports.string().trim().min(10, "Valid 10-digit mobile number required"),
+  shopName: external_exports.string().trim().optional(),
+  ownerName: external_exports.string().trim().optional(),
+  slug: external_exports.string().trim().optional()
+});
+var verifyCodeSchema = external_exports.object({
+  verificationId: external_exports.string().trim().min(1, "Verification ID is required"),
+  emailOtp: external_exports.string().trim().regex(/^\d{6}$/, "Email confirmation code must be 6 digits").optional(),
+  phoneOtp: external_exports.string().trim().regex(/^\d{6}$/, "Mobile OTP must be 6 digits").optional()
+});
 var publicRegistrationSchema = external_exports.object({
   shopName: external_exports.string().trim().min(2, "Shop name must be at least 2 characters").max(100),
   slug: external_exports.string().trim().min(3, "Shop URL handle must be at least 3 characters").max(50).regex(/^[a-z0-9-_]+$/i, "Slug must contain only alphanumeric characters, dashes, or underscores"),
   ownerName: external_exports.string().trim().min(2, "Owner name must be at least 2 characters").max(100),
   phone: external_exports.string().trim().min(10, "Valid 10-digit mobile number required").max(20),
   email: external_exports.preprocess(
-    (val) => val === "" || val === null ? void 0 : typeof val === "string" ? val.trim() : val,
-    external_exports.string().email("Please enter a valid email address").optional()
+    (val) => typeof val === "string" ? val.trim() : val,
+    external_exports.string().min(1, "Email address is required").email("Please enter a valid email address")
   ),
   username: external_exports.string().trim().min(3).max(50).default("admin"),
   password: external_exports.string().min(6, "Password must be at least 6 characters"),
@@ -98916,7 +99053,10 @@ var publicRegistrationSchema = external_exports.object({
   pincode: external_exports.preprocess(
     (val) => val === "" || val === null ? void 0 : typeof val === "string" ? val.trim() : val,
     external_exports.string().max(10).optional()
-  )
+  ),
+  verificationId: external_exports.string().trim().optional(),
+  emailOtp: external_exports.string().trim().optional(),
+  phoneOtp: external_exports.string().trim().optional()
 });
 var contactInquirySchema = external_exports.object({
   name: external_exports.string().min(2).max(100),
@@ -98979,14 +99119,165 @@ publicRouter.get("/check-availability", async (req, res) => {
     res.status(500).json({ success: false, error: error62.message });
   }
 });
+publicRouter.post("/send-verification", validateBody(sendVerificationSchema), async (req, res) => {
+  try {
+    const { email: email3, phone, shopName = "Your Workshop", ownerName = "Shop Owner", slug } = req.body;
+    const client = getClient();
+    const cleanEmail = email3.trim().toLowerCase();
+    const cleanPhoneDigits = normalizePhoneDigits(phone);
+    const last10Digits = cleanPhoneDigits.slice(-10);
+    const checkEmail = await client.execute({
+      sql: `SELECT id, name FROM shops WHERE LOWER(email) = ? LIMIT 1`,
+      args: [cleanEmail]
+    });
+    if (checkEmail.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        field: "email",
+        error: `Email "${cleanEmail}" is already registered to shop "${checkEmail.rows[0].name}". Each shop must use a unique email address.`
+      });
+    }
+    const checkPhone = await client.execute({
+      sql: `SELECT id, name FROM shops WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') LIKE ? LIMIT 1`,
+      args: [`%${last10Digits}`]
+    });
+    if (checkPhone.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        field: "phone",
+        error: `Mobile number is already registered to shop "${checkPhone.rows[0].name}". Each shop must use a unique mobile number.`
+      });
+    }
+    if (slug && slug.trim()) {
+      const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+      const checkSlug = await client.execute({
+        sql: `SELECT id FROM shops WHERE slug = ? OR id = ? LIMIT 1`,
+        args: [cleanSlug, `shop_${cleanSlug}`]
+      });
+      if (checkSlug.rows.length > 0) {
+        return res.status(409).json({
+          success: false,
+          field: "slug",
+          error: `Shop handle "${cleanSlug}" is already taken.`
+        });
+      }
+    }
+    const emailOtp = import_node_crypto6.default.randomInt(1e5, 1e6).toString();
+    const phoneOtp = import_node_crypto6.default.randomInt(1e5, 1e6).toString();
+    const emailHash = hashResetSecret(emailOtp);
+    const phoneHash = hashResetSecret(phoneOtp);
+    const encryptedEmailOtp = encryptSecret(emailOtp);
+    const encryptedPhoneOtp = encryptSecret(phoneOtp);
+    const verificationId = `reg_v_${Date.now()}_${import_node_crypto6.default.randomBytes(4).toString("hex")}`;
+    const expiresInMinutes = 15;
+    const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1e3).toISOString();
+    const ipAddress = req.ip || req.headers["x-forwarded-for"] || "127.0.0.1";
+    await client.execute({
+      sql: `
+        INSERT INTO registration_verifications (
+          id, email, phone, email_otp_hash, phone_otp_hash,
+          encrypted_email_otp, encrypted_phone_otp, status,
+          expires_at, attempts, requested_ip
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, 0, ?)
+      `,
+      args: [
+        verificationId,
+        cleanEmail,
+        cleanPhoneDigits,
+        emailHash,
+        phoneHash,
+        encryptedEmailOtp,
+        encryptedPhoneOtp,
+        expiresAt,
+        ipAddress
+      ]
+    });
+    await sendRegistrationVerificationEmail({
+      to: cleanEmail,
+      recipientName: ownerName,
+      shopName,
+      otp: emailOtp,
+      expiresInMinutes
+    });
+    const maskedEmail = maskEmailAddress(cleanEmail);
+    const maskedPhone = maskPhoneNumber(phone);
+    res.json({
+      success: true,
+      data: {
+        verificationId,
+        maskedEmail,
+        maskedPhone,
+        expiresInMinutes,
+        devEmailOtp: process.env.NODE_ENV !== "production" ? emailOtp : void 0,
+        devPhoneOtp: process.env.NODE_ENV !== "production" ? phoneOtp : void 0
+      },
+      message: `Confirmation codes dispatched! Check ${maskedEmail} for your email code and ${maskedPhone} for your mobile OTP.`
+    });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
+publicRouter.post("/verify-code", validateBody(verifyCodeSchema), async (req, res) => {
+  try {
+    const { verificationId, emailOtp, phoneOtp } = req.body;
+    const client = getClient();
+    const verifRes = await client.execute({
+      sql: `SELECT * FROM registration_verifications WHERE id = ? LIMIT 1`,
+      args: [verificationId]
+    });
+    if (verifRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Verification session not found." });
+    }
+    const verif = verifRes.rows[0];
+    if (verif.status === "CONSUMED") {
+      return res.status(400).json({ success: false, error: "This verification session has already been used." });
+    }
+    if (new Date(String(verif.expires_at)).getTime() < Date.now()) {
+      return res.status(400).json({ success: false, error: "Verification session expired. Please request a new code." });
+    }
+    if (Number(verif.attempts || 0) >= 5) {
+      return res.status(429).json({ success: false, error: "Too many failed verification attempts. Please request a new code." });
+    }
+    let isEmailValid = true;
+    let isPhoneValid = true;
+    if (emailOtp) {
+      const emailHash = hashResetSecret(emailOtp.trim());
+      isEmailValid = timingSafeEqualHex(emailHash, String(verif.email_otp_hash));
+    }
+    if (phoneOtp) {
+      const phoneHash = hashResetSecret(phoneOtp.trim());
+      isPhoneValid = timingSafeEqualHex(phoneHash, String(verif.phone_otp_hash));
+    }
+    if (!isEmailValid || !isPhoneValid) {
+      await client.execute({
+        sql: `UPDATE registration_verifications SET attempts = attempts + 1 WHERE id = ?`,
+        args: [verificationId]
+      });
+      return res.status(400).json({
+        success: false,
+        error: !isEmailValid && !isPhoneValid ? "Both codes are invalid." : !isEmailValid ? "Invalid email confirmation code." : "Invalid mobile OTP."
+      });
+    }
+    await client.execute({
+      sql: `UPDATE registration_verifications SET status = 'VERIFIED' WHERE id = ?`,
+      args: [verificationId]
+    });
+    res.json({ success: true, verified: true, message: "Codes verified successfully." });
+  } catch (error62) {
+    res.status(500).json({ success: false, error: error62.message });
+  }
+});
 publicRouter.post("/register", validateBody(publicRegistrationSchema), async (req, res) => {
   try {
-    const { shopName, slug, ownerName, phone, email: email3, username, password, city, state, pincode } = req.body;
+    const { shopName, slug, ownerName, phone, email: email3, username, password, city, state, pincode, verificationId, emailOtp, phoneOtp } = req.body;
     const client = getClient();
     const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
     const shopId = `shop_${cleanSlug}`;
+    const cleanEmail = email3.trim().toLowerCase();
+    const cleanPhoneDigits = normalizePhoneDigits(phone);
+    const last10Digits = cleanPhoneDigits.slice(-10);
     const checkSlug = await client.execute({
-      sql: `SELECT id, name FROM shops WHERE slug = ? OR id = ?`,
+      sql: `SELECT id, name FROM shops WHERE slug = ? OR id = ? LIMIT 1`,
       args: [cleanSlug, shopId]
     });
     if (checkSlug.rows.length > 0) {
@@ -98996,6 +99287,91 @@ publicRouter.post("/register", validateBody(publicRegistrationSchema), async (re
         error: `Shop address URL "${cleanSlug}" is already taken. Please choose another shop handle.`
       });
       return;
+    }
+    const checkEmail = await client.execute({
+      sql: `SELECT id, name FROM shops WHERE LOWER(email) = ? LIMIT 1`,
+      args: [cleanEmail]
+    });
+    if (checkEmail.rows.length > 0) {
+      res.status(409).json({
+        success: false,
+        field: "email",
+        error: `Email "${cleanEmail}" is already registered to shop "${checkEmail.rows[0].name}". Each shop must use a unique email.`
+      });
+      return;
+    }
+    const checkPhone = await client.execute({
+      sql: `SELECT id, name FROM shops WHERE REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') LIKE ? LIMIT 1`,
+      args: [`%${last10Digits}`]
+    });
+    if (checkPhone.rows.length > 0) {
+      res.status(409).json({
+        success: false,
+        field: "phone",
+        error: `Mobile number is already registered to shop "${checkPhone.rows[0].name}". Each shop must use a unique mobile number.`
+      });
+      return;
+    }
+    if (verificationId) {
+      const verifRes = await client.execute({
+        sql: `SELECT * FROM registration_verifications WHERE id = ? LIMIT 1`,
+        args: [verificationId]
+      });
+      if (verifRes.rows.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: "Verification session not found. Please request a new verification code."
+        });
+        return;
+      }
+      const verif = verifRes.rows[0];
+      if (verif.status === "CONSUMED") {
+        res.status(400).json({
+          success: false,
+          error: "This verification session has already been used. Please request a new code."
+        });
+        return;
+      }
+      if (new Date(String(verif.expires_at)).getTime() < Date.now()) {
+        res.status(400).json({
+          success: false,
+          error: "Verification session expired. Please request a new code."
+        });
+        return;
+      }
+      if (String(verif.email).toLowerCase() !== cleanEmail || String(verif.phone) !== cleanPhoneDigits) {
+        res.status(400).json({
+          success: false,
+          error: "Verification session contact details do not match the registration email and mobile number."
+        });
+        return;
+      }
+      if (verif.status !== "VERIFIED") {
+        if (!emailOtp || !phoneOtp) {
+          res.status(400).json({
+            success: false,
+            error: "Both email confirmation code and mobile OTP are required to complete registration."
+          });
+          return;
+        }
+        const emailHash = hashResetSecret(emailOtp.trim());
+        const phoneHash = hashResetSecret(phoneOtp.trim());
+        const isEmailMatch = timingSafeEqualHex(emailHash, String(verif.email_otp_hash));
+        const isPhoneMatch = timingSafeEqualHex(phoneHash, String(verif.phone_otp_hash));
+        if (!isEmailMatch || !isPhoneMatch) {
+          await client.execute({
+            sql: `UPDATE registration_verifications SET attempts = attempts + 1 WHERE id = ?`,
+            args: [verificationId]
+          });
+          const errorMsg = !isEmailMatch && !isPhoneMatch ? "Both email confirmation code and mobile OTP are incorrect." : !isEmailMatch ? "Invalid email confirmation code." : "Invalid mobile OTP.";
+          res.status(400).json({ success: false, error: errorMsg });
+          return;
+        }
+      }
+      await client.execute({
+        sql: `UPDATE registration_verifications SET status = 'CONSUMED' WHERE id = ?`,
+        args: [verificationId]
+      });
     }
     const trialDays = 14;
     const now = /* @__PURE__ */ new Date();
@@ -99013,7 +99389,7 @@ publicRouter.post("/register", validateBody(publicRegistrationSchema), async (re
         cleanSlug,
         ownerName.trim(),
         phone.trim(),
-        email3 ? email3.trim() : null,
+        cleanEmail,
         `${city.trim()}, ${state.trim()}`,
         city.trim(),
         state.trim(),
@@ -99038,10 +99414,10 @@ publicRouter.post("/register", validateBody(publicRegistrationSchema), async (re
     const pin = "1234";
     await client.execute({
       sql: `
-        INSERT INTO users (id, shop_id, username, password_hash, encrypted_recovery_password, pin_code, full_name, role_id, phone, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'ROLE_OWNER', ?, 1)
+        INSERT INTO users (id, shop_id, username, password_hash, encrypted_recovery_password, pin_code, full_name, role_id, phone, email, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'ROLE_OWNER', ?, ?, 1)
       `,
-      args: [ownerUserId, shopId, cleanUsername, passwordHash, encryptedRecovery, pin, ownerName.trim(), phone.trim()]
+      args: [ownerUserId, shopId, cleanUsername, passwordHash, encryptedRecovery, pin, ownerName.trim(), phone.trim(), cleanEmail]
     });
     const permRes = await client.execute({
       sql: `SELECT p.code FROM role_permissions rp JOIN permissions p ON rp.permission_id = p.id WHERE rp.role_id = 'ROLE_OWNER'`,
@@ -99064,7 +99440,7 @@ publicRouter.post("/register", validateBody(publicRegistrationSchema), async (re
       args: [
         `notif_${Date.now()}`,
         `New Shop Registration: ${shopName.trim()}`,
-        `New shop "${shopName.trim()}" (slug: ${cleanSlug}) started a 14-day free trial. Owner: ${ownerName.trim()} (${phone.trim()}).`
+        `New shop "${shopName.trim()}" (slug: ${cleanSlug}) started a 14-day free trial. Owner: ${ownerName.trim()} (${phone.trim()} / ${cleanEmail}).`
       ]
     });
     res.json({
@@ -100326,7 +100702,7 @@ var import_express13 = __toESM(require_express2());
 // server/storage/storageAdapter.ts
 var import_node_fs3 = __toESM(require("node:fs"));
 var import_node_path3 = __toESM(require("node:path"));
-var import_node_crypto6 = __toESM(require("node:crypto"));
+var import_node_crypto7 = __toESM(require("node:crypto"));
 var LocalStorageProvider = class {
   name = "LOCAL_DISK";
   baseDir;
@@ -100358,7 +100734,7 @@ var LocalStorageProvider = class {
   }
   async upload(options) {
     const ext = import_node_path3.default.extname(options.fileName) || ".bin";
-    const uuid3 = import_node_crypto6.default.randomUUID();
+    const uuid3 = import_node_crypto7.default.randomUUID();
     const subFolder = options.category.toLowerCase().replace("_", "s");
     const safeKey = `${options.shopId}/${subFolder}/${uuid3}${ext}`;
     const fullPath = import_node_path3.default.join(this.baseDir, safeKey);
@@ -100426,7 +100802,7 @@ var SupabaseStorageProvider = class {
   }
   async upload(options) {
     const ext = import_node_path3.default.extname(options.fileName) || ".bin";
-    const uuid3 = import_node_crypto6.default.randomUUID();
+    const uuid3 = import_node_crypto7.default.randomUUID();
     const safeKey = `${options.shopId}/${options.category.toLowerCase()}/${uuid3}${ext}`;
     const url2 = `${this.supabaseUrl}/storage/v1/object/${this.bucket}/${safeKey}`;
     const response = await fetch(url2, {

@@ -47,7 +47,8 @@ describe('K-Connect SaaS Commercial Subscription & GPay Payment Lifecycle', () =
       shopName: 'Duplicate Test',
       slug: 'ktech', // existing flagship slug
       ownerName: 'Owner Duplicate',
-      phone: '9840012345',
+      phone: `984${Math.floor(100000 + Math.random() * 900000)}0`,
+      email: `dup_${Date.now()}@test.com`,
       password: 'password123',
     });
     expect(dupRes.status).toBe(400);
@@ -55,13 +56,14 @@ describe('K-Connect SaaS Commercial Subscription & GPay Payment Lifecycle', () =
   });
 
   it('3. should self-register a new shop with an exact 14-day free trial', async () => {
-    testShopSlug = `lab_${Date.now()}`;
+    const runId = `${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+    testShopSlug = `lab_${runId}`;
     const regRes = await request(app).post('/api/public/register').send({
       shopName: 'Apex Computer Care',
       slug: testShopSlug,
       ownerName: 'Karthik Raja',
-      phone: '9842233445',
-      email: 'karthik@apexcare.in',
+      phone: `984${Math.floor(100000 + Math.random() * 900000)}5`,
+      email: `karthik_${runId}@apexcare.in`,
       username: 'apexowner',
       password: 'securepassword123',
       city: 'Coimbatore',
