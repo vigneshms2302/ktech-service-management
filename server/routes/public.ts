@@ -7,6 +7,7 @@ import { hashPassword, generateToken } from '../middleware/auth.ts';
 import { encryptSecret } from '../security/crypto.ts';
 import { hashResetSecret, timingSafeEqualHex, normalizePhoneDigits } from '../security/passwordUtils.ts';
 import { sendRegistrationVerificationEmail, maskEmailAddress } from '../services/emailService.ts';
+import { sendRegistrationSmsOtp } from '../services/smsService.ts';
 import { validateBody } from '../middleware/validate.ts';
 import { z } from 'zod';
 
@@ -222,6 +223,15 @@ publicRouter.post('/send-verification', validateBody(sendVerificationSchema), as
       recipientName: ownerName,
       shopName,
       otp: emailOtp,
+      expiresInMinutes,
+    });
+
+    // Send mobile SMS / WhatsApp OTP via SMS Gateway
+    await sendRegistrationSmsOtp({
+      toPhone: phone,
+      recipientName: ownerName,
+      shopName,
+      otp: phoneOtp,
       expiresInMinutes,
     });
 
