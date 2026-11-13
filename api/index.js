@@ -99109,6 +99109,113 @@ async function sendRegistrationSmsOtp(payload) {
   return { delivered: false, provider: "DEV_CONSOLE", error: "No SMS gateway provider configured." };
 }
 
+// server/services/whatsappService.ts
+async function sendWhatsAppOtp(payload) {
+  const cleanPhone = payload.toPhone.replace(/[^0-9]/g, "");
+  const last10Digits = cleanPhone.slice(-10);
+  const recipientE164 = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+  const messageText = `\u{1F510} *K-Connect Repair Laboratory*
+
+Your shop verification code for *${payload.shopName}* is:
+
+*${payload.otp}*
+
+Valid for ${payload.expiresInMinutes} minutes. Do not share this OTP with anyone.
+_Multi-workstation cloud workspace for computer & mobile service labs._`;
+  const metaPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
+  const metaToken = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
+  if (metaPhoneId && metaToken) {
+    try {
+      const url2 = `https://graph.facebook.com/v19.0/${metaPhoneId}/messages`;
+      const response = await fetch(url2, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${metaToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: recipientE164,
+          type: "text",
+          text: {
+            preview_url: false,
+            body: messageText
+          }
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data.messages) {
+        return {
+          delivered: true,
+          provider: "META_CLOUD_API",
+          messageId: Array.isArray(data.messages) ? data.messages[0]?.id : void 0
+        };
+      }
+      const errDetails = data.error?.message || `Meta Cloud API HTTP ${response.status}`;
+      return { delivered: false, provider: "META_CLOUD_API", error: errDetails };
+    } catch (err) {
+      return { delivered: false, provider: "META_CLOUD_API", error: err.message };
+    }
+  }
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const twilioToken = process.env.TWILIO_AUTH_TOKEN?.trim();
+  const twilioFrom = (process.env.TWILIO_WHATSAPP_FROM || "whatsapp:+14155238886").trim();
+  if (twilioSid && twilioToken) {
+    try {
+      const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
+      const basicAuth = Buffer.from(`${twilioSid}:${twilioToken}`).toString("base64");
+      const bodyParams = new URLSearchParams();
+      bodyParams.append("From", twilioFrom.startsWith("whatsapp:") ? twilioFrom : `whatsapp:${twilioFrom}`);
+      bodyParams.append("To", `whatsapp:+${recipientE164}`);
+      bodyParams.append("Body", messageText);
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${basicAuth}`,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: bodyParams.toString()
+      });
+      if (response.ok) {
+        return { delivered: true, provider: "TWILIO_WHATSAPP" };
+      }
+      const errText = await response.text().catch(() => "");
+      return { delivered: false, provider: "TWILIO_WHATSAPP", error: `Twilio HTTP ${response.status}: ${errText}` };
+    } catch (err) {
+      return { delivered: false, provider: "TWILIO_WHATSAPP", error: err.message };
+    }
+  }
+  const webhookUrl = process.env.WHATSAPP_WEBHOOK_URL?.trim();
+  if (webhookUrl) {
+    try {
+      const headers = { "Content-Type": "application/json" };
+      if (process.env.WHATSAPP_WEBHOOK_TOKEN?.trim()) {
+        headers["Authorization"] = `Bearer ${process.env.WHATSAPP_WEBHOOK_TOKEN.trim()}`;
+      }
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          phone: recipientE164,
+          otp: payload.otp,
+          message: messageText,
+          shopName: payload.shopName,
+          expiresInMinutes: payload.expiresInMinutes
+        })
+      });
+      if (response.ok) {
+        return { delivered: true, provider: "WEBHOOK" };
+      }
+      return { delivered: false, provider: "WEBHOOK", error: `Webhook HTTP ${response.status}` };
+    } catch (err) {
+      return { delivered: false, provider: "WEBHOOK", error: err.message };
+    }
+  }
+  console.log(`[WhatsApp OTP Dispatch] OTP ${payload.otp} generated for WhatsApp +${recipientE164} (No WhatsApp provider API key configured in .env)`);
+  return { delivered: false, provider: "DEV_CONSOLE", error: "No WhatsApp provider API key configured." };
+}
+
 // server/routes/public.ts
 var publicRouter = (0, import_express7.Router)();
 function maskPhoneNumber(phone) {
@@ -99294,13 +99401,22 @@ publicRouter.post("/send-verification", validateBody(sendVerificationSchema), as
       otp: emailOtp,
       expiresInMinutes
     });
-    await sendRegistrationSmsOtp({
-      toPhone: phone,
-      recipientName: ownerName,
-      shopName,
-      otp: phoneOtp,
-      expiresInMinutes
-    });
+    await Promise.allSettled([
+      sendRegistrationSmsOtp({
+        toPhone: phone,
+        recipientName: ownerName,
+        shopName,
+        otp: phoneOtp,
+        expiresInMinutes
+      }),
+      sendWhatsAppOtp({
+        toPhone: phone,
+        recipientName: ownerName,
+        shopName,
+        otp: phoneOtp,
+        expiresInMinutes
+      })
+    ]);
     const maskedEmail = maskEmailAddress(cleanEmail);
     const maskedPhone = maskPhoneNumber(phone);
     res.json({

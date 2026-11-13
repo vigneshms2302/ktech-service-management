@@ -133,3 +133,4 @@ export async function sendRegistrationSmsOtp(payload: SmsDispatchPayload): Promi
   console.log(`[SMS OTP Dispatch] OTP ${payload.otp} generated for ${last10Digits} (No SMS provider API key configured)`);
   return { delivered: false, provider: 'DEV_CONSOLE', error: 'No SMS gateway provider configured.' };
 }
+

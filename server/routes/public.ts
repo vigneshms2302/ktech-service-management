@@ -8,6 +8,7 @@ import { encryptSecret } from '../security/crypto.ts';
 import { hashResetSecret, timingSafeEqualHex, normalizePhoneDigits } from '../security/passwordUtils.ts';
 import { sendRegistrationVerificationEmail, maskEmailAddress } from '../services/emailService.ts';
 import { sendRegistrationSmsOtp } from '../services/smsService.ts';
+import { sendWhatsAppOtp } from '../services/whatsappService.ts';
 import { validateBody } from '../middleware/validate.ts';
 import { z } from 'zod';
 
@@ -226,14 +227,23 @@ publicRouter.post('/send-verification', validateBody(sendVerificationSchema), as
       expiresInMinutes,
     });
 
-    // Send mobile SMS / WhatsApp OTP via SMS Gateway
-    await sendRegistrationSmsOtp({
-      toPhone: phone,
-      recipientName: ownerName,
-      shopName,
-      otp: phoneOtp,
-      expiresInMinutes,
-    });
+    // Send mobile SMS / WhatsApp OTP
+    await Promise.allSettled([
+      sendRegistrationSmsOtp({
+        toPhone: phone,
+        recipientName: ownerName,
+        shopName,
+        otp: phoneOtp,
+        expiresInMinutes,
+      }),
+      sendWhatsAppOtp({
+        toPhone: phone,
+        recipientName: ownerName,
+        shopName,
+        otp: phoneOtp,
+        expiresInMinutes,
+      }),
+    ]);
 
     const maskedEmail = maskEmailAddress(cleanEmail);
     const maskedPhone = maskPhoneNumber(phone);
