@@ -5,10 +5,10 @@ import fs from 'node:fs';
 import { getClient } from '../db/database.ts';
 import { hashPassword, generateToken } from '../middleware/auth.ts';
 import { encryptSecret } from '../security/crypto.ts';
-import { hashResetSecret, timingSafeEqualHex, normalizePhoneDigits } from '../security/passwordUtils.ts';
-import { sendRegistrationVerificationEmail, maskEmailAddress } from '../services/emailService.ts';
+import { hashResetSecret, timingSafeEqualHex, normalizePhoneDigits, resolvePublicAppUrl } from '../security/passwordUtils.ts';
+import { sendRegistrationVerificationEmail, sendRegistrationWelcomeEmail, maskEmailAddress } from '../services/emailService.ts';
 import { sendRegistrationSmsOtp } from '../services/smsService.ts';
-import { sendWhatsAppOtp } from '../services/whatsappService.ts';
+import { sendWhatsAppOtp, sendRegistrationWelcomeWhatsApp } from '../services/whatsappService.ts';
 import { validateBody } from '../middleware/validate.ts';
 import { z } from 'zod';
 
@@ -537,6 +537,32 @@ publicRouter.post('/register', validateBody(publicRegistrationSchema), async (re
         `New Shop Registration: ${shopName.trim()}`,
         `New shop "${shopName.trim()}" (slug: ${cleanSlug}) started a 14-day free trial. Owner: ${ownerName.trim()} (${phone.trim()} / ${cleanEmail}).`,
       ],
+    });
+
+    // 7. Dispatch Welcome Credentials Email & WhatsApp Notification with dedicated shop portal link
+    const publicBase = resolvePublicAppUrl(req);
+    const portalUrl = `${publicBase}/shop/${cleanSlug}`;
+
+    Promise.allSettled([
+      sendRegistrationWelcomeEmail({
+        to: cleanEmail,
+        recipientName: ownerName.trim(),
+        shopName: shopName.trim(),
+        shopSlug: cleanSlug,
+        username: cleanUsername,
+        portalUrl,
+        trialDays,
+      }),
+      sendRegistrationWelcomeWhatsApp({
+        toPhone: phone.trim(),
+        recipientName: ownerName.trim(),
+        shopName: shopName.trim(),
+        shopSlug: cleanSlug,
+        username: cleanUsername,
+        portalUrl,
+      }),
+    ]).catch((err) => {
+      console.warn('[Register] Non-blocking welcome dispatch error:', err);
     });
 
     res.json({

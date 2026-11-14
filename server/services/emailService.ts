@@ -253,3 +253,140 @@ export async function sendRegistrationVerificationEmail(payload: RegistrationVer
 
   return { delivered: false, error: 'Email delivery provider is not configured.' };
 }
+
+export interface RegistrationWelcomeEmailPayload {
+  to: string;
+  recipientName: string;
+  shopName: string;
+  shopSlug: string;
+  username: string;
+  portalUrl: string;
+  trialDays: number;
+}
+
+/**
+ * Sends a welcome credentials email to the new shop owner after registration.
+ */
+export async function sendRegistrationWelcomeEmail(payload: RegistrationWelcomeEmailPayload): Promise<EmailDispatchResult> {
+  const fromEmail = (process.env.RESEND_FROM_EMAIL || 'K-Connect Repair Laboratory <noreply@kconnect.cloud>').trim();
+  const safeName = escapeHtml(payload.recipientName);
+  const safeShop = escapeHtml(payload.shopName);
+  const safeSlug = escapeHtml(payload.shopSlug);
+  const safeUsername = escapeHtml(payload.username);
+  const safeUrl = escapeHtml(payload.portalUrl);
+
+  const subject = `Welcome to K-Connect! Your Shop Workspace: ${payload.shopName}`;
+  const textBody = [
+    `Hello ${payload.recipientName},`,
+    '',
+    `Congratulations! Your dedicated workshop workspace for "${payload.shopName}" has been successfully provisioned on K-Connect Repair Laboratory.`,
+    '',
+    `--- YOUR SHOP LOGIN CREDENTIALS ---`,
+    `Dedicated Shop Portal: ${payload.portalUrl}`,
+    `Admin Username: ${payload.username}`,
+    `Password: (The password you chose during registration)`,
+    `Subscription: 14-Day Free Trial Activated`,
+    '',
+    `You can log in anytime from any PC, tablet, or mobile phone by opening:`,
+    payload.portalUrl,
+    '',
+    `Best regards,`,
+    `The K-Connect Team`,
+  ].join('\n');
+
+  const htmlBody = `
+    <div style="font-family:Inter,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;padding:26px;background:#111827;color:#f3f4f6;border-radius:14px;border:1px solid #374151;">
+      <div style="font-size:18px;font-weight:800;color:#10a37f;margin-bottom:8px;">K-Connect Repair Laboratory</div>
+      <h2 style="font-size:22px;margin:0 0 12px;color:#ffffff;">Welcome, ${safeName}!</h2>
+      <p style="font-size:14px;line-height:1.6;color:#d1d5db;margin:0 0 18px;">
+        Your multi-workstation cloud workspace for <strong>${safeShop}</strong> is live and ready for customer admissions, diagnostics, and repairs.
+      </p>
+
+      <div style="background:#1f2937;border:1px solid #374151;border-radius:10px;padding:18px;margin-bottom:20px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:#9ca3af;margin-bottom:12px;font-weight:700;">Your Dedicated Shop Credentials</div>
+        <div style="margin-bottom:8px;font-size:13px;">
+          <span style="color:#9ca3af;">Dedicated Portal:</span>
+          <span style="color:#34d399;font-weight:700;font-family:monospace;margin-left:6px;">/shop/${safeSlug}</span>
+        </div>
+        <div style="margin-bottom:8px;font-size:13px;">
+          <span style="color:#9ca3af;">Admin Username:</span>
+          <span style="color:#ffffff;font-weight:700;font-family:monospace;margin-left:6px;">${safeUsername}</span>
+        </div>
+        <div style="margin-bottom:8px;font-size:13px;">
+          <span style="color:#9ca3af;">Password:</span>
+          <span style="color:#9ca3af;font-style:italic;margin-left:6px;">(Set during registration)</span>
+        </div>
+        <div style="font-size:13px;">
+          <span style="color:#9ca3af;">Active License:</span>
+          <span style="color:#10a37f;font-weight:700;margin-left:6px;">${payload.trialDays}-Day Free Trial</span>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-bottom:22px;">
+        <a href="${safeUrl}" style="display:inline-block;padding:13px 26px;background:#10a37f;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;font-size:14px;">
+          Open Shop Workspace &rarr;
+        </a>
+      </div>
+
+      <p style="font-size:12px;color:#9ca3af;margin:0;line-height:1.5;">
+        Bookmark your dedicated URL to access your repair ledger from any counter PC or bench workstation:<br />
+        <span style="color:#6ee7b7;word-break:break-all;">${safeUrl}</span>
+      </p>
+    </div>
+  `;
+
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  if (resendApiKey) {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [payload.to],
+          subject,
+          text: textBody,
+          html: htmlBody,
+        }),
+      });
+      if (response.ok) {
+        return { delivered: true, provider: 'RESEND' };
+      }
+      const errBody = await response.text().catch(() => '');
+      return { delivered: false, provider: 'RESEND', error: `Resend HTTP ${response.status}: ${errBody}` };
+    } catch (err: unknown) {
+      return { delivered: false, provider: 'RESEND', error: (err as Error).message };
+    }
+  }
+
+  const webhookUrl = process.env.RESET_EMAIL_WEBHOOK_URL?.trim();
+  if (webhookUrl) {
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (process.env.RESET_EMAIL_WEBHOOK_TOKEN?.trim()) {
+        headers['Authorization'] = `Bearer ${process.env.RESET_EMAIL_WEBHOOK_TOKEN.trim()}`;
+      }
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          ...payload,
+          subject,
+          text: textBody,
+          html: htmlBody,
+        }),
+      });
+      if (response.ok) {
+        return { delivered: true, provider: 'WEBHOOK' };
+      }
+      return { delivered: false, provider: 'WEBHOOK', error: `Webhook HTTP ${response.status}` };
+    } catch (err: unknown) {
+      return { delivered: false, provider: 'WEBHOOK', error: (err as Error).message };
+    }
+  }
+
+  return { delivered: false, error: 'Email delivery provider is not configured.' };
+}

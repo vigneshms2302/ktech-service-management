@@ -148,3 +148,90 @@ export async function sendWhatsAppOtp(payload: WhatsAppOtpPayload): Promise<What
   console.log(`[WhatsApp OTP Dispatch] OTP ${payload.otp} generated for WhatsApp +${recipientE164} (No WhatsApp provider API key configured in .env)`);
   return { delivered: false, provider: 'DEV_CONSOLE', error: 'No WhatsApp provider API key configured.' };
 }
+
+export interface RegistrationWelcomeWhatsAppPayload {
+  toPhone: string;
+  recipientName: string;
+  shopName: string;
+  shopSlug: string;
+  username: string;
+  portalUrl: string;
+}
+
+/**
+ * Sends a welcome credentials message to the new shop owner's WhatsApp after registration.
+ */
+export async function sendRegistrationWelcomeWhatsApp(payload: RegistrationWelcomeWhatsAppPayload): Promise<WhatsAppDispatchResult> {
+  const cleanPhone = payload.toPhone.replace(/[^0-9]/g, '');
+  const recipientE164 = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+
+  const messageText = `🎉 *Welcome to K-Connect SaaS!*\n\nHello *${payload.recipientName}*, your cloud workspace for *${payload.shopName}* is officially live!\n\n🔗 *Your Dedicated Shop Login Portal:*\n${payload.portalUrl}\n\n👤 *Admin Username:* \`${payload.username}\`\n🔑 *Password:* _(The password you set during registration)_\n⏳ *Plan:* 14-Day Free Trial (Active)\n\nBookmark your shop portal link to log in anytime from any counter PC, laptop, or mobile phone.`;
+
+  // 1. Meta WhatsApp Business Cloud API
+  const metaPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
+  const metaToken = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
+
+  if (metaPhoneId && metaToken) {
+    try {
+      const url = `https://graph.facebook.com/v19.0/${metaPhoneId}/messages`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${metaToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: recipientE164,
+          type: 'text',
+          text: { preview_url: true, body: messageText },
+        }),
+      });
+
+      const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+      if (response.ok && data.messages) {
+        return { delivered: true, provider: 'META_CLOUD_API' };
+      }
+      return { delivered: false, provider: 'META_CLOUD_API', error: (data.error as any)?.message };
+    } catch (err: unknown) {
+      return { delivered: false, provider: 'META_CLOUD_API', error: (err as Error).message };
+    }
+  }
+
+  // 2. Twilio WhatsApp
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const twilioToken = process.env.TWILIO_AUTH_TOKEN?.trim();
+  const twilioFrom = (process.env.TWILIO_WHATSAPP_FROM || 'whatsapp:+14155238886').trim();
+
+  if (twilioSid && twilioToken) {
+    try {
+      const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
+      const basicAuth = Buffer.from(`${twilioSid}:${twilioToken}`).toString('base64');
+      const bodyParams = new URLSearchParams();
+      bodyParams.append('From', twilioFrom.startsWith('whatsapp:') ? twilioFrom : `whatsapp:${twilioFrom}`);
+      bodyParams.append('To', `whatsapp:+${recipientE164}`);
+      bodyParams.append('Body', messageText);
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${basicAuth}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: bodyParams.toString(),
+      });
+
+      if (response.ok) {
+        return { delivered: true, provider: 'TWILIO_WHATSAPP' };
+      }
+      return { delivered: false, provider: 'TWILIO_WHATSAPP' };
+    } catch (err: unknown) {
+      return { delivered: false, provider: 'TWILIO_WHATSAPP', error: (err as Error).message };
+    }
+  }
+
+  console.log(`[WhatsApp Welcome Dispatch] Welcome message queued for +${recipientE164} (${payload.portalUrl})`);
+  return { delivered: false, provider: 'DEV_CONSOLE' };
+}
+

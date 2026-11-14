@@ -73765,6 +73765,124 @@ async function sendRegistrationVerificationEmail(payload) {
   }
   return { delivered: false, error: "Email delivery provider is not configured." };
 }
+async function sendRegistrationWelcomeEmail(payload) {
+  const fromEmail = (process.env.RESEND_FROM_EMAIL || "K-Connect Repair Laboratory <noreply@kconnect.cloud>").trim();
+  const safeName = escapeHtml(payload.recipientName);
+  const safeShop = escapeHtml(payload.shopName);
+  const safeSlug = escapeHtml(payload.shopSlug);
+  const safeUsername = escapeHtml(payload.username);
+  const safeUrl = escapeHtml(payload.portalUrl);
+  const subject = `Welcome to K-Connect! Your Shop Workspace: ${payload.shopName}`;
+  const textBody = [
+    `Hello ${payload.recipientName},`,
+    "",
+    `Congratulations! Your dedicated workshop workspace for "${payload.shopName}" has been successfully provisioned on K-Connect Repair Laboratory.`,
+    "",
+    `--- YOUR SHOP LOGIN CREDENTIALS ---`,
+    `Dedicated Shop Portal: ${payload.portalUrl}`,
+    `Admin Username: ${payload.username}`,
+    `Password: (The password you chose during registration)`,
+    `Subscription: 14-Day Free Trial Activated`,
+    "",
+    `You can log in anytime from any PC, tablet, or mobile phone by opening:`,
+    payload.portalUrl,
+    "",
+    `Best regards,`,
+    `The K-Connect Team`
+  ].join("\n");
+  const htmlBody = `
+    <div style="font-family:Inter,Segoe UI,Arial,sans-serif;max-width:540px;margin:0 auto;padding:26px;background:#111827;color:#f3f4f6;border-radius:14px;border:1px solid #374151;">
+      <div style="font-size:18px;font-weight:800;color:#10a37f;margin-bottom:8px;">K-Connect Repair Laboratory</div>
+      <h2 style="font-size:22px;margin:0 0 12px;color:#ffffff;">Welcome, ${safeName}!</h2>
+      <p style="font-size:14px;line-height:1.6;color:#d1d5db;margin:0 0 18px;">
+        Your multi-workstation cloud workspace for <strong>${safeShop}</strong> is live and ready for customer admissions, diagnostics, and repairs.
+      </p>
+
+      <div style="background:#1f2937;border:1px solid #374151;border-radius:10px;padding:18px;margin-bottom:20px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:#9ca3af;margin-bottom:12px;font-weight:700;">Your Dedicated Shop Credentials</div>
+        <div style="margin-bottom:8px;font-size:13px;">
+          <span style="color:#9ca3af;">Dedicated Portal:</span>
+          <span style="color:#34d399;font-weight:700;font-family:monospace;margin-left:6px;">/shop/${safeSlug}</span>
+        </div>
+        <div style="margin-bottom:8px;font-size:13px;">
+          <span style="color:#9ca3af;">Admin Username:</span>
+          <span style="color:#ffffff;font-weight:700;font-family:monospace;margin-left:6px;">${safeUsername}</span>
+        </div>
+        <div style="margin-bottom:8px;font-size:13px;">
+          <span style="color:#9ca3af;">Password:</span>
+          <span style="color:#9ca3af;font-style:italic;margin-left:6px;">(Set during registration)</span>
+        </div>
+        <div style="font-size:13px;">
+          <span style="color:#9ca3af;">Active License:</span>
+          <span style="color:#10a37f;font-weight:700;margin-left:6px;">${payload.trialDays}-Day Free Trial</span>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-bottom:22px;">
+        <a href="${safeUrl}" style="display:inline-block;padding:13px 26px;background:#10a37f;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;font-size:14px;">
+          Open Shop Workspace &rarr;
+        </a>
+      </div>
+
+      <p style="font-size:12px;color:#9ca3af;margin:0;line-height:1.5;">
+        Bookmark your dedicated URL to access your repair ledger from any counter PC or bench workstation:<br />
+        <span style="color:#6ee7b7;word-break:break-all;">${safeUrl}</span>
+      </p>
+    </div>
+  `;
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  if (resendApiKey) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [payload.to],
+          subject,
+          text: textBody,
+          html: htmlBody
+        })
+      });
+      if (response.ok) {
+        return { delivered: true, provider: "RESEND" };
+      }
+      const errBody = await response.text().catch(() => "");
+      return { delivered: false, provider: "RESEND", error: `Resend HTTP ${response.status}: ${errBody}` };
+    } catch (err) {
+      return { delivered: false, provider: "RESEND", error: err.message };
+    }
+  }
+  const webhookUrl = process.env.RESET_EMAIL_WEBHOOK_URL?.trim();
+  if (webhookUrl) {
+    try {
+      const headers = { "Content-Type": "application/json" };
+      if (process.env.RESET_EMAIL_WEBHOOK_TOKEN?.trim()) {
+        headers["Authorization"] = `Bearer ${process.env.RESET_EMAIL_WEBHOOK_TOKEN.trim()}`;
+      }
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          ...payload,
+          subject,
+          text: textBody,
+          html: htmlBody
+        })
+      });
+      if (response.ok) {
+        return { delivered: true, provider: "WEBHOOK" };
+      }
+      return { delivered: false, provider: "WEBHOOK", error: `Webhook HTTP ${response.status}` };
+    } catch (err) {
+      return { delivered: false, provider: "WEBHOOK", error: err.message };
+    }
+  }
+  return { delivered: false, error: "Email delivery provider is not configured." };
+}
 
 // server/middleware/validate.ts
 function validateBody(schema) {
@@ -99215,6 +99333,79 @@ _Multi-workstation cloud workspace for computer & mobile service labs._`;
   console.log(`[WhatsApp OTP Dispatch] OTP ${payload.otp} generated for WhatsApp +${recipientE164} (No WhatsApp provider API key configured in .env)`);
   return { delivered: false, provider: "DEV_CONSOLE", error: "No WhatsApp provider API key configured." };
 }
+async function sendRegistrationWelcomeWhatsApp(payload) {
+  const cleanPhone = payload.toPhone.replace(/[^0-9]/g, "");
+  const recipientE164 = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+  const messageText = `\u{1F389} *Welcome to K-Connect SaaS!*
+
+Hello *${payload.recipientName}*, your cloud workspace for *${payload.shopName}* is officially live!
+
+\u{1F517} *Your Dedicated Shop Login Portal:*
+${payload.portalUrl}
+
+\u{1F464} *Admin Username:* \`${payload.username}\`
+\u{1F511} *Password:* _(The password you set during registration)_
+\u23F3 *Plan:* 14-Day Free Trial (Active)
+
+Bookmark your shop portal link to log in anytime from any counter PC, laptop, or mobile phone.`;
+  const metaPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
+  const metaToken = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
+  if (metaPhoneId && metaToken) {
+    try {
+      const url2 = `https://graph.facebook.com/v19.0/${metaPhoneId}/messages`;
+      const response = await fetch(url2, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${metaToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: recipientE164,
+          type: "text",
+          text: { preview_url: true, body: messageText }
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data.messages) {
+        return { delivered: true, provider: "META_CLOUD_API" };
+      }
+      return { delivered: false, provider: "META_CLOUD_API", error: data.error?.message };
+    } catch (err) {
+      return { delivered: false, provider: "META_CLOUD_API", error: err.message };
+    }
+  }
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const twilioToken = process.env.TWILIO_AUTH_TOKEN?.trim();
+  const twilioFrom = (process.env.TWILIO_WHATSAPP_FROM || "whatsapp:+14155238886").trim();
+  if (twilioSid && twilioToken) {
+    try {
+      const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
+      const basicAuth = Buffer.from(`${twilioSid}:${twilioToken}`).toString("base64");
+      const bodyParams = new URLSearchParams();
+      bodyParams.append("From", twilioFrom.startsWith("whatsapp:") ? twilioFrom : `whatsapp:${twilioFrom}`);
+      bodyParams.append("To", `whatsapp:+${recipientE164}`);
+      bodyParams.append("Body", messageText);
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${basicAuth}`,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: bodyParams.toString()
+      });
+      if (response.ok) {
+        return { delivered: true, provider: "TWILIO_WHATSAPP" };
+      }
+      return { delivered: false, provider: "TWILIO_WHATSAPP" };
+    } catch (err) {
+      return { delivered: false, provider: "TWILIO_WHATSAPP", error: err.message };
+    }
+  }
+  console.log(`[WhatsApp Welcome Dispatch] Welcome message queued for +${recipientE164} (${payload.portalUrl})`);
+  return { delivered: false, provider: "DEV_CONSOLE" };
+}
 
 // server/routes/public.ts
 var publicRouter = (0, import_express7.Router)();
@@ -99660,6 +99851,29 @@ publicRouter.post("/register", validateBody(publicRegistrationSchema), async (re
         `New Shop Registration: ${shopName.trim()}`,
         `New shop "${shopName.trim()}" (slug: ${cleanSlug}) started a 14-day free trial. Owner: ${ownerName.trim()} (${phone.trim()} / ${cleanEmail}).`
       ]
+    });
+    const publicBase = resolvePublicAppUrl(req);
+    const portalUrl = `${publicBase}/shop/${cleanSlug}`;
+    Promise.allSettled([
+      sendRegistrationWelcomeEmail({
+        to: cleanEmail,
+        recipientName: ownerName.trim(),
+        shopName: shopName.trim(),
+        shopSlug: cleanSlug,
+        username: cleanUsername,
+        portalUrl,
+        trialDays
+      }),
+      sendRegistrationWelcomeWhatsApp({
+        toPhone: phone.trim(),
+        recipientName: ownerName.trim(),
+        shopName: shopName.trim(),
+        shopSlug: cleanSlug,
+        username: cleanUsername,
+        portalUrl
+      })
+    ]).catch((err) => {
+      console.warn("[Register] Non-blocking welcome dispatch error:", err);
     });
     res.json({
       success: true,
