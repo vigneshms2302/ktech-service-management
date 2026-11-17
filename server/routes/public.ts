@@ -248,6 +248,22 @@ publicRouter.post('/send-verification', validateBody(sendVerificationSchema), as
     const maskedEmail = maskEmailAddress(cleanEmail);
     const maskedPhone = maskPhoneNumber(phone);
 
+    // Check if live email/SMS providers are configured in environment
+    const emailConfigured = Boolean(
+      (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) ||
+      (process.env.RESET_EMAIL_WEBHOOK_URL && process.env.RESET_EMAIL_WEBHOOK_URL.trim())
+    );
+    const smsConfigured = Boolean(
+      (process.env.FAST2SMS_API_KEY && process.env.FAST2SMS_API_KEY.trim()) ||
+      (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) ||
+      (process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN) ||
+      (process.env.SMS_GATEWAY_WEBHOOK_URL && process.env.SMS_GATEWAY_WEBHOOK_URL.trim()) ||
+      (process.env.WHATSAPP_WEBHOOK_URL && process.env.WHATSAPP_WEBHOOK_URL.trim())
+    );
+
+    // If live delivery providers are not configured, provide OTP preview so registration is never blocked
+    const shouldProvideOtpPreview = !emailConfigured || !smsConfigured || process.env.NODE_ENV !== 'production';
+
     res.json({
       success: true,
       data: {
@@ -255,10 +271,14 @@ publicRouter.post('/send-verification', validateBody(sendVerificationSchema), as
         maskedEmail,
         maskedPhone,
         expiresInMinutes,
-        devEmailOtp: process.env.NODE_ENV !== 'production' ? emailOtp : undefined,
-        devPhoneOtp: process.env.NODE_ENV !== 'production' ? phoneOtp : undefined,
+        emailConfigured,
+        smsConfigured,
+        devEmailOtp: shouldProvideOtpPreview ? emailOtp : undefined,
+        devPhoneOtp: shouldProvideOtpPreview ? phoneOtp : undefined,
       },
-      message: `Confirmation codes dispatched! Check ${maskedEmail} for your email code and ${maskedPhone} for your mobile OTP.`,
+      message: emailConfigured && smsConfigured
+        ? `Confirmation codes dispatched! Check ${maskedEmail} for your email code and ${maskedPhone} for your mobile OTP.`
+        : `Verification codes generated. Live gateway not yet configured in environment variables.`,
     });
   } catch (error: unknown) {
     res.status(500).json({ success: false, error: (error as Error).message });

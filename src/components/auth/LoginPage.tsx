@@ -9,16 +9,10 @@ import {
   Moon,
   Sun,
   Monitor,
-  Building2,
-  Sparkles,
   ArrowRight,
   ShieldCheck,
-  Cpu,
-  Database,
   Search,
-  CheckCircle2,
   Server,
-  Settings,
   Check,
   RefreshCw,
   X,
@@ -31,6 +25,29 @@ import { getShopSlug, setShopSlug, getApiBaseUrl, setApiBaseUrl } from '../../ap
 import { formatUserFriendlyError } from '../../utils/formatError.ts';
 import { DownloadAppModal } from '../common/DownloadAppModal.tsx';
 
+/**
+ * Detects shop slug from custom wildcard subdomains (e.g. ktech.kconnect.in, shop1.yourdomain.com).
+ * Supported seamlessly on Vercel with a single CNAME wildcard (*.yourdomain.com).
+ */
+function getDetectedSubdomain(): string {
+  if (typeof window === 'undefined') return '';
+  const hostname = window.location.hostname.toLowerCase();
+  if (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.endsWith('.vercel.app') ||
+    hostname.split('.').length < 3
+  ) {
+    return '';
+  }
+  const parts = hostname.split('.');
+  const sub = parts[0];
+  if (!['www', 'app', 'admin', 'api', 'mail', 'smtp'].includes(sub)) {
+    return sub;
+  }
+  return '';
+}
+
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -42,9 +59,11 @@ export const LoginPage: React.FC = () => {
   const { shopSlug: routeShopSlug } = useParams<{ shopSlug?: string }>();
   const [searchParams] = useSearchParams();
   const queryShopSlug = searchParams.get('shop') || searchParams.get('slug');
-  const dedicatedShopSlug = (routeShopSlug || queryShopSlug || '').trim().toLowerCase();
+  const detectedSubdomain = getDetectedSubdomain();
+  const dedicatedShopSlug = (routeShopSlug || queryShopSlug || detectedSubdomain || '').trim().toLowerCase();
 
   const [shopSlug, setShopSlugState] = useState<string>(() => dedicatedShopSlug || getShopSlug() || '');
+  const [isChangingShop, setIsChangingShop] = useState<boolean>(false);
 
   useEffect(() => {
     if (dedicatedShopSlug) {
@@ -62,9 +81,9 @@ export const LoginPage: React.FC = () => {
     if (isAdminParam) {
       setIsSuperAdmin(true);
       if (!username) setUsername('superadmin');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [isAdminParam]);
+
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -151,167 +170,38 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  // Has an active remembered or dedicated shop
+  const hasLockedShop = !isSuperAdmin && Boolean(shopSlug.trim()) && !isChangingShop;
+
   return (
-    <div className={`min-h-screen w-full flex flex-col lg:flex-row ${isLight ? 'bg-gray-50 text-[#0d0d0d]' : 'bg-[#0a0e17] text-[#ececec]'} font-sans transition-colors duration-200 selection:bg-[#10a37f] selection:text-white`}>
-      
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* LEFT COLUMN: VIBRANT SHOWCASE & MULTI-TENANT LAB EXPERIENCE    */}
-      {/* ───────────────────────────────────────────────────────────── */}
-      <div className="lg:w-7/12 xl:w-7/12 p-6 sm:p-10 lg:p-14 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-[#070b14] via-[#0d1424] to-[#08121f] text-white border-b lg:border-b-0 lg:border-r border-slate-800/60 shadow-2xl order-2 lg:order-1">
-        
-        {/* Ambient Glow Orbs */}
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Top Header & Brand */}
-        <div className="relative z-10">
-          <div className="flex items-center justify-between gap-4 mb-8">
-            <Link to="/public" className="flex items-center gap-3 no-underline group">
-              <div className="w-11 h-11 rounded-xl bg-[#10a37f] flex items-center justify-center shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-400/30 group-hover:scale-105 transition-all">
-                <img
-                  src={window.location.protocol === 'file:' ? './icon.svg' : '/icon.svg'}
-                  alt="K-Connect"
-                  className="w-6 h-6 filter brightness-0 invert"
-                />
-              </div>
-              <div>
-                <span className="text-xl font-bold tracking-tight text-white block">K-Connect</span>
-                <span className="text-[11px] font-mono text-emerald-400 block tracking-wider uppercase font-semibold">Cloud Service OS</span>
-              </div>
-            </Link>
-
-            {/* Live Status Pill */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 border border-slate-700/60 text-xs font-mono text-slate-300 backdrop-blur-md shadow-inner">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <span>Multi-Tenant Cloud Live</span>
-            </div>
-          </div>
-
-          {/* Main Headline */}
-          <div className="max-w-2xl mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-4">
-              <Sparkles size={13} />
-              <span>Multi-Shop Repair Laboratory</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl xl:text-5xl font-extrabold tracking-tight text-white leading-tight mb-4">
-              The Real-Time Operating System for Modern Repair Centers.
-            </h1>
-            <p className="text-sm sm:text-base text-slate-300/90 leading-relaxed max-w-xl">
-              Each repair business gets an isolated, dedicated cloud workspace. Manage multi-meter intake diagnostics, 13-stage board repairs, spare inventory, automated WhatsApp estimates, and GST invoicing in real-time.
-            </p>
-          </div>
-
-          {/* High-Tech Workbench Visual Showcase Frame */}
-          <div className="relative mb-8 rounded-2xl border border-slate-700/60 overflow-hidden shadow-2xl bg-slate-950/60 group">
+    <div
+      className={`min-h-screen w-full flex flex-col justify-between ${
+        isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#0a0e17] text-slate-100'
+      } font-sans transition-colors duration-200 selection:bg-[#10a37f] selection:text-white`}
+    >
+      {/* ── Top Header Bar ─────────────────────────────────────────── */}
+      <header className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between">
+        <Link to="/public" className="flex items-center gap-3 no-underline group">
+          <div className="w-10 h-10 rounded-xl bg-[#10a37f] flex items-center justify-center shadow-md shadow-emerald-500/20 ring-2 ring-emerald-400/20 group-hover:scale-105 transition-all">
             <img
-              src={window.location.protocol === 'file:' ? './login-hero.jpg' : '/login-hero.jpg'}
-              alt="K-Connect Modern Electronics Diagnostics Lab"
-              className="w-full h-56 sm:h-72 object-cover object-center filter brightness-95 contrast-105 group-hover:scale-102 transition-transform duration-700"
+              src={window.location.protocol === 'file:' ? './icon.svg' : '/icon.svg'}
+              alt="K-Connect"
+              className="w-5 h-5 filter brightness-0 invert"
             />
-            {/* Dark gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#070b14] via-[#070b14]/30 to-transparent pointer-events-none" />
-
-            {/* Floating Live Telemetry Badge inside Image */}
-            <div className="absolute bottom-4 left-4 right-4 p-3.5 rounded-xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                  <Cpu size={18} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-white tracking-wide">MacBook Pro 16&quot; M2 Logic Board</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
-                      Stage 6: Soldering
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-slate-300 mt-0.5 flex items-center gap-2">
-                    <span>Ticket #JOB-2026-0842</span>
-                    <span>•</span>
-                    <span className="text-emerald-400 font-medium">Estimated: ₹14,500 (Approved)</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                <div className="px-2.5 py-1 rounded-md bg-slate-800/90 border border-slate-700 text-[11px] font-mono text-slate-300 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Real-Time Cloud Sync</span>
-                </div>
-              </div>
-            </div>
           </div>
-
-          {/* 3 Value Pillars */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-2">
-                <Building2 size={16} />
-              </div>
-              <div className="text-xs font-bold text-white mb-1">Multi-Tenant Isolation</div>
-              <div className="text-[11px] text-slate-400 leading-relaxed">
-                Dedicated database partition per shop. Your data, tickets, and customers are completely isolated.
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm">
-              <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-2">
-                <Database size={16} />
-              </div>
-              <div className="text-xs font-bold text-white mb-1">Real-Time Cloud Sync</div>
-              <div className="text-[11px] text-slate-400 leading-relaxed">
-                Zero split-brain databases. Counter PCs, repair benches, and mobile phones stay 100% in sync.
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm">
-              <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center mb-2">
-                <Monitor size={16} />
-              </div>
-              <div className="text-xs font-bold text-white mb-1">Web &amp; Desktop App</div>
-              <div className="text-[11px] text-slate-400 leading-relaxed">
-                Use in any web browser or download the native portable Windows executable (.exe) for your counter.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Left Footer Trust Badges */}
-        <div className="relative z-10 pt-4 border-t border-slate-800/60 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck size={14} className="text-emerald-400" />
-              <span>AES-256 Passcode Vault</span>
+          <div>
+            <span className={`text-lg font-bold tracking-tight block ${isLight ? 'text-slate-900' : 'text-white'}`}>
+              K-Connect
             </span>
-            <span className="flex items-center gap-1.5">
-              <CheckCircle2 size={14} className="text-emerald-400" />
-              <span>99.99% Cloud Uptime</span>
+            <span className="text-[10px] font-mono text-emerald-500 block uppercase tracking-wider font-semibold">
+              Cloud Service OS
             </span>
           </div>
-          <span className="font-mono text-[11px] text-slate-500">&copy; {new Date().getFullYear()} K-Connect</span>
-        </div>
-      </div>
+        </Link>
 
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* RIGHT COLUMN: FOCUSED, HIGH-CONVERSION SIGN-IN CONSOLE         */}
-      {/* ───────────────────────────────────────────────────────────── */}
-      <div className={`lg:w-5/12 xl:w-5/12 p-4 sm:p-6 lg:p-8 xl:p-10 flex flex-col justify-between ${isLight ? 'bg-white' : 'bg-[#111622]'} relative order-1 lg:order-2`}>
-        
-        {/* Top Controls Row */}
-        <div className="flex items-center justify-between gap-4 mb-4 sm:mb-6">
-          <Link
-            to="/public"
-            className={`text-xs font-medium flex items-center gap-1.5 no-underline transition-colors ${
-              isLight ? 'text-gray-500 hover:text-gray-900' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            &larr; Back to Public Portal
-          </Link>
-
-          <div className="flex items-center gap-2">
-            {/* Server Connection Endpoint Button */}
+        <div className="flex items-center gap-2">
+          {/* Server Config (Desktop or Local Dev) */}
+          {isDesktop && (
             <button
               type="button"
               onClick={() => {
@@ -320,84 +210,70 @@ export const LoginPage: React.FC = () => {
                 setIsServerModalOpen(true);
               }}
               title="Configure API Server Endpoint"
-              className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-mono flex items-center gap-1.5 transition-all cursor-pointer ${
-                isLight
-                  ? 'bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200'
-                  : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              <Server size={12} className="text-emerald-500" />
-              <span className="max-w-[120px] truncate">{currentApiUrl || 'Server Active'}</span>
-              <Settings size={12} className="text-slate-400" />
-            </button>
-
-            <button
-              type="button"
-              onClick={toggleTheme}
-              title={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
               className={`p-2 rounded-xl border transition-all cursor-pointer ${
                 isLight
-                  ? 'bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
                   : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'
               }`}
             >
-              {isLight ? <Moon size={15} /> : <Sun size={15} />}
+              <Server size={15} />
             </button>
-          </div>
-        </div>
+          )}
 
-        {/* Central Sign-In Container */}
-        <div className="w-full max-w-md mx-auto my-auto">
-          
+          {/* Theme Switcher */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+            className={`p-2 rounded-xl border transition-all cursor-pointer ${
+              isLight
+                ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            {isLight ? <Moon size={15} /> : <Sun size={15} />}
+          </button>
+        </div>
+      </header>
+
+      {/* ── Main Centered GreytHR-Style Login Card ─────────────────── */}
+      <main className="w-full max-w-md mx-auto px-4 py-4 sm:py-8 my-auto">
+        <div
+          className={`rounded-2xl border shadow-xl p-6 sm:p-9 transition-all ${
+            isLight
+              ? 'bg-white border-slate-200/90 shadow-slate-200/50'
+              : 'bg-[#121722] border-slate-800/90 shadow-black/40'
+          }`}
+        >
           {/* Card Header */}
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                {isSuperAdmin ? 'Super-Admin Console' : 'Shop Staff Authentication'}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
+                  isSuperAdmin
+                    ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
+                    : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                }`}
+              >
+                {isSuperAdmin ? <ShieldCheck size={12} /> : <Store size={12} />}
+                <span>{isSuperAdmin ? 'Platform Vendor Console' : 'Shop Staff Authentication'}</span>
               </span>
               {isDesktop && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-blue-500/10 text-blue-500 border border-blue-500/20">
-                  Windows Desktop
+                  Windows App
                 </span>
               )}
             </div>
-            <h2 className={`text-xl sm:text-2xl font-bold tracking-tight ${isLight ? 'text-gray-900' : 'text-white'}`}>
-              {isSuperAdmin ? 'Super-Admin Console' : 'Sign in to your repair shop'}
-            </h2>
-            <p className={`text-xs mt-1 ${isLight ? 'text-gray-500' : 'text-slate-400'}`}>
+
+            <h1 className={`text-2xl font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+              {isSuperAdmin ? 'Super-Admin Sign In' : 'Log In to Your Repair Shop'}
+            </h1>
+            <p className={`text-xs mt-1 leading-relaxed ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               {isSuperAdmin
-                ? 'Master vendor control center for shop provisioning & subscriptions.'
-                : 'Enter your Shop ID and credentials to access your repair ledger and diagnostics.'}
+                ? 'Master vendor platform credentials for tenant provisioning & system settings.'
+                : 'Enter your credentials to access tickets, diagnostics, inventory & billing.'}
             </p>
           </div>
-
-          {/* New Shop Registration Prompt Banner */}
-          {!isSuperAdmin && (
-            <div className={`mb-4 p-3.5 rounded-xl border transition-all ${
-              isLight
-                ? 'bg-emerald-50/70 border-emerald-200/80 text-gray-800'
-                : 'bg-emerald-950/20 border-emerald-500/30 text-slate-200'
-            }`}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                    <Sparkles size={13} />
-                    <span>New Repair Business?</span>
-                  </div>
-                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">
-                    Register your shop in 60 seconds. Launch a dedicated multi-tenant lab workspace with a 14-day free trial.
-                  </p>
-                </div>
-                <Link
-                  to="/signup"
-                  className="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1 shadow-sm transition-all"
-                >
-                  <span>Register</span>
-                  <ArrowRight size={13} />
-                </Link>
-              </div>
-            </div>
-          )}
 
           {/* Error Banner */}
           {error && (
@@ -407,96 +283,97 @@ export const LoginPage: React.FC = () => {
             </div>
           )}
 
-          {/* Clean Unified Form: ShopID + Username + Password */}
+          {/* GreytHR Clean Form */}
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            
-            {/* Dedicated Shop Portal Banner (GreytHR style) */}
-            {!isSuperAdmin && dedicatedShopSlug && (
-              <div
-                className={`p-3 rounded-xl border flex items-center justify-between mb-1 ${
-                  isLight
-                    ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
-                    : 'bg-emerald-950/30 border-emerald-800/80 text-emerald-200'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 overflow-hidden">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                    <Store size={16} />
-                  </div>
-                  <div className="overflow-hidden">
-                    <div className="text-xs font-bold truncate">
-                      {dedicatedShopSlug} Workspace
-                    </div>
-                    <div className="text-[11px] opacity-75 truncate">
-                      Dedicated Shop Login Portal
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShopSlugState('');
-                    navigate('/login', { replace: true });
-                  }}
-                  className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300 hover:underline shrink-0 ml-2 cursor-pointer"
-                >
-                  Change Shop
-                </button>
-              </div>
-            )}
-
-            {/* Shop Identifier Input */}
+            {/* 1. Shop Context: GreytHR Locked Banner OR Shop Slug Input */}
             {!isSuperAdmin && (
-              <div>
-                <label
-                  htmlFor="shopSlug"
-                  className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${isLight ? 'text-gray-700' : 'text-slate-300'}`}
-                >
-                  Shop Identifier (Slug)
-                </label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600 dark:text-emerald-400 font-mono font-bold text-sm">
-                    @
-                  </span>
-                  <input
-                    id="shopSlug"
-                    name="shopSlug"
-                    type="text"
-                    required
-                    spellCheck={false}
-                    autoCorrect="off"
-                    autoCapitalize="none"
-                    value={shopSlug}
-                    onChange={(e) => setShopSlugState(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-                    placeholder="e.g. computechstore or my-repair-lab"
-                    className={`w-full pl-9 pr-3.5 py-2.5 rounded-xl border text-sm font-mono transition-all outline-none ${
+              <>
+                {hasLockedShop ? (
+                  <div
+                    className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${
                       isLight
-                        ? 'bg-white border-gray-200 text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15'
-                        : 'bg-slate-900/80 border-slate-700 text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                        ? 'bg-emerald-50/70 border-emerald-200/80 text-emerald-950'
+                        : 'bg-emerald-950/25 border-emerald-800/60 text-emerald-200'
                     }`}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400 mt-1">
-                  <span>Your registered shop handle.</span>
-                  {shopSlug.trim() && (
-                    <span className="font-mono text-emerald-600 dark:text-emerald-400 text-[10.5px]">
-                      /shop/{shopSlug.trim()}
-                    </span>
-                  )}
-                </div>
-              </div>
+                  >
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="w-9 h-9 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <Store size={18} />
+                      </div>
+                      <div className="overflow-hidden">
+                        <div className="text-xs font-bold truncate">
+                          @{shopSlug}
+                        </div>
+                        <div className="text-[11px] opacity-75 truncate">
+                          Dedicated Shop Workspace
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsChangingShop(true)}
+                      className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline shrink-0 ml-3 cursor-pointer"
+                    >
+                      Change Shop
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <label
+                      htmlFor="shopSlug"
+                      className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${
+                        isLight ? 'text-slate-700' : 'text-slate-300'
+                      }`}
+                    >
+                      Shop Identifier (Slug)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600 dark:text-emerald-400 font-mono font-bold text-sm">
+                        @
+                      </span>
+                      <input
+                        id="shopSlug"
+                        name="shopSlug"
+                        type="text"
+                        required
+                        spellCheck={false}
+                        autoCorrect="off"
+                        autoCapitalize="none"
+                        value={shopSlug}
+                        onChange={(e) => setShopSlugState(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                        placeholder="e.g. ktech or myrepairshop"
+                        className={`w-full pl-9 pr-3.5 py-2.5 rounded-xl border text-sm font-mono transition-all outline-none ${
+                          isLight
+                            ? 'bg-white border-slate-300 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15'
+                            : 'bg-slate-900/80 border-slate-700 text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                        }`}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      <span>Unique ID chosen during registration.</span>
+                      {shopSlug.trim() && (
+                        <span className="font-mono text-emerald-600 dark:text-emerald-400 text-[10.5px]">
+                          /shop/{shopSlug.trim()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
-            {/* Staff Username */}
+            {/* 2. Username Input */}
             <div>
               <label
                 htmlFor="username"
-                className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${isLight ? 'text-gray-700' : 'text-slate-300'}`}
+                className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${
+                  isLight ? 'text-slate-700' : 'text-slate-300'
+                }`}
               >
-                {isSuperAdmin ? 'Super-Admin Username' : 'Staff Username'}
+                {isSuperAdmin ? 'Super-Admin Username' : 'Username or Mobile Number'}
               </label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <User size={16} />
                 </span>
                 <input
@@ -510,22 +387,24 @@ export const LoginPage: React.FC = () => {
                   autoCapitalize="none"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder={isSuperAdmin ? 'superadmin' : 'Username or mobile number'}
+                  placeholder={isSuperAdmin ? 'superadmin' : 'Username, registered mobile or email'}
                   className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm transition-all outline-none ${
                     isLight
-                      ? 'bg-white border-gray-200 text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15'
+                      ? 'bg-white border-slate-300 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15'
                       : 'bg-slate-900/80 border-slate-700 text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
                   }`}
                 />
               </div>
             </div>
 
-            {/* Password */}
+            {/* 3. Password Input */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label
                   htmlFor="password"
-                  className={`block text-xs font-semibold uppercase tracking-wider ${isLight ? 'text-gray-700' : 'text-slate-300'}`}
+                  className={`block text-xs font-semibold uppercase tracking-wider ${
+                    isLight ? 'text-slate-700' : 'text-slate-300'
+                  }`}
                 >
                   Password
                 </label>
@@ -535,13 +414,13 @@ export const LoginPage: React.FC = () => {
                       ? `/forgot-password?mode=superadmin&username=${encodeURIComponent(username || 'superadmin')}`
                       : `/forgot-password?shop=${encodeURIComponent(shopSlug || '')}&username=${encodeURIComponent(username || '')}`
                   }
-                  className="text-xs font-semibold text-emerald-500 hover:text-emerald-400 hover:underline transition-colors"
+                  className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline transition-colors"
                 >
                   Forgot password?
                 </Link>
               </div>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <Lock size={16} />
                 </span>
                 <input
@@ -556,7 +435,7 @@ export const LoginPage: React.FC = () => {
                   placeholder="Enter your account password"
                   className={`w-full pl-10 pr-10 py-2.5 rounded-xl border text-sm transition-all outline-none ${
                     isLight
-                      ? 'bg-white border-gray-200 text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15'
+                      ? 'bg-white border-slate-300 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15'
                       : 'bg-slate-900/80 border-slate-700 text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
                   }`}
                 />
@@ -565,7 +444,7 @@ export const LoginPage: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   aria-pressed={showPassword}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                   title={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -573,7 +452,7 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Submit Button */}
+            {/* 4. Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
@@ -582,84 +461,97 @@ export const LoginPage: React.FC = () => {
               {isLoading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Authenticating...</span>
+                  <span>Signing In...</span>
                 </>
               ) : (
                 <>
-                  <span>{isSuperAdmin ? 'Access Super-Admin Portal' : 'Sign In to Repair Lab'}</span>
+                  <span>{isSuperAdmin ? 'Log In to Master Console' : 'Sign In to Shop'}</span>
                   <ArrowRight size={16} />
                 </>
               )}
             </button>
           </form>
 
-          {/* Useful Quick Links */}
-          <div className="mt-6 pt-5 border-t border-gray-200 dark:border-slate-800 space-y-2.5">
-            
-            {/* Customer Repair Tracking Link */}
-            <div className="flex items-center justify-between text-xs">
-              <span className={isLight ? 'text-gray-500' : 'text-slate-400'}>Customer tracking a device?</span>
-              <Link
-                to="/track"
-                className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline flex items-center gap-1"
+          {/* New Shop Registration CTA (GreytHR style) */}
+          {!isSuperAdmin && (
+            <div className="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800 text-center">
+              <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                New repair center?{' '}
+                <Link
+                  to="/signup"
+                  className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+                >
+                  Register Your Shop (14-Day Free Trial)
+                </Link>
+              </p>
+            </div>
+          )}
+
+          {/* Super Admin Switcher Link */}
+          {isSuperAdmin ? (
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSuperAdmin(false);
+                  setError(null);
+                  setUsername('');
+                  setPassword('');
+                }}
+                className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline cursor-pointer"
               >
-                <Search size={12} />
-                <span>Track Repair Job &rarr;</span>
+                ← Return to Regular Shop Staff Login
+              </button>
+            </div>
+          ) : (
+            <div className="mt-3 text-center">
+              <Link
+                to="/login?admin=1"
+                onClick={() => {
+                  setIsSuperAdmin(true);
+                  setUsername('superadmin');
+                  setPassword('');
+                  setError(null);
+                }}
+                className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              >
+                Super-Admin Portal Access
               </Link>
             </div>
+          )}
+        </div>
+      </main>
 
-            {/* Windows Desktop App Modal Trigger */}
-            {!isDesktop ? (
-              <div className="flex items-center justify-between text-xs">
-                <span className={isLight ? 'text-gray-500' : 'text-slate-400'}>Prefer native Windows window?</span>
-                <button
-                  type="button"
-                  onClick={() => setIsDownloadOpen(true)}
-                  className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline flex items-center gap-1 bg-transparent border-none p-0 cursor-pointer"
-                >
-                  <Monitor size={12} />
-                  <span>Download Desktop (.exe) &rarr;</span>
-                </button>
-              </div>
-            ) : (
-              <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-500 flex items-center gap-2">
-                <Monitor size={14} className="shrink-0" />
-                <span>Running Windows Desktop Edition • Connected to Cloud Database</span>
-              </div>
-            )}
+      {/* ── Minimalist Clean Footer ─────────────────────────────────── */}
+      <footer className="w-full max-w-6xl mx-auto px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+        <div className="flex items-center gap-4">
+          <Link
+            to="/track"
+            className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-emerald-500 transition-colors no-underline"
+          >
+            <Search size={13} />
+            <span>Track Repair Device</span>
+          </Link>
 
-            {/* Return from Super Admin Mode (Only visible if ?admin=1 is explicitly opened) */}
-            {isSuperAdmin && (
-              <div className="pt-2 text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsSuperAdmin(false);
-                    setError(null);
-                    setUsername('');
-                    setPassword('');
-                  }}
-                  className={`text-[11px] underline transition-colors cursor-pointer ${
-                    isLight ? 'text-gray-400 hover:text-gray-600' : 'text-slate-500 hover:text-slate-300'
-                  }`}
-                >
-                  ← Return to Regular Shop Staff Login
-                </button>
-              </div>
-            )}
-          </div>
+          {!isDesktop && (
+            <button
+              type="button"
+              onClick={() => setIsDownloadOpen(true)}
+              className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-emerald-500 transition-colors bg-transparent border-none p-0 cursor-pointer"
+            >
+              <Monitor size={13} />
+              <span>Windows Desktop (.exe)</span>
+            </button>
+          )}
         </div>
 
-        {/* Right Footer Security Notice */}
-        <div className={`mt-8 pt-4 border-t text-center text-xs flex items-center justify-center gap-1.5 ${
-          isLight ? 'border-gray-100 text-gray-400' : 'border-slate-800 text-slate-500'
-        }`}>
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500">
           <ShieldCheck size={13} className="text-emerald-500" />
-          <span>Multi-Tenant Cloud • 256-Bit Encrypted • Real-Time Database</span>
+          <span>256-Bit Encrypted Multi-Tenant Cloud</span>
         </div>
-      </div>
+      </footer>
 
-      {/* Cloud Server Connection Configuration Modal */}
+      {/* Cloud Server Connection Modal */}
       {isServerModalOpen && (
         <div
           className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
@@ -667,7 +559,7 @@ export const LoginPage: React.FC = () => {
         >
           <div
             className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl ${
-              isLight ? 'bg-white border-gray-200 text-gray-900' : 'bg-[#181d29] border-slate-700 text-white'
+              isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-[#181d29] border-slate-700 text-white'
             }`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -677,8 +569,8 @@ export const LoginPage: React.FC = () => {
                   <Server size={17} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold">Cloud API Server Endpoint</h3>
-                  <p className="text-xs text-slate-400">Configure central database backend URL</p>
+                  <h3 className="text-base font-bold">API Server Endpoint</h3>
+                  <p className="text-xs text-slate-400">Configure central backend URL</p>
                 </div>
               </div>
               <button
@@ -702,7 +594,7 @@ export const LoginPage: React.FC = () => {
                     onChange={(e) => setModalApiUrl(e.target.value)}
                     placeholder="http://localhost:5000"
                     className={`flex-1 px-3.5 py-2 rounded-xl text-sm font-mono border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                      isLight ? 'bg-gray-50 border-gray-300 text-gray-900' : 'bg-slate-900/90 border-slate-700 text-white'
+                      isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-900/90 border-slate-700 text-white'
                     }`}
                   />
                   <button
@@ -721,7 +613,6 @@ export const LoginPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Test Status Banner */}
               {testResult.status !== 'idle' && (
                 <div
                   className={`p-3 rounded-xl border text-xs flex items-center gap-2.5 ${
@@ -738,48 +629,6 @@ export const LoginPage: React.FC = () => {
                   <span className="font-mono">{testResult.message}</span>
                 </div>
               )}
-
-              {/* Quick Preset Buttons */}
-              <div>
-                <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                  Quick Presets
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModalApiUrl('http://localhost:5000');
-                      handleTestConnection('http://localhost:5000');
-                    }}
-                    className="p-2.5 rounded-xl border text-left text-xs bg-slate-900/60 hover:bg-slate-900 border-slate-700/80 transition-all cursor-pointer"
-                  >
-                    <div className="font-bold text-white flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                      <span>Local Backend</span>
-                    </div>
-                    <div className="text-[10px] font-mono text-slate-400 truncate mt-0.5">
-                      http://localhost:5000
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModalApiUrl('https://ktech-service-management.vercel.app');
-                      handleTestConnection('https://ktech-service-management.vercel.app');
-                    }}
-                    className="p-2.5 rounded-xl border text-left text-xs bg-slate-900/60 hover:bg-slate-900 border-slate-700/80 transition-all cursor-pointer"
-                  >
-                    <div className="font-bold text-white flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                      <span>Cloud Production</span>
-                    </div>
-                    <div className="text-[10px] font-mono text-slate-400 truncate mt-0.5">
-                      https://ktech-...vercel.app
-                    </div>
-                  </button>
-                </div>
-              </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-700/60">
@@ -796,7 +645,7 @@ export const LoginPage: React.FC = () => {
                 className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
               >
                 <Check size={14} />
-                <span>Save &amp; Connect</span>
+                <span>Save</span>
               </button>
             </div>
           </div>

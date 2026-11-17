@@ -99640,6 +99640,13 @@ publicRouter.post("/send-verification", validateBody(sendVerificationSchema), as
     ]);
     const maskedEmail = maskEmailAddress(cleanEmail);
     const maskedPhone = maskPhoneNumber(phone);
+    const emailConfigured = Boolean(
+      process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim() || process.env.RESET_EMAIL_WEBHOOK_URL && process.env.RESET_EMAIL_WEBHOOK_URL.trim()
+    );
+    const smsConfigured = Boolean(
+      process.env.FAST2SMS_API_KEY && process.env.FAST2SMS_API_KEY.trim() || process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER || process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN || process.env.SMS_GATEWAY_WEBHOOK_URL && process.env.SMS_GATEWAY_WEBHOOK_URL.trim() || process.env.WHATSAPP_WEBHOOK_URL && process.env.WHATSAPP_WEBHOOK_URL.trim()
+    );
+    const shouldProvideOtpPreview = !emailConfigured || !smsConfigured || process.env.NODE_ENV !== "production";
     res.json({
       success: true,
       data: {
@@ -99647,10 +99654,12 @@ publicRouter.post("/send-verification", validateBody(sendVerificationSchema), as
         maskedEmail,
         maskedPhone,
         expiresInMinutes,
-        devEmailOtp: process.env.NODE_ENV !== "production" ? emailOtp : void 0,
-        devPhoneOtp: process.env.NODE_ENV !== "production" ? phoneOtp : void 0
+        emailConfigured,
+        smsConfigured,
+        devEmailOtp: shouldProvideOtpPreview ? emailOtp : void 0,
+        devPhoneOtp: shouldProvideOtpPreview ? phoneOtp : void 0
       },
-      message: `Confirmation codes dispatched! Check ${maskedEmail} for your email code and ${maskedPhone} for your mobile OTP.`
+      message: emailConfigured && smsConfigured ? `Confirmation codes dispatched! Check ${maskedEmail} for your email code and ${maskedPhone} for your mobile OTP.` : `Verification codes generated. Live gateway not yet configured in environment variables.`
     });
   } catch (error62) {
     res.status(500).json({ success: false, error: error62.message });
