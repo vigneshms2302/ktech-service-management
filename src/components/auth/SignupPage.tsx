@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   Wrench,
   ArrowRight,
-  ArrowLeft,
   AlertCircle,
   CheckCircle2,
   XCircle,
@@ -11,10 +10,6 @@ import {
   Globe,
   Eye,
   EyeOff,
-  Mail,
-  Smartphone,
-  ShieldCheck,
-  RefreshCw,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext.tsx';
 import { saasApi, setShopSlug } from '../../api/client.ts';
@@ -29,7 +24,7 @@ export const SignupPage: React.FC = () => {
   const { login, refreshUserList } = useAuth();
   const { showError, showSuccess } = useToast();
 
-  const [step, setStep] = useState<'DETAILS' | 'VERIFY' | 'SUCCESS'>('DETAILS');
+  const [step, setStep] = useState<'DETAILS' | 'SUCCESS'>('DETAILS');
   const [registeredSlug, setRegisteredSlug] = useState<string>('');
 
   const [formData, setFormData] = useState({
@@ -66,27 +61,6 @@ export const SignupPage: React.FC = () => {
   const slugTimerRef = useRef<any>(null);
   const emailTimerRef = useRef<any>(null);
   const phoneTimerRef = useRef<any>(null);
-
-  // Verification step states
-  const [verificationId, setVerificationId] = useState<string>('');
-  const [maskedEmail, setMaskedEmail] = useState<string>('');
-  const [maskedPhone, setMaskedPhone] = useState<string>('');
-  const [emailOtp, setEmailOtp] = useState<string>('');
-  const [phoneOtp, setPhoneOtp] = useState<string>('');
-  const [devEmailOtp, setDevEmailOtp] = useState<string>('');
-  const [devPhoneOtp, setDevPhoneOtp] = useState<string>('');
-  const [resendCooldown, setResendCooldown] = useState<number>(0);
-  const [isResending, setIsResending] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-
-  // Resend cooldown timer
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const timer = setInterval(() => {
-      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [resendCooldown]);
 
   // Generates clean URL slug while maintaining user typing flow with hyphens & spaces
   const slugifyWhileTyping = (text: string): string => {
@@ -345,25 +319,39 @@ export const SignupPage: React.FC = () => {
     setFieldErrors({});
 
     try {
-      const res = await saasApi.public.sendRegistrationVerification({
-        email: formData.email.trim().toLowerCase(),
-        phone: formData.phone.trim(),
+      const payload: Record<string, any> = {
         shopName: formData.shopName.trim(),
-        ownerName: formData.ownerName.trim(),
         slug: cleanSlug,
-      });
+        ownerName: formData.ownerName.trim(),
+        phone: formData.phone.trim(),
+        email: formData.email.trim().toLowerCase(),
+        username: cleanUsername,
+        password: formData.password,
+        city: formData.city.trim(),
+        state: formData.state.trim(),
+      };
+      if (formData.pincode && formData.pincode.trim()) {
+        payload.pincode = formData.pincode.trim();
+      }
 
-      if (res.success && res.data) {
-        setVerificationId(res.data.verificationId);
-        setMaskedEmail(res.data.maskedEmail);
-        setMaskedPhone(res.data.maskedPhone);
-        if (res.data.devEmailOtp) setDevEmailOtp(res.data.devEmailOtp);
-        if (res.data.devPhoneOtp) setDevPhoneOtp(res.data.devPhoneOtp);
-        setResendCooldown(30);
-        setStep('VERIFY');
-        showSuccess('Confirmation code sent to your email and mobile phone!');
+      const res = await saasApi.public.register(payload);
+
+      if (res.success) {
+        showSuccess(`Shop workspace "${formData.shopName}" created successfully!`);
+        setShopSlug(cleanSlug);
+        setRegisteredSlug(cleanSlug);
+        try {
+          await login({
+            username: cleanUsername,
+            password: formData.password,
+            shopSlug: cleanSlug,
+          });
+        } catch (_) {
+          await refreshUserList();
+        }
+        setStep('SUCCESS');
       } else {
-        const errorMsg = formatUserFriendlyError(res.error || 'Failed to dispatch verification codes.');
+        const errorMsg = formatUserFriendlyError(res.error || 'Registration failed. Please check your information.');
         setError(errorMsg);
         showError(errorMsg);
 
@@ -380,106 +368,6 @@ export const SignupPage: React.FC = () => {
       showError(msg);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  // Step 2: Resend verification codes
-  const handleResendCodes = async () => {
-    if (resendCooldown > 0 || isResending) return;
-    setIsResending(true);
-    setError(null);
-
-    try {
-      const cleanSlug = formData.slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').replace(/^-+|-+$/g, '');
-      const res = await saasApi.public.sendRegistrationVerification({
-        email: formData.email.trim().toLowerCase(),
-        phone: formData.phone.trim(),
-        shopName: formData.shopName.trim(),
-        ownerName: formData.ownerName.trim(),
-        slug: cleanSlug,
-      });
-
-      if (res.success && res.data) {
-        setVerificationId(res.data.verificationId);
-        if (res.data.devEmailOtp) setDevEmailOtp(res.data.devEmailOtp);
-        if (res.data.devPhoneOtp) setDevPhoneOtp(res.data.devPhoneOtp);
-        setResendCooldown(30);
-        showSuccess('New confirmation codes sent successfully!');
-      } else {
-        showError(res.error || 'Failed to resend verification codes.');
-      }
-    } catch (err: unknown) {
-      showError(formatUserFriendlyError(err));
-    } finally {
-      setIsResending(false);
-    }
-  };
-
-  // Step 2: Verify OTPs & Complete Registration
-  const handleVerifyAndRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!emailOtp.trim() || emailOtp.trim().length !== 6) {
-      setError('Please enter the 6-digit confirmation code sent to your email.');
-      showError('Please enter the 6-digit confirmation code sent to your email.');
-      return;
-    }
-    if (!phoneOtp.trim() || phoneOtp.trim().length !== 6) {
-      setError('Please enter the 6-digit OTP sent to your mobile phone.');
-      showError('Please enter the 6-digit OTP sent to your mobile phone.');
-      return;
-    }
-
-    setIsVerifying(true);
-    setError(null);
-
-    try {
-      const cleanSlug = formData.slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').replace(/^-+|-+$/g, '');
-      const payload: Record<string, any> = {
-        shopName: formData.shopName.trim(),
-        slug: cleanSlug,
-        ownerName: formData.ownerName.trim(),
-        phone: formData.phone.trim(),
-        email: formData.email.trim().toLowerCase(),
-        username: formData.username || 'admin',
-        password: formData.password,
-        city: formData.city.trim() || 'Coimbatore',
-        state: formData.state.trim() || 'Tamil Nadu',
-        verificationId,
-        emailOtp: emailOtp.trim(),
-        phoneOtp: phoneOtp.trim(),
-      };
-      if (formData.pincode && formData.pincode.trim()) {
-        payload.pincode = formData.pincode.trim();
-      }
-
-      const res = await saasApi.public.register(payload);
-
-      if (res.success) {
-        showSuccess(`Shop workspace "${formData.shopName}" verified & created!`);
-        setShopSlug(cleanSlug);
-        setRegisteredSlug(cleanSlug);
-        try {
-          await login({
-            username: formData.username,
-            password: formData.password,
-            shopSlug: cleanSlug,
-          });
-        } catch (_) {
-          await refreshUserList();
-        }
-        setStep('SUCCESS');
-      } else {
-        const errorMsg = formatUserFriendlyError(res.error || 'Verification failed. Please check the codes.');
-        setError(errorMsg);
-        showError(errorMsg);
-      }
-    } catch (err: unknown) {
-      const msg = formatUserFriendlyError(err);
-      setError(msg);
-      showError(msg);
-    } finally {
-      setIsVerifying(false);
     }
   };
 
@@ -538,14 +426,12 @@ export const SignupPage: React.FC = () => {
           </Link>
 
           <h1 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 2px 0', letterSpacing: '-0.3px' }}>
-            {step === 'SUCCESS' ? 'Workspace Provisioned!' : step === 'DETAILS' ? 'Start Your 14-Day Free Trial' : 'Verify Email & Mobile Phone'}
+            {step === 'SUCCESS' ? 'Workspace Provisioned!' : 'Start Your 14-Day Free Trial'}
           </h1>
           <p style={{ fontSize: '12px', color: textMuted, margin: 0 }}>
             {step === 'SUCCESS'
               ? 'Your dedicated repair shop is active and ready for business.'
-              : step === 'DETAILS'
-              ? 'Multi-workstation cloud workspace for your computer & mobile service laboratory.'
-              : 'Enter confirmation codes to verify shop ownership and activate your admin workspace.'}
+              : 'Multi-workstation cloud workspace for your computer & mobile service laboratory.'}
           </p>
         </div>
 
@@ -601,7 +487,7 @@ export const SignupPage: React.FC = () => {
                 {formData.shopName} is Live!
               </h2>
               <p style={{ fontSize: '12.5px', color: textMuted, margin: '0 0 18px', lineHeight: 1.5 }}>
-                Your dedicated workshop has been provisioned. We have dispatched your login URL, username, and password directly to <strong>{formData.email}</strong>.
+                Your dedicated workshop has been provisioned. We have dispatched your login URL, username, and password directly to <strong>{formData.email}</strong> and <strong>{formData.phone}</strong> via WhatsApp.
               </p>
 
               {/* Dedicated Shop URL Box */}
@@ -961,7 +847,7 @@ export const SignupPage: React.FC = () => {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
                     <label htmlFor="signup_phone" style={{ fontSize: '11.5px', fontWeight: 600 }}>
-                      Mobile Number (WhatsApp OTP) *
+                      Mobile Number (WhatsApp) *
                     </label>
                     {phoneStatus === 'checking' && (
                       <span style={{ fontSize: '10.5px', color: '#10a37f', display: 'flex', alignItems: 'center', gap: '3px' }}>
@@ -1242,16 +1128,14 @@ export const SignupPage: React.FC = () => {
                 disabled={isSubmitting || slugStatus === 'taken' || emailStatus === 'taken' || phoneStatus === 'taken'}
                 style={{
                   marginTop: '6px',
-                  padding: '10.5px 16px',
+                  padding: '11px 16px',
                   backgroundColor:
                     isSubmitting || slugStatus === 'taken' || emailStatus === 'taken' || phoneStatus === 'taken'
                       ? isLight
                         ? '#9ca3af'
                         : '#4b5563'
-                      : isLight
-                        ? '#0d0d0d'
-                        : '#ececec',
-                  color: isLight ? '#ffffff' : '#0d0d0d',
+                      : '#10a37f',
+                  color: '#ffffff',
                   border: 'none',
                   borderRadius: '10px',
                   fontWeight: 600,
@@ -1264,265 +1148,23 @@ export const SignupPage: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  boxShadow: 'none',
+                  boxShadow: '0 4px 12px rgba(16, 163, 127, 0.25)',
                   transition: 'all 0.2s ease',
                 }}
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
-                    Sending Verification Codes...
+                    Provisioning Shop Workspace...
                   </>
                 ) : (
                   <>
-                    Verify Mobile &amp; Email <ArrowRight size={15} />
+                    Create Shop &amp; Start 14-Day Free Trial <ArrowRight size={15} />
                   </>
                 )}
               </button>
             </form>
-          ) : (
-            /* STEP 2: VERIFY CODES FORM */
-            <form onSubmit={handleVerifyAndRegister} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }} noValidate>
-              {/* Contact summary pill */}
-              <div
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  backgroundColor: isLight ? '#f9fafb' : '#171717',
-                  border: `1px solid ${borderCol}`,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-                  <Mail size={14} color="#10a37f" style={{ flexShrink: 0 }} />
-                  <span style={{ color: textMuted }}>Email Code sent to:</span>
-                  <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{maskedEmail || formData.email}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-                  <Smartphone size={14} color="#10a37f" style={{ flexShrink: 0 }} />
-                  <span style={{ color: textMuted }}>Mobile OTP sent to:</span>
-                  <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{maskedPhone || formData.phone}</span>
-                </div>
-              </div>
-
-              {/* Dev mode helper */}
-              {(devEmailOtp || devPhoneOtp) && (
-                <div
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    backgroundColor: 'rgba(16, 163, 127, 0.1)',
-                    border: '1px dashed #10a37f',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <div style={{ fontSize: '11px', color: '#10a37f' }}>
-                    <strong>Dev Code Preview:</strong> Email: <code>{devEmailOtp}</code> | Phone: <code>{devPhoneOtp}</code>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (devEmailOtp) setEmailOtp(devEmailOtp);
-                      if (devPhoneOtp) setPhoneOtp(devPhoneOtp);
-                    }}
-                    style={{
-                      fontSize: '10.5px',
-                      padding: '3px 8px',
-                      borderRadius: '5px',
-                      background: '#10a37f',
-                      color: '#fff',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                    }}
-                  >
-                    Auto-Fill Codes
-                  </button>
-                </div>
-              )}
-
-              {/* Input 1: Email Confirmation Code */}
-              <div>
-                <label
-                  htmlFor="verify_email_otp"
-                  style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}
-                >
-                  Email Confirmation Code *
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    id="verify_email_otp"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    pattern="[0-9]{6}"
-                    maxLength={6}
-                    placeholder="123456"
-                    value={emailOtp}
-                    onChange={(e) => setEmailOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: `1px solid ${borderCol}`,
-                      backgroundColor: inputBg,
-                      color: textMain,
-                      fontSize: '16px',
-                      fontWeight: 700,
-                      letterSpacing: '0.25em',
-                      fontFamily: 'monospace',
-                      textAlign: 'center',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                  <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }}>
-                    {emailOtp.length === 6 && <CheckCircle2 size={16} color="#10a37f" />}
-                  </div>
-                </div>
-                <div style={{ fontSize: '10.5px', color: textMuted, marginTop: '3px' }}>
-                  Check your inbox / spam folder for the 6-digit confirmation code.
-                </div>
-              </div>
-
-              {/* Input 2: Mobile SMS / WhatsApp OTP */}
-              <div>
-                <label
-                  htmlFor="verify_phone_otp"
-                  style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}
-                >
-                  Mobile SMS / WhatsApp OTP *
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    id="verify_phone_otp"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    pattern="[0-9]{6}"
-                    maxLength={6}
-                    placeholder="123456"
-                    value={phoneOtp}
-                    onChange={(e) => setPhoneOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: `1px solid ${borderCol}`,
-                      backgroundColor: inputBg,
-                      color: textMain,
-                      fontSize: '16px',
-                      fontWeight: 700,
-                      letterSpacing: '0.25em',
-                      fontFamily: 'monospace',
-                      textAlign: 'center',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                  <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }}>
-                    {phoneOtp.length === 6 && <CheckCircle2 size={16} color="#10a37f" />}
-                  </div>
-                </div>
-                <div style={{ fontSize: '10.5px', color: textMuted, marginTop: '3px' }}>
-                  Enter the 6-digit OTP received via SMS or WhatsApp.
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <button
-                type="submit"
-                disabled={isVerifying || emailOtp.length !== 6 || phoneOtp.length !== 6}
-                style={{
-                  marginTop: '4px',
-                  padding: '11px 16px',
-                  backgroundColor:
-                    isVerifying || emailOtp.length !== 6 || phoneOtp.length !== 6
-                      ? isLight
-                        ? '#9ca3af'
-                        : '#4b5563'
-                      : '#10a37f',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontWeight: 600,
-                  fontSize: '13.5px',
-                  cursor: isVerifying || emailOtp.length !== 6 || phoneOtp.length !== 6 ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: 'none',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                {isVerifying ? (
-                  <>
-                    <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
-                    Verifying &amp; Creating Workspace...
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck size={16} /> Verify &amp; Activate 14-Day Free Trial
-                  </>
-                )}
-              </button>
-
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginTop: '4px',
-                  fontSize: '11.5px',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep('DETAILS');
-                    setError(null);
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: textMuted,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: 0,
-                  }}
-                >
-                  <ArrowLeft size={13} /> Edit Shop Details
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleResendCodes}
-                  disabled={resendCooldown > 0 || isResending}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: resendCooldown > 0 ? textMuted : '#10a37f',
-                    cursor: resendCooldown > 0 ? 'default' : 'pointer',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: 0,
-                  }}
-                >
-                  <RefreshCw size={12} className={isResending ? 'spin-icon' : ''} />
-                  {resendCooldown > 0 ? `Resend Codes (${resendCooldown}s)` : 'Resend Codes'}
-                </button>
-              </div>
-            </form>
-          )}
+          ) : null}
 
           {/* Login prompt */}
           {step !== 'SUCCESS' && (
