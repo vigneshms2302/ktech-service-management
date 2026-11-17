@@ -99230,7 +99230,6 @@ async function sendRegistrationSmsOtp(payload) {
 // server/services/whatsappService.ts
 async function sendWhatsAppOtp(payload) {
   const cleanPhone = payload.toPhone.replace(/[^0-9]/g, "");
-  const last10Digits = cleanPhone.slice(-10);
   const recipientE164 = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
   const messageText = `\u{1F510} *K-Connect Repair Laboratory*
 

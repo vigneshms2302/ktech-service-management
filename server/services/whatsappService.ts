@@ -36,7 +36,6 @@ export function isWhatsAppConfigured(): boolean {
  */
 export async function sendWhatsAppOtp(payload: WhatsAppOtpPayload): Promise<WhatsAppDispatchResult> {
   const cleanPhone = payload.toPhone.replace(/[^0-9]/g, '');
-  const last10Digits = cleanPhone.slice(-10);
   // Ensure Indian country code 91 by default if 10 digits
   const recipientE164 = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
 
