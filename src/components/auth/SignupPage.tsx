@@ -124,9 +124,13 @@ export const SignupPage: React.FC = () => {
             setSlugMessage(res.data.slug.message || `✕ Handle "${clean}" is already taken`);
             setFieldErrors((prev) => ({ ...prev, slug: res.data.slug.message || 'Handle already taken' }));
           }
+        } else {
+          setSlugStatus('idle');
+          setSlugMessage('');
         }
       } catch {
         setSlugStatus('idle');
+        setSlugMessage('');
       }
     }, 350);
   };
@@ -178,9 +182,13 @@ export const SignupPage: React.FC = () => {
             setEmailMessage(res.data.email.message || '✕ Email is already registered');
             setFieldErrors((prev) => ({ ...prev, email: 'Email is already registered to another shop' }));
           }
+        } else {
+          setEmailStatus('idle');
+          setEmailMessage('');
         }
       } catch {
         setEmailStatus('idle');
+        setEmailMessage('');
       }
     }, 400);
   };
@@ -220,9 +228,13 @@ export const SignupPage: React.FC = () => {
             setPhoneMessage(res.data.phone.message || '✕ Mobile number already registered');
             setFieldErrors((prev) => ({ ...prev, phone: 'Mobile number already registered to another shop' }));
           }
+        } else {
+          setPhoneStatus('idle');
+          setPhoneMessage('');
         }
       } catch {
         setPhoneStatus('idle');
+        setPhoneMessage('');
       }
     }, 400);
   };

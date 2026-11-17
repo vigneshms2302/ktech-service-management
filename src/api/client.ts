@@ -124,6 +124,8 @@ async function apiFetch<T = any>(
       endpoint.includes('/api/auth/reset-password') ||
       endpoint.includes('/api/auth/change-password') ||
       endpoint.includes('/api/public/register') ||
+      endpoint.includes('/api/public/check-availability') ||
+      endpoint.includes('check-availability') ||
       endpoint.includes('check-duplicates') ||
       response.status === 404;
 
@@ -951,7 +953,7 @@ export const saasApi = {
       if (params.slug) q.append('slug', params.slug);
       if (params.email) q.append('email', params.email);
       if (params.phone) q.append('phone', params.phone);
-      return apiFetch(`/api/public/check-availability?${q.toString()}`);
+      return apiFetch(`/api/public/check-availability?${q.toString()}`, { skipGlobalToast: true });
     },
 
     sendRegistrationVerification: async (payload: {

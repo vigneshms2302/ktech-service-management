@@ -5,7 +5,9 @@
   "description": "KTech Computers internal service and business management desktop application",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n \"API,WEB\" -c \"blue,green\" \"tsx watch server/index.ts\" \"vite\"",
+    "dev:web": "vite",
+    "dev:server": "tsx watch server/index.ts",
     "server": "tsx watch server/index.ts",
     "dev:saas": "concurrently -n \"API,WEB\" -c \"blue,green\" \"tsx watch server/index.ts\" \"vite\"",
     "build:web": "tsc && vite build",
