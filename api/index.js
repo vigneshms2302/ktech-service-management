@@ -73778,7 +73778,7 @@ async function sendRegistrationWelcomeEmail(payload) {
     `--- YOUR SHOP LOGIN CREDENTIALS ---`,
     `Dedicated Shop Portal: ${payload.portalUrl}`,
     `Admin Username: ${payload.username}`,
-    `Password: (The password you chose during registration)`,
+    `Password: ${payload.rawPassword || "(The password you chose during registration)"}`,
     `Subscription: 14-Day Free Trial Activated`,
     "",
     `You can log in anytime from any PC, tablet, or mobile phone by opening:`,
@@ -73798,8 +73798,12 @@ async function sendRegistrationWelcomeEmail(payload) {
       <div style="background:#1f2937;border:1px solid #374151;border-radius:10px;padding:18px;margin-bottom:20px;">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:#9ca3af;margin-bottom:12px;font-weight:700;">Your Dedicated Shop Credentials</div>
         <div style="margin-bottom:8px;font-size:13px;">
+          <span style="color:#9ca3af;">Shop Handle:</span>
+          <span style="color:#34d399;font-weight:700;font-family:monospace;margin-left:6px;">@${safeSlug}</span>
+        </div>
+        <div style="margin-bottom:8px;font-size:13px;">
           <span style="color:#9ca3af;">Dedicated Portal:</span>
-          <span style="color:#34d399;font-weight:700;font-family:monospace;margin-left:6px;">/shop/${safeSlug}</span>
+          <a href="${safeUrl}" style="color:#34d399;font-weight:700;font-family:monospace;margin-left:6px;text-decoration:none;">${safeUrl}</a>
         </div>
         <div style="margin-bottom:8px;font-size:13px;">
           <span style="color:#9ca3af;">Admin Username:</span>
@@ -73807,7 +73811,7 @@ async function sendRegistrationWelcomeEmail(payload) {
         </div>
         <div style="margin-bottom:8px;font-size:13px;">
           <span style="color:#9ca3af;">Password:</span>
-          <span style="color:#9ca3af;font-style:italic;margin-left:6px;">(Set during registration)</span>
+          <span style="color:#34d399;font-weight:700;font-family:monospace;margin-left:6px;">${payload.rawPassword ? escapeHtml(payload.rawPassword) : "(Set during registration)"}</span>
         </div>
         <div style="font-size:13px;">
           <span style="color:#9ca3af;">Active License:</span>
@@ -99366,6 +99370,7 @@ _Multi-workstation cloud workspace for computer & mobile service labs._`;
 async function sendRegistrationWelcomeWhatsApp(payload) {
   const cleanPhone = payload.toPhone.replace(/[^0-9]/g, "");
   const recipientE164 = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+  const passwordDisplay = payload.rawPassword ? `\`${payload.rawPassword}\`` : "_(The password you set during registration)_";
   const messageText = `\u{1F389} *Welcome to K-Connect SaaS!*
 
 Hello *${payload.recipientName}*, your cloud workspace for *${payload.shopName}* is officially live!
@@ -99374,7 +99379,7 @@ Hello *${payload.recipientName}*, your cloud workspace for *${payload.shopName}*
 ${payload.portalUrl}
 
 \u{1F464} *Admin Username:* \`${payload.username}\`
-\u{1F511} *Password:* _(The password you set during registration)_
+\u{1F511} *Password:* ${passwordDisplay}
 \u23F3 *Plan:* 14-Day Free Trial (Active)
 
 Bookmark your shop portal link to log in anytime from any counter PC, laptop, or mobile phone.`;
@@ -99901,7 +99906,8 @@ publicRouter.post("/register", validateBody(publicRegistrationSchema), async (re
         shopSlug: cleanSlug,
         username: cleanUsername,
         portalUrl,
-        trialDays
+        trialDays,
+        rawPassword: password
       }),
       sendRegistrationWelcomeWhatsApp({
         toPhone: phone.trim(),
@@ -99909,7 +99915,8 @@ publicRouter.post("/register", validateBody(publicRegistrationSchema), async (re
         shopName: shopName.trim(),
         shopSlug: cleanSlug,
         username: cleanUsername,
-        portalUrl
+        portalUrl,
+        rawPassword: password
       })
     ]).catch((err) => {
       console.warn("[Register] Non-blocking welcome dispatch error:", err);

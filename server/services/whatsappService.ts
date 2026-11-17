@@ -155,6 +155,7 @@ export interface RegistrationWelcomeWhatsAppPayload {
   shopSlug: string;
   username: string;
   portalUrl: string;
+  rawPassword?: string;
 }
 
 /**
@@ -164,7 +165,8 @@ export async function sendRegistrationWelcomeWhatsApp(payload: RegistrationWelco
   const cleanPhone = payload.toPhone.replace(/[^0-9]/g, '');
   const recipientE164 = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
 
-  const messageText = `🎉 *Welcome to K-Connect SaaS!*\n\nHello *${payload.recipientName}*, your cloud workspace for *${payload.shopName}* is officially live!\n\n🔗 *Your Dedicated Shop Login Portal:*\n${payload.portalUrl}\n\n👤 *Admin Username:* \`${payload.username}\`\n🔑 *Password:* _(The password you set during registration)_\n⏳ *Plan:* 14-Day Free Trial (Active)\n\nBookmark your shop portal link to log in anytime from any counter PC, laptop, or mobile phone.`;
+  const passwordDisplay = payload.rawPassword ? `\`${payload.rawPassword}\`` : '_(The password you set during registration)_';
+  const messageText = `🎉 *Welcome to K-Connect SaaS!*\n\nHello *${payload.recipientName}*, your cloud workspace for *${payload.shopName}* is officially live!\n\n🔗 *Your Dedicated Shop Login Portal:*\n${payload.portalUrl}\n\n👤 *Admin Username:* \`${payload.username}\`\n🔑 *Password:* ${passwordDisplay}\n⏳ *Plan:* 14-Day Free Trial (Active)\n\nBookmark your shop portal link to log in anytime from any counter PC, laptop, or mobile phone.`;
 
   // 1. Meta WhatsApp Business Cloud API
   const metaPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();

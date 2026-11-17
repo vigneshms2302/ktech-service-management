@@ -29,7 +29,8 @@ export const SignupPage: React.FC = () => {
   const { login, refreshUserList } = useAuth();
   const { showError, showSuccess } = useToast();
 
-  const [step, setStep] = useState<'DETAILS' | 'VERIFY'>('DETAILS');
+  const [step, setStep] = useState<'DETAILS' | 'VERIFY' | 'SUCCESS'>('DETAILS');
+  const [registeredSlug, setRegisteredSlug] = useState<string>('');
 
   const [formData, setFormData] = useState({
     shopName: '',
@@ -455,8 +456,9 @@ export const SignupPage: React.FC = () => {
       const res = await saasApi.public.register(payload);
 
       if (res.success) {
-        showSuccess(`Shop workspace "${formData.shopName}" verified & created! Starting free trial.`);
+        showSuccess(`Shop workspace "${formData.shopName}" verified & created!`);
         setShopSlug(cleanSlug);
+        setRegisteredSlug(cleanSlug);
         try {
           await login({
             username: formData.username,
@@ -466,8 +468,7 @@ export const SignupPage: React.FC = () => {
         } catch (_) {
           await refreshUserList();
         }
-        // Redirect directly to the /app dashboard
-        navigate('/app', { replace: true });
+        setStep('SUCCESS');
       } else {
         const errorMsg = formatUserFriendlyError(res.error || 'Verification failed. Please check the codes.');
         setError(errorMsg);
@@ -537,10 +538,12 @@ export const SignupPage: React.FC = () => {
           </Link>
 
           <h1 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 2px 0', letterSpacing: '-0.3px' }}>
-            {step === 'DETAILS' ? 'Start Your 14-Day Free Trial' : 'Verify Email & Mobile Phone'}
+            {step === 'SUCCESS' ? 'Workspace Provisioned!' : step === 'DETAILS' ? 'Start Your 14-Day Free Trial' : 'Verify Email & Mobile Phone'}
           </h1>
           <p style={{ fontSize: '12px', color: textMuted, margin: 0 }}>
-            {step === 'DETAILS'
+            {step === 'SUCCESS'
+              ? 'Your dedicated repair shop is active and ready for business.'
+              : step === 'DETAILS'
               ? 'Multi-workstation cloud workspace for your computer & mobile service laboratory.'
               : 'Enter confirmation codes to verify shop ownership and activate your admin workspace.'}
           </p>
@@ -576,7 +579,123 @@ export const SignupPage: React.FC = () => {
             </div>
           )}
 
-          {step === 'DETAILS' ? (
+          {step === 'SUCCESS' ? (
+            <div style={{ textAlign: 'center', padding: '12px 6px' }}>
+              <div
+                style={{
+                  width: '52px',
+                  height: '52px',
+                  borderRadius: '50%',
+                  background: 'rgba(16, 163, 127, 0.12)',
+                  color: '#10a37f',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 14px',
+                }}
+              >
+                <CheckCircle2 size={30} />
+              </div>
+
+              <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 6px' }}>
+                {formData.shopName} is Live!
+              </h2>
+              <p style={{ fontSize: '12.5px', color: textMuted, margin: '0 0 18px', lineHeight: 1.5 }}>
+                Your dedicated workshop has been provisioned. We have dispatched your login URL, username, and password directly to <strong>{formData.email}</strong>.
+              </p>
+
+              {/* Dedicated Shop URL Box */}
+              <div
+                style={{
+                  padding: '14px',
+                  borderRadius: '12px',
+                  background: isLight ? '#f9fafb' : '#1f2937',
+                  border: `1px solid ${borderCol}`,
+                  textAlign: 'left',
+                  marginBottom: '18px',
+                }}
+              >
+                <div style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '1px', color: textMuted, fontWeight: 700, marginBottom: '6px' }}>
+                  Your Dedicated Shop Login URL
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px',
+                    background: isLight ? '#ffffff' : '#111827',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: `1px solid ${borderCol}`,
+                  }}
+                >
+                  <span style={{ fontSize: '12.5px', fontFamily: 'monospace', fontWeight: 700, color: '#10a37f', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {typeof window !== 'undefined' ? `${window.location.origin}/shop/${registeredSlug || formData.slug}` : `/shop/${registeredSlug || formData.slug}`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        navigator.clipboard.writeText(`${window.location.origin}/shop/${registeredSlug || formData.slug}`);
+                        setCopiedUrl(true);
+                        setTimeout(() => setCopiedUrl(false), 2000);
+                      }
+                    }}
+                    style={{
+                      fontSize: '11px',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      background: copiedUrl ? '#10a37f' : (isLight ? '#f3f4f6' : '#374151'),
+                      color: copiedUrl ? '#ffffff' : textMain,
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {copiedUrl ? 'Copied!' : 'Copy URL'}
+                  </button>
+                </div>
+
+                <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                  <div>
+                    <span style={{ color: textMuted }}>Admin Username:</span>{' '}
+                    <span style={{ fontWeight: 700, fontFamily: 'monospace' }}>{formData.username || 'admin'}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: textMuted }}>Plan:</span>{' '}
+                    <span style={{ fontWeight: 700, color: '#10a37f' }}>14-Day Free Trial</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Primary CTA button to open dashboard */}
+              <button
+                type="button"
+                onClick={() => navigate('/app', { replace: true })}
+                style={{
+                  width: '100%',
+                  padding: '12px 20px',
+                  borderRadius: '10px',
+                  backgroundColor: '#10a37f',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(16, 163, 127, 0.25)',
+                }}
+              >
+                <span>Enter Shop Workspace</span>
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          ) : step === 'DETAILS' ? (
             <form onSubmit={handleSubmitDetails} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }} noValidate>
               {/* Row 1: Shop Name & Slug */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '12px' }}>
@@ -1406,12 +1525,14 @@ export const SignupPage: React.FC = () => {
           )}
 
           {/* Login prompt */}
-          <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '12px', color: textMuted }}>
-            Already have an account?{' '}
-            <Link to="/login" style={{ color: '#10a37f', fontWeight: 600, textDecoration: 'none' }}>
-              Sign In to Your Shop
-            </Link>
-          </div>
+          {step !== 'SUCCESS' && (
+            <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '12px', color: textMuted }}>
+              Already have an account?{' '}
+              <Link to="/login" style={{ color: '#10a37f', fontWeight: 600, textDecoration: 'none' }}>
+                Sign In to Your Shop
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>

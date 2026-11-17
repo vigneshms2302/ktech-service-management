@@ -572,6 +572,7 @@ publicRouter.post('/register', validateBody(publicRegistrationSchema), async (re
         username: cleanUsername,
         portalUrl,
         trialDays,
+        rawPassword: password,
       }),
       sendRegistrationWelcomeWhatsApp({
         toPhone: phone.trim(),
@@ -580,6 +581,7 @@ publicRouter.post('/register', validateBody(publicRegistrationSchema), async (re
         shopSlug: cleanSlug,
         username: cleanUsername,
         portalUrl,
+        rawPassword: password,
       }),
     ]).catch((err) => {
       console.warn('[Register] Non-blocking welcome dispatch error:', err);

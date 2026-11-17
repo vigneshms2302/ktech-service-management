@@ -262,6 +262,7 @@ export interface RegistrationWelcomeEmailPayload {
   username: string;
   portalUrl: string;
   trialDays: number;
+  rawPassword?: string;
 }
 
 /**
@@ -284,7 +285,7 @@ export async function sendRegistrationWelcomeEmail(payload: RegistrationWelcomeE
     `--- YOUR SHOP LOGIN CREDENTIALS ---`,
     `Dedicated Shop Portal: ${payload.portalUrl}`,
     `Admin Username: ${payload.username}`,
-    `Password: (The password you chose during registration)`,
+    `Password: ${payload.rawPassword || '(The password you chose during registration)'}`,
     `Subscription: 14-Day Free Trial Activated`,
     '',
     `You can log in anytime from any PC, tablet, or mobile phone by opening:`,
@@ -305,8 +306,12 @@ export async function sendRegistrationWelcomeEmail(payload: RegistrationWelcomeE
       <div style="background:#1f2937;border:1px solid #374151;border-radius:10px;padding:18px;margin-bottom:20px;">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:#9ca3af;margin-bottom:12px;font-weight:700;">Your Dedicated Shop Credentials</div>
         <div style="margin-bottom:8px;font-size:13px;">
+          <span style="color:#9ca3af;">Shop Handle:</span>
+          <span style="color:#34d399;font-weight:700;font-family:monospace;margin-left:6px;">@${safeSlug}</span>
+        </div>
+        <div style="margin-bottom:8px;font-size:13px;">
           <span style="color:#9ca3af;">Dedicated Portal:</span>
-          <span style="color:#34d399;font-weight:700;font-family:monospace;margin-left:6px;">/shop/${safeSlug}</span>
+          <a href="${safeUrl}" style="color:#34d399;font-weight:700;font-family:monospace;margin-left:6px;text-decoration:none;">${safeUrl}</a>
         </div>
         <div style="margin-bottom:8px;font-size:13px;">
           <span style="color:#9ca3af;">Admin Username:</span>
@@ -314,7 +319,7 @@ export async function sendRegistrationWelcomeEmail(payload: RegistrationWelcomeE
         </div>
         <div style="margin-bottom:8px;font-size:13px;">
           <span style="color:#9ca3af;">Password:</span>
-          <span style="color:#9ca3af;font-style:italic;margin-left:6px;">(Set during registration)</span>
+          <span style="color:#34d399;font-weight:700;font-family:monospace;margin-left:6px;">${payload.rawPassword ? escapeHtml(payload.rawPassword) : '(Set during registration)'}</span>
         </div>
         <div style="font-size:13px;">
           <span style="color:#9ca3af;">Active License:</span>

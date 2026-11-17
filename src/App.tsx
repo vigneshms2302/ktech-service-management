@@ -69,16 +69,43 @@ export const App: React.FC = () => {
   return (
     <>
       <Routes>
-      {/* Root traffic opens the main SaaS application directly (redirects to /login if unauthenticated) */}
-      <Route path="/" element={<Navigate to="/app" replace />} />
+      {/* Root traffic: Show clean public landing page for new visitors; redirect to /app if already logged in */}
+      <Route
+        path="/"
+        element={
+          currentUser ? (
+            currentUser.roleId === 'ROLE_SUPER_ADMIN' ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <Navigate to="/app" replace />
+            )
+          ) : (
+            <PublicLayout>
+              <HomePage />
+            </PublicLayout>
+          )
+        }
+      />
 
       {/* Customer Repair Tracking (publicly accessible via QR codes or SMS) */}
       <Route path="/track" element={<TrackRouteWrapper />} />
       <Route path="/track/:jobNumber" element={<TrackRouteWrapper />} />
 
       {/* ─────────────────────────────────────────────────────────────
-          1. Public Marketing Site (On Hold - Available under /site)
+          1. Public Marketing Site
           ───────────────────────────────────────────────────────────── */}
+      <Route path="/public" element={<PublicLayout><HomePage /></PublicLayout>} />
+      <Route path="/features" element={<PublicLayout><FeaturesPage /></PublicLayout>} />
+      <Route path="/pricing" element={<PublicLayout><PricingPage /></PublicLayout>} />
+      <Route path="/how-it-works" element={<PublicLayout><HowItWorksPage /></PublicLayout>} />
+      <Route path="/about" element={<PublicLayout><AboutPage /></PublicLayout>} />
+      <Route path="/demo" element={<PublicLayout><DemoPage /></PublicLayout>} />
+      <Route path="/faq" element={<PublicLayout><FaqPage /></PublicLayout>} />
+      <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
+      <Route path="/privacy" element={<PublicLayout><PrivacyPolicyPage /></PublicLayout>} />
+      <Route path="/terms" element={<PublicLayout><TermsOfServicePage /></PublicLayout>} />
+      <Route path="/refund-policy" element={<PublicLayout><RefundPolicyPage /></PublicLayout>} />
+
       <Route path="/site" element={<PublicLayout />}>
         <Route index element={<HomePage />} />
         <Route path="features" element={<FeaturesPage />} />
