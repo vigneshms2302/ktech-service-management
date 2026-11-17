@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Lock,
   User,
@@ -40,7 +40,7 @@ export const LoginPage: React.FC = () => {
   const isLight = theme === 'light';
 
   const { shopSlug: routeShopSlug } = useParams<{ shopSlug?: string }>();
-  const searchParams = new URLSearchParams(window.location.search);
+  const [searchParams] = useSearchParams();
   const queryShopSlug = searchParams.get('shop') || searchParams.get('slug');
   const dedicatedShopSlug = (routeShopSlug || queryShopSlug || '').trim().toLowerCase();
 
@@ -57,6 +57,14 @@ export const LoginPage: React.FC = () => {
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(isAdminParam);
   const [username, setUsername] = useState<string>(isAdminParam ? 'superadmin' : '');
   const [password, setPassword] = useState<string>('');
+
+  useEffect(() => {
+    if (isAdminParam) {
+      setIsSuperAdmin(true);
+      if (!username) setUsername('superadmin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [isAdminParam]);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -149,7 +157,7 @@ export const LoginPage: React.FC = () => {
       {/* ───────────────────────────────────────────────────────────── */}
       {/* LEFT COLUMN: VIBRANT SHOWCASE & MULTI-TENANT LAB EXPERIENCE    */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="lg:w-7/12 xl:w-7/12 p-6 sm:p-10 lg:p-14 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-[#070b14] via-[#0d1424] to-[#08121f] text-white border-b lg:border-b-0 lg:border-r border-slate-800/60 shadow-2xl">
+      <div className="lg:w-7/12 xl:w-7/12 p-6 sm:p-10 lg:p-14 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-[#070b14] via-[#0d1424] to-[#08121f] text-white border-b lg:border-b-0 lg:border-r border-slate-800/60 shadow-2xl order-2 lg:order-1">
         
         {/* Ambient Glow Orbs */}
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -289,7 +297,7 @@ export const LoginPage: React.FC = () => {
       {/* ───────────────────────────────────────────────────────────── */}
       {/* RIGHT COLUMN: FOCUSED, HIGH-CONVERSION SIGN-IN CONSOLE         */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className={`lg:w-5/12 xl:w-5/12 p-4 sm:p-6 lg:p-8 xl:p-10 flex flex-col justify-between ${isLight ? 'bg-white' : 'bg-[#111622]'} relative`}>
+      <div className={`lg:w-5/12 xl:w-5/12 p-4 sm:p-6 lg:p-8 xl:p-10 flex flex-col justify-between ${isLight ? 'bg-white' : 'bg-[#111622]'} relative order-1 lg:order-2`}>
         
         {/* Top Controls Row */}
         <div className="flex items-center justify-between gap-4 mb-4 sm:mb-6">
@@ -541,6 +549,7 @@ export const LoginPage: React.FC = () => {
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   required
+                  autoFocus={isSuperAdmin && username === 'superadmin'}
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

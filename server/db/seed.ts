@@ -67,10 +67,7 @@ export async function seedInitialPlatform(): Promise<void> {
           VALUES ('VND-ROOT-01', ?, ?, 'K-Connect Super Admin', 'vendor@ktech.com')
           ON CONFLICT(id) DO UPDATE SET
             username = excluded.username,
-            password_hash = CASE
-              WHEN vendor_admins.password_hash IS NULL OR vendor_admins.password_hash = '' THEN excluded.password_hash
-              ELSE vendor_admins.password_hash
-            END;`,
+            password_hash = excluded.password_hash;`,
     args: [adminUsername, superAdminPasswordHash],
   });
 

@@ -167,15 +167,11 @@ export async function ensureSchemaReady(): Promise<void> {
       try {
         const dbUrl = process.env.DATABASE_URL;
         if (!dbUrl || dbUrl.trim() === '') return;
-        const client = getClient();
-        const check = await client.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='shops';");
-        if (check.rows.length === 0) {
-          console.log('[Schema] Bootstrapping SaaS multi-tenant schema & seed data...');
-          await initializeMultiTenantSchema();
-          await seedInitialPlatform();
-          console.log('[Schema] Bootstrap completed successfully.');
-        }
+        console.log('[Schema] Ensuring SaaS multi-tenant schema & seed data...');
+        await initializeMultiTenantSchema();
+        await seedInitialPlatform();
         schemaInitialized = true;
+        console.log('[Schema] Multi-tenant schema and seed ready.');
       } catch (err) {
         console.error('[Schema Bootstrap Error]', err);
       } finally {
