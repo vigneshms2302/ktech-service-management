@@ -11,7 +11,6 @@ import {
   Monitor,
   ArrowRight,
   ShieldCheck,
-  Search,
   Server,
   Check,
   RefreshCw,
@@ -472,23 +471,8 @@ export const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          {/* New Shop Registration CTA (GreytHR style) */}
-          {!isSuperAdmin && (
-            <div className="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800 text-center">
-              <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                New repair center?{' '}
-                <Link
-                  to="/signup"
-                  className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
-                >
-                  Register Your Shop (14-Day Free Trial)
-                </Link>
-              </p>
-            </div>
-          )}
-
-          {/* Super Admin Switcher Link */}
-          {isSuperAdmin ? (
+          {/* Super Admin Switcher Link (Only displayed if admin mode was explicitly navigated to) */}
+          {isSuperAdmin && (
             <div className="mt-4 text-center">
               <button
                 type="button"
@@ -503,21 +487,6 @@ export const LoginPage: React.FC = () => {
                 ← Return to Regular Shop Staff Login
               </button>
             </div>
-          ) : (
-            <div className="mt-3 text-center">
-              <Link
-                to="/login?admin=1"
-                onClick={() => {
-                  setIsSuperAdmin(true);
-                  setUsername('superadmin');
-                  setPassword('');
-                  setError(null);
-                }}
-                className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-              >
-                Super-Admin Portal Access
-              </Link>
-            </div>
           )}
         </div>
       </main>
@@ -525,14 +494,6 @@ export const LoginPage: React.FC = () => {
       {/* ── Minimalist Clean Footer ─────────────────────────────────── */}
       <footer className="w-full max-w-6xl mx-auto px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
         <div className="flex items-center gap-4">
-          <Link
-            to="/track"
-            className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-emerald-500 transition-colors no-underline"
-          >
-            <Search size={13} />
-            <span>Track Repair Device</span>
-          </Link>
-
           {!isDesktop && (
             <button
               type="button"
